@@ -1,17 +1,31 @@
-"""Оптимізація медіа для газети: WebP для фото, перекодування відео, дедуплікація.
+"""Оптимізація медіа для газети: WebP для фото, перекодування відео, дедуплікація,
+постери для гіфок.
 
 Працює з dict media з data-URI, повертає оптимізований dict і звіт.
 """
+
 import base64
 import hashlib
 import io
 import os
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 
-FFMPEG = str(Path(__file__).parent / "ffmpeg" / "ffmpeg.exe")
-FFPROBE = str(Path(__file__).parent / "ffmpeg" / "ffprobe.exe")
+
+def _find_bin(name: str) -> str | None:
+    """Спершу шукає ffmpeg/<name>(.exe) поруч зі скриптом, потім у PATH."""
+    local = (
+        Path(__file__).parent / "ffmpeg" / (name + (".exe" if os.name == "nt" else ""))
+    )
+    if local.exists():
+        return str(local)
+    return shutil.which(name)
+
+
+FFMPEG = _find_bin("ffmpeg")
+FFPROBE = _find_bin("ffprobe")
 
 
 def _decode_data_uri(data_uri: str) -> tuple[str, bytes]:
@@ -28,32 +42,35 @@ def _encode_data_uri(mime: str, raw: bytes) -> str:
 # ── Фото → WebP ──────────────────────────────────────────────────────────────
 
 
-def _optimize_image(raw: bytes, mime: str, max_width: int = 1000, quality: int = 78) -> tuple[str, bytes]:
+def _optimize_image(
+    raw: bytes, mime: str, max_width: int = 1000, quality: int = 78
+) -> tuple[str, bytes]:
     """JPEG/PNG → WebP з обмеженням ширини. Повертає (new_mime, new_bytes).
     Якщо WebP більший за оригінал — повертає оригінал без змін."""
-    from PIL import Image
+    from PIL import Image, ImageOps
 
     img = Image.open(io.BytesIO(raw))
 
-    # Видаляємо EXIF
-    if hasattr(img, "info"):
-        img.info.pop("exif", None)
+    # Застосовуємо поворот з EXIF до того, як метадані зникнуть у WebP
+    img = ImageOps.exif_transpose(img)
 
     # Обмеження ширини
     if img.width > max_width:
         ratio = max_width / img.width
         img = img.resize((max_width, int(img.height * ratio)), Image.LANCZOS)
 
-    # Конвертуємо в RGB якщо потрібно (RGBA → RGB для WebP lossy)
-    if img.mode == "RGBA":
-        # Зберігаємо з альфа-каналом
-        buf = io.BytesIO()
-        img.save(buf, format="WEBP", quality=quality, method=4)
-    else:
-        if img.mode != "RGB":
-            img = img.convert("RGB")
-        buf = io.BytesIO()
-        img.save(buf, format="WEBP", quality=quality, method=4)
+    # Режими: прозорість зберігаємо (RGBA), решту переводимо в RGB
+    if img.mode == "P":
+        img = img.convert("RGBA" if "transparency" in img.info else "RGB")
+    elif img.mode == "LA":
+        img = img.convert("RGBA")
+    elif img.mode not in ("RGB", "RGBA"):
+        img = img.convert("RGB")
+
+    buf = io.BytesIO()
+    img.save(
+        buf, format="WEBP", quality=quality, method=4
+    )  # EXIF не передаємо — він видалений
 
     webp_bytes = buf.getvalue()
     if len(webp_bytes) < len(raw):
@@ -66,11 +83,25 @@ def _optimize_image(raw: bytes, mime: str, max_width: int = 1000, quality: int =
 
 def _get_video_fps(path: str) -> float:
     """Отримує FPS відео через ffprobe."""
+    if not FFPROBE:
+        return 24.0
     try:
         r = subprocess.run(
-            [FFPROBE, "-v", "error", "-select_streams", "v:0",
-             "-show_entries", "stream=r_frame_rate", "-of", "csv=p=0", path],
-            capture_output=True, text=True, timeout=10
+            [
+                FFPROBE,
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=r_frame_rate",
+                "-of",
+                "csv=p=0",
+                path,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         parts = r.stdout.strip().split("/")
         if len(parts) == 2 and int(parts[1]) > 0:
@@ -82,7 +113,9 @@ def _get_video_fps(path: str) -> float:
 
 def _optimize_video(raw: bytes) -> bytes:
     """Перекодовує mp4: -an, scale ≤ 640, fps ≤ 24, crf 30, slow.
-    Якщо результат більший за оригінал — повертає оригінал."""
+    Якщо результат більший за оригінал (або ffmpeg недоступний) — повертає оригінал."""
+    if not FFMPEG:
+        return raw
     with tempfile.TemporaryDirectory() as tmp:
         inp = os.path.join(tmp, "in.mp4")
         out = os.path.join(tmp, "out.mp4")
@@ -93,23 +126,89 @@ def _optimize_video(raw: bytes) -> bytes:
         target_fps = min(24, fps)
 
         cmd = [
-            FFMPEG, "-y", "-i", inp,
+            FFMPEG,
+            "-y",
+            "-i",
+            inp,
             "-an",
-            "-vf", f"scale='min(640,iw)':-2,fps={target_fps}",
-            "-c:v", "libx264", "-crf", "30", "-preset", "slow",
-            "-pix_fmt", "yuv420p",
-            "-movflags", "+faststart",
-            out
+            "-vf",
+            f"scale='min(640,iw)':-2,fps={target_fps}",
+            "-c:v",
+            "libx264",
+            "-crf",
+            "30",
+            "-preset",
+            "slow",
+            "-pix_fmt",
+            "yuv420p",
+            "-movflags",
+            "+faststart",
+            out,
         ]
         try:
             subprocess.run(cmd, capture_output=True, timeout=120, check=True)
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
             return raw
 
-        out_bytes = open(out, "rb").read()
+        with open(out, "rb") as f:
+            out_bytes = f.read()
         if len(out_bytes) < len(raw):
             return out_bytes
         return raw
+
+
+# ── Постери для гіфок ─────────────────────────────────────────────────────────
+
+
+def make_posters(media: dict, ids, width: int = 360, quality: int = 60) -> dict:
+    """Постер (перший кадр у WebP, ширина ≤ width) для кожної гіфки-відео з ids.
+
+    Повертає {media_id: data-URI}. Якщо ffmpeg недоступний або кадр не вдалося
+    витягти — для цієї гіфки постера не буде (шаблон покаже перший кадр сам).
+    """
+    if not FFMPEG:
+        print("  ffmpeg не знайдено — постери для гіфок пропущено")
+        return {}
+    from PIL import Image
+
+    posters = {}
+    for mid in ids:
+        m = media.get(mid) or {}
+        data = m.get("data") or ""
+        if m.get("kind") != "gif" or not data.startswith("data:video"):
+            continue
+        try:
+            _, raw = _decode_data_uri(data)
+            with tempfile.TemporaryDirectory() as tmp:
+                src = os.path.join(tmp, "in.mp4")
+                png = os.path.join(tmp, "poster.png")
+                with open(src, "wb") as f:
+                    f.write(raw)
+                subprocess.run(
+                    [
+                        FFMPEG,
+                        "-v",
+                        "error",
+                        "-y",
+                        "-i",
+                        src,
+                        "-frames:v",
+                        "1",
+                        "-vf",
+                        f"scale='min({width},iw)':-2",
+                        png,
+                    ],
+                    capture_output=True,
+                    timeout=30,
+                    check=True,
+                )
+                buf = io.BytesIO()
+                with Image.open(png) as im:
+                    im.convert("RGB").save(buf, "WEBP", quality=quality, method=6)
+            posters[mid] = _encode_data_uri("image/webp", buf.getvalue())
+        except Exception as e:  # noqa: BLE001 — постер не критичний
+            print(f"  постер для {mid} не створено: {e}")
+    return posters
 
 
 # ── Дедуплікація ──────────────────────────────────────────────────────────────
@@ -129,8 +228,14 @@ def optimize_media(media: dict, used_ids: set[str]) -> dict:
       media  — оптимізований словник медіа
       report — dict з статистикою (до/після по типах)
     """
-    report = {"before": {}, "after": {}, "dedup_saved": 0, "video_reencoded": 0,
-              "images_converted": 0, "skipped_larger": 0}
+    report = {
+        "before": {},
+        "after": {},
+        "dedup_saved": 0,
+        "video_reencoded": 0,
+        "images_converted": 0,
+        "skipped_larger": 0,
+    }
 
     # Порахуємо розміри до оптимізації
     total_before = 0
@@ -144,7 +249,7 @@ def optimize_media(media: dict, used_ids: set[str]) -> dict:
 
     # 1. Дедуплікація: знаходимо дублікати по хешу контенту
     hash_to_first: dict[str, str] = {}  # hash → first media_id
-    dedup_map: dict[str, str] = {}      # duplicate_id → canonical_id
+    dedup_map: dict[str, str] = {}  # duplicate_id → canonical_id
 
     for mid in used_ids:
         if mid not in media:

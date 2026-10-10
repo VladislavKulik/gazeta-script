@@ -19,6 +19,9 @@ from zoneinfo import ZoneInfo
 import requests
 from dotenv import load_dotenv
 
+import games
+import weekly
+
 load_dotenv()
 TZ = ZoneInfo(os.getenv("TZ_NAME", "Europe/Kyiv"))
 DATA_DIR = Path(__file__).parent / "data"
@@ -35,6 +38,10 @@ TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "900"))      # секунд на од�
 FWD_PREVIEW_CHARS = int(os.getenv("FWD_PREVIEW_CHARS", "200"))  # скільки символів посту показати
 FWD_WINDOW_MIN = int(os.getenv("FWD_WINDOW_MIN", "15"))         # хвилин після посту, що вважаються реакцією
 FWD_MIN_DISCUSSION = int(os.getenv("FWD_MIN_DISCUSSION", "4"))  # мінімум реплік, щоб тема йшла в газету
+
+# Ігри
+QUIZ_SIZE = int(os.getenv("QUIZ_SIZE", "6"))            # скільки питань в «Угадай цитату»
+CROSSWORD_WORDS = int(os.getenv("CROSSWORD_WORDS", "14"))  # скільки слів просити для кросворду
 
 
 # ---------- схема відповіді моделі ----------
@@ -84,8 +91,18 @@ SCHEMA = {
             "required": ["sender", "title", "reason"],
         },
         "jokes": {"type": "array", "items": {"type": "string"}},
+        "crossword": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {"answer": {"type": "string"}, "clue": {"type": "string"}},
+                "required": ["answer", "clue"],
+            },
+        },
+        "quiz_message_ids": {"type": "array", "items": {"type": "integer"}},
     },
-    "required": ["tagline", "headline", "articles", "quotes", "short_news", "hero_of_day", "jokes"],
+    "required": ["tagline", "headline", "articles", "quotes", "short_news", "hero_of_day", "jokes",
+                 "crossword", "quiz_message_ids"],
 }
 
 
@@ -113,6 +130,12 @@ SYSTEM_PROMPT = """Ти — головний редактор щоденної �
 - quotes — 3–5 найяскравіших реплік дня: вкажи лише message_id (текст підставиться автоматично) і короткий редакторський коментар.
 - short_news — 3–6 коротких новин, кожна одним реченням.
 - hero_of_day — учасник дня: ім'я точно як у переписці, жартівливе звання і пояснення за що.
+- crossword — {cw} слів для кросворду за подіями дня: answer — ОДНЕ слово українськими літерами, 3–12 літер,
+  без пробілів, дефісів і апострофів (можна імена учасників, назви ігор, предмети, явища з чату);
+  clue — дотепна підказка, що відсилає до подій дня і НЕ містить саме слово. Чим більше спільних літер між словами, тим краще.
+- quiz_message_ids — {quiz} id повідомлень для гри «Угадай, хто це сказав»: смішні або дуже характерні репліки
+  (довжиною від 20 символів), за якими можна вгадати автора. Не беріть репліки з quotes, переслані пости,
+  медіа та повідомлення, де автор називає себе. Бажано від різних людей.
 - jokes — 5–8 коротких оригінальних анекдотів (1–3 речення кожен) за мотивами тем і подій дня. Без образ учасників, грубих слів і переказу реальних реплік.
 - tagline — підзаголовок випуску, одне речення.
 Відповідай ЛИШЕ одним JSON-об'єктом, без пояснень і без ```. Структура СУВОРО така
@@ -126,7 +149,9 @@ SYSTEM_PROMPT = """Ти — головний редактор щоденної �
   "quotes": [{"message_id": 123, "comment": "коментар редакції"}],
   "short_news": ["коротка новина"],
   "hero_of_day": {"sender": "Ім'я", "title": "звання", "reason": "за що"},
-  "jokes": ["анекдот 1", "анекдот 2"]
+  "jokes": ["анекдот 1", "анекдот 2"],
+  "crossword": [{"answer": "ДЕДЛОК", "clue": "Гра, через яку чат сварився весь вечір"}],
+  "quiz_message_ids": [123, 456]
 }"""
 
 CHUNK_PROMPT = """Це фрагмент переписки дружнього чату. Стисло (до 400 слів) опиши українською:
@@ -259,7 +284,9 @@ def ollama_chat(system: str, user: str, schema: dict | None = None) -> str:
             time.sleep(15 * attempt)
 
 
-def ollama_json(system: str, user: str, schema: dict) -> dict:
+def ollama_json(system: str, user: str, schema: dict, post=None) -> dict:
+    """post — функція перевірки/нормалізації відповіді; за замовчуванням — для газети."""
+    post = post or normalize
     for attempt in range(1, 4):
         raw = ollama_chat(system, user, schema).strip()
         # Сира відповідь зберігається завжди — зручно для діагностики
@@ -267,7 +294,7 @@ def ollama_json(system: str, user: str, schema: dict) -> dict:
         (DATA_DIR / "last_model_response.txt").write_text(raw, encoding="utf-8")
         raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         try:
-            return normalize(json.loads(raw))
+            return post(json.loads(raw))
         except (json.JSONDecodeError, ValueError) as e:
             print(f"  ! модель повернула некоректну відповідь, спроба {attempt}/3: {e}")
     raise RuntimeError("Модель тричі повернула некоректну відповідь — див. data/last_model_response.txt")
@@ -348,6 +375,9 @@ def normalize(c) -> dict:
         jokes = [j for j in jokes.split("\n") if j.strip()]
     jokes = [as_text(j) for j in jokes if as_text(j)]
 
+    crossword = [x for x in (c.get("crossword") or []) if isinstance(x, dict)]
+    quiz_ids = [as_int(x) for x in (c.get("quiz_message_ids") or []) if as_int(x)]
+
     return {
         "tagline": as_text(c.get("tagline")),
         "headline": headline,
@@ -356,6 +386,8 @@ def normalize(c) -> dict:
         "short_news": short_news,
         "hero_of_day": hero_of_day,
         "jokes": jokes,
+        "crossword_raw": crossword,
+        "quiz_message_ids": quiz_ids,
     }
 
 
@@ -444,15 +476,35 @@ def main():
         f"пікова година: {stats['busiest_hour']}.\n\nПереписка:\n{material}"
     )
     system = (SYSTEM_PROMPT.replace("{name}", NEWSPAPER_NAME).replace("{date}", date)
-              .replace("{fwd_min}", str(FWD_MIN_DISCUSSION)))
+              .replace("{fwd_min}", str(FWD_MIN_DISCUSSION))
+              .replace("{cw}", str(CROSSWORD_WORDS)).replace("{quiz}", str(QUIZ_SIZE + 2)))
 
     print("Генерую газету...")
     t0 = time.time()
     content = ollama_json(system, user_msg, SCHEMA)
     result["content"] = resolve(content, data)
+    c = result["content"]
+
+    # ---------- ігри ----------
+    words = games.clean_crossword_words(c.pop("crossword_raw", []))
+    c["crossword"] = games.build_crossword(words, seed=date)
+    quoted = {q["message_id"] for q in c["quotes"]}
+    c["quiz"] = games.build_quiz(c.pop("quiz_message_ids", []), data, quoted, seed=date, size=QUIZ_SIZE)
+    print(f"Кросворд: {len(c['crossword']['entries']) if c['crossword'] else 0} слів із {len(words)}, "
+          f"«Угадай цитату»: {len(c['quiz'])} питань")
+
+    # ---------- тиждень ----------
+    try:
+        if weekly.is_weekly_day(date):
+            print("Готую «Головне за тиждень»...")
+            result["weekly"] = weekly.build_weekly(date, result, ollama_json, NEWSPAPER_NAME)
+        result["word"] = weekly.word_of_week(date, ollama_json)
+        if result.get("word"):
+            print(f"Слово тижня ({result['word']['week']}): {len(result['word']['word'])} літер")
+    except Exception as e:  # тижневі блоки не повинні ламати щоденний випуск
+        print(f"  ! тижневі блоки пропущено: {e}")
 
     out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
-    c = result["content"]
     print(f"\nГотово за {time.time() - t0:.0f} с -> {out}")
     print(f"Головна: {c['headline']['title']}")
     for a in c["articles"]:

@@ -1,580 +1,2724 @@
 {#- Шаблон газети: фіолетово-жовта палітра, «цеглинкова» сітка з широкими картками,
-    погода читача, галерея, анекдоти, перегляд фото й відео на весь екран. -#}
-{%- macro is_sticker(mid) -%}{{ 'yes' if mid and media.get(mid) and 'sticker' in media[mid].kind else '' }}{%- endmacro -%}
+погода читача, галерея, анекдоти, перегляд фото й відео на весь екран. -#}
+{%- macro is_sticker(mid) -%}{{ 'yes' if mid and media.get(mid) and 'sticker' in media[mid].kind else '' }}{%- endmacro
+-%}
 {%- macro sticker(m) -%}
-  {%- if m.kind == "sticker" -%}<img class="stk" src="{{ m.data }}" alt="{{ m.emoji or 'стікер' }}" loading="lazy"{% if m.w %} width="{{ m.w }}" height="{{ m.h }}"{% endif %}>
-  {%- elif m.kind == "video_sticker" -%}<video class="stk" src="{{ m.data }}" autoplay loop muted playsinline></video>
-  {%- elif m.kind == "animated_sticker" -%}<div class="stk lottie" data-src="{{ m.data }}" data-emoji="{{ m.emoji or '🙂' }}" role="img" aria-label="{{ m.emoji or 'стікер' }}"></div>
-  {%- endif -%}
+{%- if m.kind == "sticker" -%}<img class="stk" src="{{ m.data }}" alt="{{ m.emoji or 'стікер' }}" loading="lazy" {% if
+  m.w %} width="{{ m.w }}" height="{{ m.h }}" {% endif %}>
+{%- elif m.kind == "video_sticker" -%}<video class="stk" src="{{ m.data }}" autoplay loop muted playsinline></video>
+{%- elif m.kind == "animated_sticker" -%}<div class="stk lottie" data-src="{{ m.data }}"
+  data-emoji="{{ m.emoji or '🙂' }}" role="img" aria-label="{{ m.emoji or 'стікер' }}"></div>
+{%- endif -%}
 {%- endmacro -%}
 {%- macro pic(m, caption) -%}
-  {%- if m.kind in ["gif"] -%}<video class="pic" data-lightbox data-caption="{{ caption }}" data-src="{{ m.data }}" preload="metadata" src="{{ m.data }}#t=0.001" muted loop playsinline></video>
-  {%- else -%}<img class="pic" data-lightbox data-caption="{{ caption }}" src="{{ m.data }}" alt="" loading="lazy" decoding="async"{% if m.w %} width="{{ m.w }}" height="{{ m.h }}"{% endif %}>
-  {%- endif -%}
+{%- if m.kind in ["gif"] -%}<video class="pic" data-lightbox data-caption="{{ caption }}" preload="metadata"
+  src="{{ m.data }}#t=0.001" muted loop playsinline></video>
+{%- else -%}<img class="pic" data-lightbox data-caption="{{ caption }}" src="{{ m.data }}" alt="{{ caption }}"
+  loading="lazy" decoding="async" {% if m.w %} width="{{ m.w }}" height="{{ m.h }}" {% endif %}>
+{%- endif -%}
 {%- endmacro -%}
 {%- macro show(mid, caption="") -%}
-  {%- set m = media.get(mid) if mid else None -%}
-  {%- if m -%}
-    {%- if 'sticker' in m.kind -%}{{ sticker(m) }}{%- else -%}<div class="mf">{{ pic(m, caption) }}</div>{%- endif -%}
-  {%- endif -%}
+{%- set m = media.get(mid) if mid else None -%}
+{%- if m -%}
+{%- if 'sticker' in m.kind -%}{{ sticker(m) }}{%- else -%}<div class="mf">{{ pic(m, caption) }}</div>{%- endif -%}
+{%- endif -%}
 {%- endmacro -%}
 {%- macro short_news_card() -%}
-    <article class="card"><span class="label">Коротко</span>
-      {% for n in c.short_news %}<div class="line">{{ n }}</div>{% endfor %}</article>
+<article class="card"><span class="label">Коротко</span>
+  {% for n in c.short_news %}<div class="line">{{ n }}</div>{% endfor %}</article>
 {%- endmacro -%}
 <!DOCTYPE html>
 <html lang="uk" data-theme="light">
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>{{ name }} — {{ date_short }}</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@600;800&display=swap" rel="stylesheet">
-<script>
-  (function () {
-    var t;
-    try { t = localStorage.getItem("gazeta-theme"); } catch (e) {}
-    if (!t) t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    document.documentElement.dataset.theme = t;
-  })();
-</script>
-<style>
-  :root { color-scheme: light dark; --body: "Onest", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; --display: "Unbounded", "Onest", system-ui, sans-serif; }
-  :root[data-theme=light] { --bg:#e6e4f1; --card:#fff; --text:#0b0919; --text2:#26223d; --muted:#4f4b6b; --pill:#efecfa; --line:#d3cfe6; --accent:#4b2ee0; --hi:#f5da4b; --hi-text:#0b0919; --ink:#120f2a; --ink-text:#fff; --ink-soft:#ddd9f2; }
-  :root[data-theme=dark]  { --bg:#000; --card:#111; --text:#fff; --text2:#e8e8e8; --muted:#a9a9a9; --pill:#222; --line:#262626; --accent:#a493ff; --hi:#f5da4b; --hi-text:#17142b; --ink:#171340; --ink-text:#fff; --ink-soft:#d9d5f0; }
-  * { box-sizing: border-box; }
-  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
-  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--body); line-height: 1.55; -webkit-font-smoothing: antialiased; transition: background .25s, color .25s; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
-  .wrap { max-width: 1160px; margin: 0 auto; padding: 20px 20px 48px; }
-  button { font: inherit; }
-  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" id="tc" content="#e6e4f1">
+  <title>{{ name }} — {{ date_short }}</title>
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
+  {% if fonts_css %}{{ fonts_css }}{% else %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@600;800&display=swap"
+    rel="stylesheet">{% endif %}
+  <script>
+    (function () {
+      var t;
+      try { t = localStorage.getItem("gazeta-theme"); } catch (e) { }
+      if (!t) t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --body: "Onest", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --display: "Unbounded", "Onest", system-ui, sans-serif;
+    }
 
-  /* Шапка */
-  .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 4px 0 30px; }
-  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
-  .chip { background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 5px 13px; font-size: 13.5px; color: var(--text2); }
-  .chip.on { background: var(--hi); border-color: var(--hi); color: var(--hi-text); font-weight: 600; }
-  .theme { border: 1px solid var(--line); background: var(--card); color: var(--text); font-size: 14px; padding: 8px 16px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
-  .theme:hover { background: var(--pill); }
-  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(32px, 6.4vw, 72px); line-height: 1.02; letter-spacing: -.045em; margin: 0 0 14px; }
-  .sub { color: var(--text2); font-size: clamp(16px, 2vw, 20px); margin: 0 0 34px; max-width: 58ch; }
+    :root[data-theme=light] {
+      --bg: #e6e4f1;
+      --card: #fff;
+      --text: #0b0919;
+      --text2: #26223d;
+      --muted: #4f4b6b;
+      --pill: #efecfa;
+      --line: #d3cfe6;
+      --accent: #4b2ee0;
+      --hi: #f5da4b;
+      --hi-text: #0b0919;
+      --ink: #120f2a;
+      --ink-text: #fff;
+      --ink-soft: #ddd9f2;
+      --on-accent: #fff;
+      --absent: #4f4b6b;
+      --tile-line: #c4bfdc;
+    }
 
-  /* Сітка */
-  .masonry { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; align-items: start; }
-  .masonry > [data-span="2"] { grid-column: span 2; }
-  .masonry.js { display: block; position: relative; }
-  .masonry.js > .card { position: absolute; margin: 0; }
-  .bottom { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 22px; min-width: 0; }
-  .label { display: flex; align-items: center; gap: 8px; color: var(--text2); font-size: 14px; font-weight: 600; margin: 0 0 10px; }
-  .label::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex: none; }
-  h2 { font-family: var(--display); font-weight: 600; font-size: clamp(22px, 2.6vw, 30px); line-height: 1.15; letter-spacing: -.03em; margin: 0 0 12px; }
-  h3 { font-size: 21px; line-height: 1.2; letter-spacing: -.02em; margin: 0 0 10px; font-weight: 700; }
-  .lede { margin: 0 0 12px; color: var(--muted); font-size: 16px; }
-  .text p { margin: 0 0 10px; color: var(--text2); font-size: 16px; overflow-wrap: anywhere; }
-  .text p:last-child { margin-bottom: 0; }
-  .line { margin-top: 8px; padding: 9px 13px; background: var(--pill); border-radius: 14px; font-size: 15px; color: var(--text2); overflow-wrap: anywhere; }
-  .line b { display: block; font-size: 12.5px; font-weight: 600; color: var(--muted); }
-  .line .note { display: block; margin-top: 4px; font-size: 13px; color: var(--muted); font-style: italic; }
-  .quotes .line { border-radius: 18px 18px 18px 4px; }
-  .quotes .line b { color: var(--accent); }
-  .summary { margin: 12px 0 0; font-size: 13px; color: var(--muted); }
-  .meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 14px; }
-  .pill { background: var(--pill); color: var(--muted); border-radius: 999px; padding: 3px 11px; font-size: 12.5px; }
-  .big { font-family: var(--display); font-size: 64px; line-height: 1; font-weight: 800; letter-spacing: -.05em; margin: 0 0 6px; color: var(--accent); }
+    :root[data-theme=dark] {
+      --bg: #000;
+      --card: #111;
+      --text: #fff;
+      --text2: #e8e8e8;
+      --muted: #a9a9a9;
+      --pill: #222;
+      --line: #262626;
+      --accent: #a493ff;
+      --hi: #f5da4b;
+      --hi-text: #17142b;
+      --ink: #171340;
+      --ink-text: #fff;
+      --ink-soft: #d9d5f0;
+      --on-accent: #0b0919;
+      --absent: #3a3a3a;
+      --tile-line: #505050;
+    }
 
-  /* Медіа */
-  .mf { overflow: hidden; border-radius: 14px; margin: 0 0 14px; background: var(--pill); }
-  .pic { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; background: var(--pill); transition: transform .35s ease; }
-  .pic[data-lightbox] { cursor: zoom-in; }
-  .stk { display: block; width: 150px; height: auto; margin: 4px 0 12px; transition: transform .3s ease; transform-origin: left center; }
-  .lottie { height: 150px; }
-  .lottie-fallback { display: grid; place-items: center; font-size: 72px; }
-  @media (hover: hover) {
-    .mf:hover .pic, .nmedia:hover .pic { transform: scale(1.06); }
-    .stk:hover { transform: scale(1.12); }
-  }
+    * {
+      box-sizing: border-box;
+    }
 
-  /* Новина дня */
-  .news { background: var(--ink); border-color: var(--ink); color: var(--ink-text); display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 28px; padding: 26px; }
-  .news .nmedia { position: relative; overflow: hidden; border-radius: 16px; min-height: 240px; background: var(--pill); }
-  .news .nmedia .pic { position: absolute; inset: 0; height: 100%; aspect-ratio: auto; }
-  .news .label { color: var(--hi); }
-  .news .label::before { background: var(--hi); }
-  .news h2 { color: #fff; font-size: clamp(22px, 2.8vw, 32px); }
-  .news .lede { color: var(--ink-soft); }
-  .news .text p { color: #f1effc; }
+    html {
+      scroll-padding-top: env(safe-area-inset-top, 0px);
+    }
 
-  /* Герой дня */
-  .hero { background: var(--hi); border-color: var(--hi); color: var(--hi-text); }
-  .hero .label, .hero .lede, .hero .text p { color: var(--hi-text); }
-  .hero .label::before { background: var(--hi-text); }
-  .hero .lede { font-weight: 600; opacity: .8; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--body);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      transition: background .25s, color .25s;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
 
-  /* Погода */
-  .wh { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
-  .wh .label { margin: 0; }
-  .wloc { font-size: 13.5px; color: var(--muted); margin: 0 0 8px; overflow-wrap: anywhere; }
-  .wgeo { border: 1px solid var(--line); background: var(--pill); color: var(--text2); border-radius: 999px; padding: 4px 11px; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
-  .wgeo:hover { color: var(--text); }
-  .wnow { display: flex; align-items: center; gap: 14px; }
-  .wicon { font-size: 52px; line-height: 1; }
-  .wtemp { font-family: var(--display); font-size: 44px; font-weight: 800; letter-spacing: -.05em; line-height: 1; }
-  .wdesc { color: var(--text2); font-size: 15px; margin-top: 4px; }
-  .wmeta { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0; }
-  .wdays { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-  .wd { background: var(--pill); border-radius: 12px; padding: 7px 4px; text-align: center; font-size: 12.5px; color: var(--muted); }
-  .wd span { display: block; font-size: 20px; }
-  .wd b { color: var(--text); font-weight: 600; }
-  .wmsg { color: var(--muted); font-size: 14.5px; margin: 6px 0 10px; }
+    .wrap {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 20px 20px 48px;
+    }
 
-  /* Цифри дня */
-  .hours { display: flex; align-items: flex-end; gap: 4px; height: 96px; margin-top: 12px; }
-  .hours span { flex: 1; background: var(--pill); border-radius: 4px 4px 0 0; min-height: 3px; }
-  .hours span.on { background: var(--accent); opacity: .4; }
-  .hours span.peak { background: var(--accent); opacity: 1; }
-  .axis { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+    button {
+      font: inherit;
+    }
 
-  /* Галерея */
-  .gh { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-  .gh h2 { margin: 0; }
-  .gal { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); grid-auto-flow: dense; gap: 8px; }
-  .g { position: relative; aspect-ratio: 1; padding: 0; border: 0; border-radius: 14px; overflow: hidden; cursor: zoom-in; background: var(--pill); }
-  .g:first-child { grid-column: span 2; grid-row: span 2; }
-  .g img, .g video { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .25s; }
-  .g:hover img, .g:hover video { transform: scale(1.04); }
-  .gt { position: absolute; left: 0; right: 0; bottom: 0; padding: 22px 10px 8px; background: linear-gradient(transparent, rgba(10, 8, 24, .78)); color: #fff; font-size: 12.5px; text-align: left; line-height: 1.3; }
-  .gt b { display: block; font-size: 13px; }
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
 
-  /* Анекдоти */
-  .joke { background: var(--hi); border-color: var(--hi); color: var(--hi-text); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 24px; align-items: end; }
-  .joke .label { color: var(--hi-text); grid-column: 1 / -1; }
-  .joke .label::before { background: var(--hi-text); }
-  #jt { margin: 0; font-size: clamp(19px, 2.4vw, 26px); line-height: 1.4; font-weight: 500; min-height: 4.2em; max-width: 60ch; }
-  .jctl { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
-  .jbtn { background: var(--hi-text); color: #fff; border: 0; border-radius: 999px; padding: 11px 22px; font-weight: 600; cursor: pointer; }
-  .jbtn:hover { opacity: .88; }
-  :root[data-theme=dark] .jbtn { background: #000; }
+    /* Шапка */
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 4px 0 30px;
+    }
 
-  footer { color: var(--muted); font-size: 13px; text-align: center; padding-top: 30px; }
+    .chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
 
-  /* Перегляд фото */
-  #lb { position: fixed; inset: 0; background: rgba(8, 6, 20, .94); display: none; align-items: center; justify-content: center; flex-direction: column; z-index: 50; padding: 20px; }
-  #lb.on { display: flex; }
-  #lbi, #lbv { max-width: 94vw; max-height: 78vh; border-radius: 12px; object-fit: contain; }
-  #lbc { color: #d1d1d6; margin-top: 14px; font-size: 15px; text-align: center; max-width: 800px; }
-  #lb button { position: absolute; background: rgba(255, 255, 255, .14); color: #fff; border: 0; width: 46px; height: 46px; border-radius: 50%; font-size: 22px; cursor: pointer; }
-  #lb button:hover { background: rgba(255, 255, 255, .28); }
-  #lbx { top: calc(18px + env(safe-area-inset-top, 0px)); right: 18px; }
-  #lbp { left: 18px; top: 50%; }
-  #lbn { right: 18px; top: 50%; }
+    .chip {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 5px 13px;
+      font-size: 13.5px;
+      color: var(--text2);
+    }
 
-  .news.h { grid-template-columns: minmax(0, 1fr); }
-  .news.h .nmedia { min-height: 0; }
-  .news.nomedia { display: block; }
-  .news.nomedia .text { column-count: 2; column-gap: 28px; }
-  .empty { text-align: center; padding: 60px 20px; }
-  @media (max-width: 640px) {
-    .news.nomedia .text { column-count: 1; }
-    .news { grid-template-columns: 1fr; }
-    .news .nmedia { min-height: 0; aspect-ratio: 16 / 9; }
-  }
-  @media (max-width: 600px) {
-    .wrap { padding: 14px 14px 40px; }
-    .card { padding: 18px; border-radius: 20px; }
-    .joke { grid-template-columns: 1fr; }
-    .jctl { align-items: flex-start; flex-direction: row; align-items: center; }
-    .gal { grid-template-columns: repeat(2, 1fr); }
-  }
-  @media (prefers-reduced-motion: reduce) { body, .g img, .g video, .pic, .stk { transition: none; } }
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div class="top">
-    <div class="chips">
-      <span class="chip on">{{ date_short }}</span>
-      {% if issue %}<span class="chip">випуск № {{ issue }}</span>{% endif %}
-      <span class="chip">{{ stats.total_messages }} {{ plural(stats.total_messages, 'повідомлення', 'повідомлення', 'повідомлень') }}</span>
-    </div>
-    <button class="theme" id="tb" type="button" onclick="toggleTheme()"></button>
-  </div>
-  <h1>{{ name }}</h1>
-  <p class="sub">{{ c.tagline if c and c.tagline else 'Головне за добу' }}</p>
+    .chip.on {
+      background: var(--hi);
+      border-color: var(--hi);
+      color: var(--hi-text);
+      font-weight: 600;
+    }
 
-{% if c %}
-  {%- set hm = c.headline.media_id -%}
-  {%- set hm_wide = hm and media.get(hm) and not is_sticker(hm) -%}
-  <div id="masonry" class="masonry">
-    <article class="card news{{ '' if hm_wide else ' nomedia' }}" data-span="2">
-      {%- if hm_wide %}<div class="nmedia">{{ pic(media[hm], c.headline.title) }}</div>{% endif -%}
-      <div class="nbody"><span class="label">Новина дня</span>
-      <h2>{{ c.headline.title }}</h2>
-      {% if c.headline.subtitle %}<p class="lede">{{ c.headline.subtitle }}</p>{% endif %}
-      <div class="text">{{ c.headline.body | paragraphs }}</div></div></article>
+    .theme {
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--text);
+      font-size: 14px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
 
-    <article class="card weather"><div class="wh"><span class="label">Погода</span><button class="wgeo" id="wg" type="button">Моя геолокація</button></div><div id="wx"></div></article>
+    .theme:hover {
+      background: var(--pill);
+    }
 
-    {% if c.hero_of_day.title or c.hero_of_day.sender %}
-    <article class="card hero"><span class="label">Герой дня</span>
-      <h3>{{ c.hero_of_day.sender }}</h3>
-      {% if c.hero_of_day.title %}<p class="lede">{{ c.hero_of_day.title }}</p>{% endif %}
-      {% if c.hero_of_day.reason %}<div class="text"><p>{{ c.hero_of_day.reason }}</p></div>{% endif %}</article>
-    {% endif %}
+    h1 {
+      font-family: var(--display);
+      font-weight: 800;
+      font-size: clamp(32px, 6.4vw, 72px);
+      line-height: 1.02;
+      letter-spacing: -.045em;
+      margin: 0 0 14px;
+    }
 
-    {% if c.quotes %}
-    <article class="card quotes"><span class="label">Цитати дня</span>
-      {% for q in c.quotes %}
-      <div class="line"><b>{{ q.sender }} · {{ q.time }}</b>{{ q.text }}{% if q.comment %}<span class="note">{{ q.comment }}</span>{% endif %}</div>
-      {% endfor %}</article>
-    {% endif %}
+    .sub {
+      color: var(--text2);
+      font-size: clamp(16px, 2vw, 20px);
+      margin: 0 0 34px;
+      max-width: 58ch;
+    }
 
-    {% for a in c.articles %}
-    <article class="card">{{ show(a.media_id, a.title) }}
-      <span class="label">{{ a.rubric }}</span>
-      <h3>{{ a.title }}</h3>
-      <div class="text">{{ a.body | paragraphs }}</div></article>
-    {% if loop.index == 3 and c.short_news %}{{ short_news_card() }}{% endif %}
-    {% endfor %}
-    {% if c.articles | length < 3 and c.short_news %}{{ short_news_card() }}{% endif %}
+    /* Сітка */
+    .masonry {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      align-items: start;
+    }
 
-    <article class="card"><span class="label">Цифри дня</span>
-      <p class="big">{{ stats.total_messages }}</p>
-      <p class="lede">{{ plural(stats.total_messages, 'повідомлення', 'повідомлення', 'повідомлень') }} від {{ stats.participants }} {{ plural(stats.participants, 'учасника', 'учасників', 'учасників') }}{% if media_summary %}, серед них {{ media_summary }}{% endif %}</p>
-      <div class="hours" role="img" aria-label="Активність по годинах{% if stats.busiest_hour %}, пік о {{ stats.busiest_hour }}{% endif %}">
-        {%- for n in stats.messages_by_hour -%}
-        <span class="{{ 'peak' if n == hour_max and n > 0 else ('on' if n > 0) }}" style="height: {{ (n / hour_max * 100) | round(1) }}%" title="{{ '%02d' % loop.index0 }}:00 — {{ n }}"></span>
-        {%- endfor -%}
-      </div>
-      <div class="axis"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
-      {% for s in stats.top_senders %}
-      <div class="line"><b>{{ loop.index }} місце</b>{{ s.sender }}: {{ s.count }} {{ plural(s.count, 'повідомлення', 'повідомлення', 'повідомлень') }}</div>
-      {% endfor %}
-      {% if stats.first_message %}<p class="summary">Активність з {{ stats.first_message.time }} до {{ stats.last_message.time }}{% if stats.busiest_hour %}, пік о {{ stats.busiest_hour }}{% endif %}</p>{% endif %}</article>
-
-    {% if stats.top_sticker and media.get(stats.top_sticker.media_id) %}
-    <article class="card"><span class="label">Стікер дня</span>
-      {{ sticker(media[stats.top_sticker.media_id]) }}
-      <div class="meta"><span class="pill">надіслано {{ stats.top_sticker.count }} {{ plural(stats.top_sticker.count, 'раз', 'рази', 'разів') }}</span></div></article>
-    {% endif %}
-  </div>
-
-  <div class="bottom">
-    {% if gallery %}
-    <article class="card">
-      <div class="gh">
-        <div>
-          <span class="label">Галерея</span>
-          <h2>Фото та відео за день</h2>
-        </div>
-        <div class="chips"><span class="chip">{{ gallery | length }} {{ plural(gallery | length, 'файл', 'файли', 'файлів') }}</span>{% if gallery_range %}<span class="chip">{{ gallery_range }}</span>{% endif %}</div>
-      </div>
-      <div class="gal">
-        {%- for g in gallery -%}
-        {%- set m = media[g.media_id] -%}
-        <button class="g" type="button" data-lightbox data-caption="{{ g.sender }}, {{ date_short }} {{ g.time }}{% if g.caption %} — {{ g.caption }}{% endif %}" aria-label="Відкрити: {{ g.sender }}, {{ g.time }}">
-          {%- if m.kind == "gif" -%}<video data-src="{{ m.data }}" preload="metadata" src="{{ m.data }}#t=0.001" muted loop playsinline></video>
-          {%- else -%}<img src="{{ m.data }}" alt="" loading="lazy" decoding="async"{% if m.w %} width="{{ m.w }}" height="{{ m.h }}"{% endif %}>{%- endif -%}
-          <span class="gt"><b>{{ g.time }}</b>{{ g.sender }}</span></button>
-        {%- endfor -%}
-      </div>
-    </article>
-    {% endif %}
-
-    {% if c.jokes %}
-    <article class="card joke">
-      <span class="label">Анекдоти</span>
-      <p id="jt"></p>
-      <div class="jctl"><button class="jbtn" id="jb" type="button">Хочу ще</button></div>
-    </article>
-    {% endif %}
-  </div>
-{% else %}
-  <div class="card empty">
-    <h2>Тиша в ефірі</h2>
-    <p class="lede">За цю добу в чаті не було жодного повідомлення.</p>
-  </div>
-{% endif %}
-
-  <footer>Цитати взяті з чату без змін. Переслані пости з пабліків не враховуються{% if stats.forwarded %} (за добу: {{ stats.forwarded }}){% endif %}. Випуск підготувала модель {{ model }}.</footer>
-</div>
-
-<div id="lb" role="dialog" aria-modal="true" aria-label="Перегляд медіа">
-  <button id="lbx" type="button" aria-label="Закрити">✕</button>
-  <button id="lbp" type="button" aria-label="Попереднє">‹</button>
-  <button id="lbn" type="button" aria-label="Наступне">›</button>
-  <img id="lbi" alt="">
-  <video id="lbv" controls loop playsinline></video>
-  <div id="lbc"></div>
-</div>
-
-{% if has_lottie %}<script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>{% endif %}
-<script>
-  /* Тема */
-  function label() {
-    document.getElementById("tb").textContent = document.documentElement.dataset.theme === "dark" ? "☀ Світла тема" : "☾ Темна тема";
-  }
-  function toggleTheme() {
-    var r = document.documentElement, t = r.dataset.theme === "dark" ? "light" : "dark";
-    r.dataset.theme = t;
-    try { localStorage.setItem("gazeta-theme", t); } catch (e) {}
-    label();
-  }
-  label();
-
-  /* Відео-гіфки та анімовані стікери */
-  (function () {
-    var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    var noHover = matchMedia("(hover: none)").matches;
-
-    /* --- Лоті-стікери --- */
-    document.querySelectorAll(".lottie").forEach(function (el) {
-      function fallback() { el.textContent = el.dataset.emoji || "🙂"; el.classList.add("lottie-fallback"); }
-      if (!window.lottie) { fallback(); return; }
-      try {
-        var bytes = Uint8Array.from(atob(el.dataset.src.split(",")[1]), function (ch) { return ch.charCodeAt(0); });
-        var json = JSON.parse(new TextDecoder().decode(bytes));
-        lottie.loadAnimation({ container: el, renderer: "svg", loop: !reduce, autoplay: !reduce, animationData: json });
-      } catch (e) { fallback(); }
-    });
-
-    /* --- Галерея: відео грають по наведенню --- */
-    var galleryVideos = document.querySelectorAll(".gal video, .mf video.pic, .nmedia video.pic");
-    galleryVideos.forEach(function (v) {
-      v.pause();
-      if (reduce) { v.controls = true; return; }
-      if (!noHover) {
-        /* Десктоп: mouseenter/focus → play, mouseleave/blur → pause+reset */
-        var wrap = v.closest(".g") || v.closest(".mf") || v.closest(".nmedia") || v.parentElement;
-        wrap.addEventListener("mouseenter", function () { v.play().catch(function () {}); });
-        wrap.addEventListener("mouseleave", function () { v.pause(); v.currentTime = 0; });
-        wrap.addEventListener("focus", function () { v.play().catch(function () {}); }, true);
-        wrap.addEventListener("blur", function () { v.pause(); v.currentTime = 0; }, true);
-      }
-    });
-
-    /* --- IntersectionObserver: грає тільки видиме відео --- */
-    if ("IntersectionObserver" in window) {
-      /* Для галереї на тач-пристроях (hover: none) — грає у зоні видимості */
-      if (noHover && !reduce) {
-        var galIO = new IntersectionObserver(function (entries) {
-          entries.forEach(function (e) {
-            if (e.isIntersecting) e.target.play().catch(function () {});
-            else { e.target.pause(); e.target.currentTime = 0; }
-          });
-        }, { threshold: 0.6 });
-        galleryVideos.forEach(function (v) { galIO.observe(v); });
+    @media (max-width: 660px) {
+      .masonry {
+        grid-template-columns: minmax(0, 1fr);
       }
 
-      /* Для ВСІХ відео поза галереєю — пауза коли не видно */
-      var allVideos = document.querySelectorAll("video");
-      var outsideGallery = [].slice.call(allVideos).filter(function (v) {
-        return !v.closest(".gal") && !v.closest(".mf");
-      });
-      if (outsideGallery.length) {
-        var extIO = new IntersectionObserver(function (entries) {
-          entries.forEach(function (e) {
-            if (!e.isIntersecting) e.target.pause();
-            else if (e.target.hasAttribute("autoplay") && !reduce) e.target.play().catch(function () {});
-          });
-        }, { threshold: 0.1 });
-        outsideGallery.forEach(function (v) { extIO.observe(v); });
+      .masonry>[data-span="2"] {
+        grid-column: auto;
       }
     }
-  })();
 
-  /* Перегляд медіа на весь екран (фото та відео) з Blob-кешуванням */
-  (function () {
-    var els = [].slice.call(document.querySelectorAll("[data-lightbox]")), i = 0,
+    .masonry>[data-span="2"] {
+      grid-column: span 2;
+    }
+
+    .masonry.js {
+      display: block;
+      position: relative;
+    }
+
+    .masonry.js>.card {
+      position: absolute;
+      margin: 0;
+    }
+
+    .bottom {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 22px;
+      min-width: 0;
+    }
+
+    .label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text2);
+      font-size: 14px;
+      font-weight: 600;
+      margin: 0 0 10px;
+    }
+
+    .label::before {
+      content: "";
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex: none;
+    }
+
+    h2 {
+      font-family: var(--display);
+      font-weight: 600;
+      font-size: clamp(22px, 2.6vw, 30px);
+      line-height: 1.15;
+      letter-spacing: -.03em;
+      margin: 0 0 12px;
+    }
+
+    h3 {
+      font-size: 21px;
+      line-height: 1.2;
+      letter-spacing: -.02em;
+      margin: 0 0 10px;
+      font-weight: 700;
+    }
+
+    .lede {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .text p {
+      margin: 0 0 10px;
+      color: var(--text2);
+      font-size: 16px;
+      overflow-wrap: anywhere;
+    }
+
+    .text p:last-child {
+      margin-bottom: 0;
+    }
+
+    .line {
+      margin-top: 8px;
+      padding: 9px 13px;
+      background: var(--pill);
+      border-radius: 14px;
+      font-size: 15px;
+      color: var(--text2);
+      overflow-wrap: anywhere;
+    }
+
+    .line b {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .line .note {
+      display: block;
+      margin-top: 4px;
+      font-size: 13px;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .quotes .line {
+      border-radius: 18px 18px 18px 4px;
+    }
+
+    .quotes .line b {
+      color: var(--accent);
+    }
+
+    .summary {
+      margin: 12px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .meta {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .pill {
+      background: var(--pill);
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 3px 11px;
+      font-size: 12.5px;
+    }
+
+    .big {
+      font-family: var(--display);
+      font-size: 64px;
+      line-height: 1;
+      font-weight: 800;
+      letter-spacing: -.05em;
+      margin: 0 0 6px;
+      color: var(--accent);
+    }
+
+    /* Медіа */
+    .mf {
+      overflow: hidden;
+      border-radius: 14px;
+      margin: 0 0 14px;
+      background: var(--pill);
+    }
+
+    .pic {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      background: var(--pill);
+      transition: transform .35s ease;
+    }
+
+    .pic[data-lightbox] {
+      cursor: zoom-in;
+    }
+
+    .stk {
+      display: block;
+      width: 150px;
+      height: auto;
+      margin: 4px 0 12px;
+      transition: transform .3s ease;
+      transform-origin: left center;
+    }
+
+    .lottie {
+      height: 150px;
+    }
+
+    .lottie-fallback {
+      display: grid;
+      place-items: center;
+      font-size: 72px;
+    }
+
+    @media (hover: hover) {
+
+      .mf:hover .pic,
+      .nmedia:hover .pic {
+        transform: scale(1.06);
+      }
+
+      .stk:hover {
+        transform: scale(1.12);
+      }
+    }
+
+    /* Новина дня */
+    .news {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: var(--ink-text);
+      display: grid;
+      grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+      gap: 28px;
+      padding: 26px;
+    }
+
+    .news .nmedia {
+      position: relative;
+      overflow: hidden;
+      border-radius: 16px;
+      min-height: 240px;
+      background: var(--pill);
+    }
+
+    .news .nmedia .pic {
+      position: absolute;
+      inset: 0;
+      height: 100%;
+      aspect-ratio: auto;
+    }
+
+    .news .label {
+      color: var(--hi);
+    }
+
+    .news .label::before {
+      background: var(--hi);
+    }
+
+    .news h2 {
+      color: #fff;
+      font-size: clamp(22px, 2.8vw, 32px);
+    }
+
+    .news .lede {
+      color: var(--ink-soft);
+    }
+
+    .news .text p {
+      color: #f1effc;
+    }
+
+    /* Герой дня */
+    .hero {
+      background: var(--hi);
+      border-color: var(--hi);
+      color: var(--hi-text);
+    }
+
+    .hero .label,
+    .hero .lede,
+    .hero .text p {
+      color: var(--hi-text);
+    }
+
+    .hero .label::before {
+      background: var(--hi-text);
+    }
+
+    .hero .lede {
+      font-weight: 600;
+      opacity: .8;
+    }
+
+    /* Погода */
+    .wh {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .wh .label {
+      margin: 0;
+    }
+
+    .wloc {
+      font-size: 13.5px;
+      color: var(--muted);
+      margin: 0 0 8px;
+      overflow-wrap: anywhere;
+    }
+
+    .wgeo {
+      border: 1px solid var(--line);
+      background: var(--pill);
+      color: var(--text2);
+      border-radius: 999px;
+      padding: 4px 11px;
+      font-size: 12.5px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .wgeo:hover {
+      color: var(--text);
+    }
+
+    .wnow {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .wicon {
+      font-size: 52px;
+      line-height: 1;
+    }
+
+    .wtemp {
+      font-family: var(--display);
+      font-size: 44px;
+      font-weight: 800;
+      letter-spacing: -.05em;
+      line-height: 1;
+    }
+
+    .wdesc {
+      color: var(--text2);
+      font-size: 15px;
+      margin-top: 4px;
+    }
+
+    .wmeta {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin: 12px 0;
+    }
+
+    .wdays {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .wd {
+      background: var(--pill);
+      border-radius: 12px;
+      padding: 7px 4px;
+      text-align: center;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+
+    .wd span {
+      display: block;
+      font-size: 20px;
+    }
+
+    .wd b {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .wmsg {
+      color: var(--muted);
+      font-size: 14.5px;
+      margin: 6px 0 10px;
+    }
+
+    /* висота блоку не залежить від стану завантаження, тому верстка не стрибає */
+    .weather #wx {
+      min-height: var(--wxh, 266px);
+    }
+
+    .sk {
+      display: block;
+      border-radius: 8px;
+      background: linear-gradient(100deg, var(--pill) 30%, var(--line) 50%, var(--pill) 70%);
+      background-size: 220% 100%;
+      animation: skl 1.3s ease-in-out infinite;
+    }
+
+    .sk-pill {
+      display: inline-block;
+      height: 24px;
+      border-radius: 999px;
+    }
+
+    .sk-box {
+      height: 66px;
+      background: linear-gradient(100deg, var(--pill) 30%, var(--line) 50%, var(--pill) 70%);
+      background-size: 220% 100%;
+      animation: skl 1.3s ease-in-out infinite;
+    }
+
+    @keyframes skl {
+      from {
+        background-position: 120% 0;
+      }
+
+      to {
+        background-position: -120% 0;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      .sk,
+      .sk-box {
+        animation: none;
+      }
+    }
+
+    /* Цифри дня */
+    .hours {
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      height: 96px;
+      margin-top: 12px;
+    }
+
+    .hours span {
+      flex: 1;
+      background: var(--pill);
+      border-radius: 4px 4px 0 0;
+      min-height: 3px;
+    }
+
+    .hours span.on {
+      background: var(--accent);
+      opacity: .4;
+    }
+
+    .hours span.peak {
+      background: var(--accent);
+      opacity: 1;
+    }
+
+    .axis {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11.5px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* Галерея */
+    .gh {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .gh h2 {
+      margin: 0;
+    }
+
+    .gal {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      grid-auto-flow: dense;
+      gap: 8px;
+    }
+
+    .g {
+      position: relative;
+      aspect-ratio: 1;
+      padding: 0;
+      border: 0;
+      border-radius: 14px;
+      overflow: hidden;
+      cursor: zoom-in;
+      background: var(--pill);
+    }
+
+    .g:first-child {
+      grid-column: span 2;
+      grid-row: span 2;
+    }
+
+    .g img,
+    .g video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform .25s;
+    }
+
+    .g:hover img,
+    .g:hover video {
+      transform: scale(1.04);
+    }
+
+    .gp {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      background: rgba(0, 0, 0, .62);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      padding: 2px 8px;
+      border-radius: 999px;
+      transition: opacity .2s;
+      pointer-events: none;
+    }
+
+    .g:hover .gp,
+    .g:focus-visible .gp {
+      opacity: 0;
+    }
+
+    .gt {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 22px 10px 8px;
+      background: linear-gradient(transparent, rgba(10, 8, 24, .78));
+      color: #fff;
+      font-size: 12.5px;
+      text-align: left;
+      line-height: 1.3;
+    }
+
+    .gt b {
+      display: block;
+      font-size: 13px;
+    }
+
+    /* Анекдоти */
+    .joke {
+      background: var(--hi);
+      border-color: var(--hi);
+      color: var(--hi-text);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px 24px;
+      align-items: end;
+    }
+
+    .joke .label {
+      color: var(--hi-text);
+      grid-column: 1 / -1;
+    }
+
+    .joke .label::before {
+      background: var(--hi-text);
+    }
+
+    #jt {
+      margin: 0;
+      font-size: clamp(19px, 2.4vw, 26px);
+      line-height: 1.4;
+      font-weight: 500;
+      min-height: 4.2em;
+      max-width: 60ch;
+    }
+
+    .jctl {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .jbtn {
+      background: var(--hi-text);
+      color: #fff;
+      border: 0;
+      border-radius: 999px;
+      padding: 11px 22px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .jbtn:hover {
+      opacity: .88;
+    }
+
+    :root[data-theme=dark] .jbtn {
+      background: #000;
+    }
+
+    /* Кнопки ігор */
+    .btns {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .btn {
+      border: 0;
+      background: var(--accent);
+      color: var(--on-accent);
+      border-radius: 999px;
+      padding: 9px 18px;
+      font-weight: 600;
+      font-size: 14.5px;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      opacity: .88;
+    }
+
+    .btn.ghost {
+      background: var(--pill);
+      color: var(--text2);
+    }
+
+    .gmsg {
+      margin: 12px 0 0;
+      font-size: 15px;
+      color: var(--text2);
+      min-height: 1.4em;
+    }
+
+    .qh {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .qh .label {
+      margin: 0;
+    }
+
+    /* Головне за тиждень */
+    .week {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: var(--ink-text);
+    }
+
+    .week .label {
+      color: var(--hi);
+    }
+
+    .week .label::before {
+      background: var(--hi);
+    }
+
+    .week h2 {
+      color: #fff;
+    }
+
+    .week .lede {
+      color: var(--ink-soft);
+      max-width: 70ch;
+    }
+
+    .week .chip {
+      background: rgba(255, 255, 255, .08);
+      border-color: rgba(255, 255, 255, .18);
+      color: var(--ink-soft);
+    }
+
+    .week .chip.on {
+      background: var(--hi);
+      border-color: var(--hi);
+      color: var(--hi-text);
+    }
+
+    .wk {
+      display: grid;
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+      gap: 28px;
+      margin-top: 8px;
+    }
+
+    .stories {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      counter-reset: st;
+    }
+
+    .stories li {
+      padding: 14px 0 14px 44px;
+      border-top: 1px solid rgba(255, 255, 255, .14);
+      position: relative;
+      counter-increment: st;
+    }
+
+    .stories li:first-child {
+      border-top: 0;
+      padding-top: 4px;
+    }
+
+    .stories li::before {
+      content: counter(st);
+      position: absolute;
+      left: 0;
+      top: 12px;
+      font-family: var(--display);
+      font-weight: 800;
+      font-size: 26px;
+      color: var(--hi);
+      line-height: 1;
+    }
+
+    .stories li:first-child::before {
+      top: 2px;
+    }
+
+    .stories h3 {
+      color: #fff;
+      margin: 6px 0 6px;
+      font-size: 19px;
+    }
+
+    .stories p {
+      margin: 0;
+      color: #f1effc;
+      font-size: 15.5px;
+    }
+
+    .stories .pill {
+      background: rgba(255, 255, 255, .1);
+      color: var(--ink-soft);
+    }
+
+    .whero {
+      background: var(--hi);
+      color: var(--hi-text);
+      border-radius: 16px;
+      padding: 16px 18px;
+      margin-bottom: 18px;
+    }
+
+    .whero .label {
+      color: var(--hi-text);
+      margin-bottom: 6px;
+    }
+
+    .whero .label::before {
+      background: var(--hi-text);
+    }
+
+    .whero h3 {
+      margin: 0 0 4px;
+      color: var(--hi-text);
+    }
+
+    .whero p {
+      margin: 0;
+      font-size: 14.5px;
+    }
+
+    .whero .rank {
+      font-weight: 600;
+      opacity: .8;
+      margin-bottom: 6px;
+    }
+
+    .wbars {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      align-items: end;
+      height: 110px;
+    }
+
+    .wbars div {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      height: 100%;
+      gap: 4px;
+      font-size: 11.5px;
+      color: var(--ink-soft);
+    }
+
+    .wbars span {
+      width: 100%;
+      background: rgba(255, 255, 255, .22);
+      border-radius: 6px 6px 0 0;
+      min-height: 3px;
+    }
+
+    .wbars .peak span {
+      background: var(--hi);
+    }
+
+    .week .line {
+      background: rgba(255, 255, 255, .08);
+      color: #f1effc;
+    }
+
+    .week .line b {
+      color: var(--ink-soft);
+    }
+
+    .wsub {
+      font-size: 13px;
+      color: var(--ink-soft);
+      margin: 16px 0 6px;
+      font-weight: 600;
+    }
+
+    /* Кросворд */
+    .cwl {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 28px;
+      align-items: start;
+    }
+
+    .cwg-wrap {
+      overflow-x: auto;
+      max-width: 100%;
+      padding-bottom: 4px;
+    }
+
+    .cwg {
+      --cs: 36px;
+      display: grid;
+      gap: 2px;
+      width: max-content;
+    }
+
+    .cwg>div {
+      width: var(--cs);
+      height: var(--cs);
+    }
+
+    .cell {
+      position: relative;
+      background: var(--card);
+      border: 1.5px solid var(--text2);
+      border-radius: 5px;
+    }
+
+    .cell input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      padding: 0;
+      margin: 0;
+      background: transparent;
+      text-align: center;
+      font: 700 calc(var(--cs) * .5) var(--body);
+      color: var(--text);
+      text-transform: uppercase;
+      caret-color: transparent;
+      border-radius: 4px;
+    }
+
+    .cell input:focus {
+      outline: none;
+    }
+
+    .cell .n {
+      position: absolute;
+      top: 1px;
+      left: 3px;
+      font-size: calc(var(--cs) * .27);
+      line-height: 1;
+      color: var(--muted);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .cell.hl {
+      background: var(--pill);
+      border-color: var(--accent);
+    }
+
+    .cell.cur {
+      background: var(--hi);
+      border-color: var(--hi-text);
+    }
+
+    .cell.cur input {
+      color: var(--hi-text);
+    }
+
+    .cell.bad input {
+      color: #e0324b;
+    }
+
+    .cell.ok {
+      border-color: #2fa36b;
+    }
+
+    .cell.rev input {
+      color: var(--accent);
+    }
+
+    .clues h4 {
+      margin: 0 0 6px;
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .clues ol {
+      list-style: none;
+      margin: 0 0 16px;
+      padding: 0;
+    }
+
+    .clues li {
+      padding: 6px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 15px;
+      color: var(--text2);
+    }
+
+    .clues li b {
+      color: var(--accent);
+      margin-right: 6px;
+    }
+
+    .clues li:hover {
+      background: var(--pill);
+    }
+
+    .clues li.act {
+      background: var(--hi);
+      color: var(--hi-text);
+    }
+
+    .clues li.act b {
+      color: var(--hi-text);
+    }
+
+    .clues li.done {
+      opacity: .5;
+      text-decoration: line-through;
+    }
+
+    .cwbar {
+      display: none;
+    }
+
+    /* Угадай цитату */
+    .qq {
+      margin: 10px 0 4px;
+      padding: 14px 16px;
+      background: var(--pill);
+      border-radius: 18px 18px 18px 4px;
+      font-size: 17px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .qt {
+      font-size: 13px;
+      color: var(--muted);
+      margin: 0 0 12px;
+    }
+
+    .opts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .opt {
+      border: 1.5px solid var(--line);
+      background: var(--card);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 11px 12px;
+      font-size: 14.5px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .opt:hover:not(:disabled) {
+      border-color: var(--accent);
+    }
+
+    .opt:disabled {
+      cursor: default;
+    }
+
+    .opt.right {
+      background: #2fa36b;
+      border-color: #2fa36b;
+      color: #fff;
+    }
+
+    .opt.wrong {
+      background: #e0324b;
+      border-color: #e0324b;
+      color: #fff;
+    }
+
+    .score {
+      font-family: var(--display);
+      font-weight: 800;
+      font-size: 56px;
+      line-height: 1;
+      color: var(--accent);
+      letter-spacing: -.04em;
+      margin: 14px 0 6px;
+    }
+
+    /* Wordle: один блок — поле і клавіатура одна під одною */
+    .wordle {
+      container-type: inline-size;
+    }
+
+    .wstart {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 12px;
+      padding: 6px 0 4px;
+    }
+
+    .wstart[hidden],
+    .wbody[hidden] {
+      display: none;
+    }
+
+    .wdemo {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .wdemo .tile {
+      --ts: 44px;
+    }
+
+    .wst-h {
+      font-family: var(--display);
+      font-weight: 600;
+      font-size: 20px;
+      letter-spacing: -.02em;
+      line-height: 1.2;
+      margin: 6px 0 0;
+    }
+
+    .wst-p {
+      margin: 0;
+      max-width: 40ch;
+      color: var(--text2);
+      font-size: 14.5px;
+    }
+
+    .wleg {
+      list-style: none;
+      margin: 4px 0 6px;
+      padding: 0;
+      display: grid;
+      gap: 8px;
+      text-align: left;
+      font-size: 14px;
+      color: var(--text2);
+    }
+
+    .wleg li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .wleg .mt {
+      width: 26px;
+      height: 26px;
+      flex: none;
+      border-radius: 7px;
+    }
+
+    .mt.p {
+      background: var(--hi);
+      color: var(--hi-text);
+    }
+
+    .mt.a {
+      background: var(--absent);
+      color: #fff;
+    }
+
+    .wsmsg {
+      margin: 0;
+      min-height: 1.2em;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .wstart .btn {
+      padding: 11px 34px;
+      font-size: 16px;
+    }
+
+    .wbody {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .wgr {
+      --ts: 50px;
+      display: grid;
+      gap: 6px;
+      width: max-content;
+      margin: 4px 0 0;
+    }
+
+    @supports (width: 1cqw) {
+      .wgr {
+        --ts: min(50px, calc((100cqw - (var(--l, 5) - 1) * 6px) / var(--l, 5)));
+      }
+    }
+
+    .wrow {
+      display: grid;
+      gap: 6px;
+    }
+
+    .tile {
+      width: var(--ts);
+      height: var(--ts);
+      border: 2px solid var(--tile-line);
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font: 800 calc(var(--ts) * .46) var(--display);
+      text-transform: uppercase;
+      color: var(--text);
+      background: var(--card);
+      transition: background .2s, border-color .2s;
+    }
+
+    .tile.fill {
+      border-color: var(--muted);
+    }
+
+    .tile.c {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--on-accent);
+    }
+
+    .tile.p {
+      background: var(--hi);
+      border-color: var(--hi);
+      color: var(--hi-text);
+    }
+
+    .tile.a {
+      background: var(--absent);
+      border-color: var(--absent);
+      color: #fff;
+    }
+
+    .wrow.shake {
+      animation: shake .35s;
+    }
+
+    @keyframes shake {
+      25% {
+        transform: translateX(-6px);
+      }
+
+      50% {
+        transform: translateX(6px);
+      }
+
+      75% {
+        transform: translateX(-3px);
+      }
+    }
+
+    #wdm {
+      margin: 0;
+      text-align: center;
+      min-height: 1.4em;
+      font-size: 14.5px;
+      color: var(--text2);
+    }
+
+    .kb {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .kr {
+      display: flex;
+      gap: 4px;
+      justify-content: center;
+    }
+
+    .key {
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: 44px;
+      height: 44px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--pill);
+      color: var(--text);
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      padding: 0;
+      text-transform: uppercase;
+    }
+
+    .key.wide {
+      max-width: 64px;
+      flex: 1.6 1 0;
+      font-size: 18px;
+    }
+
+    .key.c {
+      background: var(--accent);
+      color: var(--on-accent);
+    }
+
+    .key.p {
+      background: var(--hi);
+      color: var(--hi-text);
+    }
+
+    .key.a {
+      background: var(--absent);
+      color: #fff;
+      opacity: .6;
+    }
+
+    .kb[hidden],
+    .wres[hidden] {
+      display: none;
+    }
+
+    /* результат: заміщає клавіатуру на тому ж місці */
+    .wres {
+      width: 100%;
+      box-sizing: border-box;
+      background: var(--pill);
+      border-radius: 18px;
+      padding: 16px 18px;
+      text-align: center;
+    }
+
+    .wres-h {
+      font-family: var(--display);
+      font-weight: 600;
+      font-size: 18px;
+      line-height: 1.2;
+      letter-spacing: -.02em;
+      margin: 0 0 12px;
+    }
+
+    .wres-w {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin: 0 0 12px;
+    }
+
+    .mt {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font: 800 16px var(--display);
+      text-transform: uppercase;
+      background: var(--accent);
+      color: var(--on-accent);
+    }
+
+    .wres.lose .mt {
+      background: var(--hi);
+      color: var(--hi-text);
+    }
+
+    .wwhy {
+      margin: 0 0 12px;
+      font-size: 14.5px;
+      color: var(--text2);
+    }
+
+    .wres .btns {
+      margin: 0;
+      justify-content: center;
+    }
+
+    .wres .btn.ghost {
+      background: var(--card);
+      border: 1px solid var(--line);
+      color: var(--text);
+    }
+
+    .wnext {
+      margin: 10px 0 0;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+
+    .duo {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(330px, 100%), 1fr));
+      gap: 16px;
+      align-items: start;
+    }
+
+    @media (max-width: 760px) {
+
+      .wk,
+      .cwl {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .cwbar {
+        display: block;
+        position: sticky;
+        bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+        margin-top: 12px;
+        padding: 10px 14px;
+        border-radius: 14px;
+        background: var(--hi);
+        color: var(--hi-text);
+        font-size: 14.5px;
+        z-index: 5;
+      }
+
+      .cwbar:empty {
+        display: none;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .opts {
+        grid-template-columns: 1fr;
+      }
+
+      .duo {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    footer {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+      padding-top: 30px;
+    }
+
+    /* Друк / PDF */
+    @media print {
+
+      :root,
+      :root[data-theme=dark] {
+        --bg: #fff;
+        --card: #fff;
+        --text: #000;
+        --text2: #222;
+        --muted: #444;
+        --pill: #eee;
+        --line: #bbb;
+        --accent: #4b2ee0;
+      }
+
+      * {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      body {
+        background: #fff;
+        padding: 0;
+      }
+
+      .wrap {
+        max-width: none;
+        padding: 0;
+      }
+
+      .theme,
+      #lb,
+      .wgeo,
+      .jbtn,
+      .gp,
+      .btns,
+      .kb,
+      .cwbar,
+      #wdict {
+        display: none !important;
+      }
+
+      .masonry,
+      .masonry.js {
+        display: block;
+        position: static;
+        height: auto !important;
+        column-count: 2;
+        column-gap: 16px;
+      }
+
+      .masonry.js>.card,
+      .masonry>.card {
+        position: static;
+        width: auto !important;
+        margin: 0 0 16px;
+        break-inside: avoid;
+      }
+
+      .masonry>[data-span="2"] {
+        column-span: all;
+      }
+
+      .card,
+      .bottom>.card,
+      .duo>.card {
+        break-inside: avoid;
+      }
+
+      .gal {
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      .g,
+      .mf,
+      .nmedia {
+        break-inside: avoid;
+      }
+    }
+
+    /* Перегляд фото */
+    #lb {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 6, 20, .94);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 50;
+      padding: 20px;
+    }
+
+    #lb.on {
+      display: flex;
+    }
+
+    #lbi,
+    #lbv {
+      max-width: 94vw;
+      max-height: 78vh;
+      border-radius: 12px;
+      object-fit: contain;
+    }
+
+    #lbc {
+      color: #d1d1d6;
+      margin-top: 14px;
+      font-size: 15px;
+      text-align: center;
+      max-width: 800px;
+    }
+
+    #lb button {
+      position: absolute;
+      background: rgba(255, 255, 255, .14);
+      color: #fff;
+      border: 0;
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      font-size: 22px;
+      cursor: pointer;
+    }
+
+    #lb button:hover {
+      background: rgba(255, 255, 255, .28);
+    }
+
+    #lbx {
+      top: calc(18px + env(safe-area-inset-top, 0px));
+      right: 18px;
+    }
+
+    #lbp {
+      left: 18px;
+      top: 50%;
+    }
+
+    #lbn {
+      right: 18px;
+      top: 50%;
+    }
+
+    .news.h {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .news.h .nmedia {
+      min-height: 0;
+      max-height: 400px;
+    }
+
+    .news.nomedia {
+      display: block;
+    }
+
+    .news.nomedia .text {
+      column-count: 2;
+      column-gap: 28px;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    @media (max-width: 640px) {
+      .news.nomedia .text {
+        column-count: 1;
+      }
+
+      .news {
+        grid-template-columns: 1fr;
+      }
+
+      .news .nmedia {
+        min-height: 0;
+        aspect-ratio: 16 / 9;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .wrap {
+        padding: 14px 14px 40px;
+      }
+
+      .card {
+        padding: 18px;
+        border-radius: 20px;
+      }
+
+      .joke {
+        grid-template-columns: 1fr;
+      }
+
+      .jctl {
+        align-items: flex-start;
+        flex-direction: row;
+        align-items: center;
+      }
+
+      .gal {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      body,
+      .g img,
+      .g video,
+      .pic,
+      .stk {
+        transition: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="chips">
+        <span class="chip on">{{ date_short }}</span>
+        {% if issue %}<span class="chip">випуск № {{ issue }}</span>{% endif %}
+        <span class="chip">{{ stats.total_messages }} {{ plural(stats.total_messages, 'повідомлення', 'повідомлення',
+          'повідомлень') }}</span>
+      </div>
+      <button class="theme" id="tb" type="button" onclick="toggleTheme()"></button>
+    </div>
+    <h1>{{ name }}</h1>
+    <p class="sub">{{ c.tagline if c and c.tagline else 'Головне за добу' }}</p>
+
+    {% if c %}
+    {%- set hm = c.headline.media_id -%}
+    {%- set hm_wide = hm and media.get(hm) and not is_sticker(hm) -%}
+    <div id="masonry" class="masonry">
+      <article class="card news{{ '' if hm_wide else ' nomedia' }}" data-span="2">
+        {%- if hm_wide %}<div class="nmedia">{{ pic(media[hm], c.headline.title) }}</div>{% endif -%}
+        <div class="nbody"><span class="label">Новина дня</span>
+          <h2>{{ c.headline.title }}</h2>
+          {% if c.headline.subtitle %}<p class="lede">{{ c.headline.subtitle }}</p>{% endif %}
+          <div class="text">{{ c.headline.body | paragraphs }}</div>
+        </div>
+      </article>
+
+      {% if word_data %}
+      <article class="card wordle" id="wd" data-d="{{ word_data }}" data-id="{{ word_meta.id }}"
+        data-len="{{ word_meta.len }}">
+        <div class="qh"><span class="label">Wordle</span></div>
+        <div class="wstart" id="wst">
+          <div class="wdemo" aria-hidden="true"><span class="tile a">С</span><span class="tile p">Л</span><span
+              class="tile c">О</span><span class="tile a">В</span><span class="tile c">О</span></div>
+          <h3 class="wst-h">Вгадай слово дня</h3>
+          <p class="wst-p">{{ word_meta.len }} {{ plural(word_meta.len, 'літера', 'літери', 'літер') }}, 6 спроб. Вводь
+            справжні українські слова — після кожної спроби плитки підкажуть, наскільки ти близько.</p>
+          <ul class="wleg">
+            <li><span class="mt c" aria-hidden="true"></span>літера на своєму місці</li>
+            <li><span class="mt p" aria-hidden="true"></span>є в слові, але на іншому місці</li>
+            <li><span class="mt a" aria-hidden="true"></span>такої літери немає</li>
+          </ul>
+          <button class="btn" id="wgo" type="button">Грати</button>
+          <p class="wsmsg" aria-live="polite"></p>
+        </div>
+        <div class="wbody" id="wbody" hidden>
+          <div class="wgr" id="wgr" role="grid" aria-label="Спроби"></div>
+          <p class="gmsg" id="wdm" aria-live="polite"></p>
+          <div class="kb" id="wkb"></div>
+          <div class="wres" id="wres" hidden></div>
+        </div>
+        {% if word_dict %}
+        <script id="wdict" type="text/plain">{{ word_dict }}</script>{% endif %}
+      </article>
+      {% endif %}
+
+      <article class="card weather">
+        <div class="wh"><span class="label">Погода</span><button class="wgeo" id="wg" type="button">Моя
+            геолокація</button></div>
+        <div id="wx" aria-live="polite">
+          <p class="wloc"><span class="sk" style="width: 96px; height: 14px"></span></p>
+          <div class="wnow"><span class="sk" style="width: 52px; height: 52px; border-radius: 50%"></span>
+            <div>
+              <div class="sk" style="width: 88px; height: 44px"></div>
+              <div class="sk" style="width: 130px; height: 14px; margin-top: 8px"></div>
+            </div>
+          </div>
+          <div class="wmeta"><span class="sk sk-pill" style="width: 128px"></span><span class="sk sk-pill"
+              style="width: 82px"></span><span class="sk sk-pill" style="width: 100px"></span></div>
+          <div class="wdays">
+            <div class="wd sk-box"></div>
+            <div class="wd sk-box"></div>
+            <div class="wd sk-box"></div>
+          </div>
+        </div>
+      </article>
+
+      {% if c.hero_of_day.title or c.hero_of_day.sender %}
+      <article class="card hero"><span class="label">Герой дня</span>
+        <h3>{{ c.hero_of_day.sender }}</h3>
+        {% if c.hero_of_day.title %}<p class="lede">{{ c.hero_of_day.title }}</p>{% endif %}
+        {% if c.hero_of_day.reason %}<div class="text">
+          <p>{{ c.hero_of_day.reason }}</p>
+        </div>{% endif %}
+      </article>
+      {% endif %}
+
+
+      {% if c.quotes %}
+      <article class="card quotes"><span class="label">Цитати дня</span>
+        {% for q in c.quotes %}
+        <div class="line"><b>{{ q.sender }} · {{ q.time }}</b>{{ q.text }}{% if q.comment %}<span class="note">{{
+            q.comment }}</span>{% endif %}</div>
+        {% endfor %}
+      </article>
+      {% endif %}
+
+      {% for a in c.articles %}
+      <article class="card">{{ show(a.media_id, a.title) }}
+        <span class="label">{{ a.rubric }}</span>
+        <h3>{{ a.title }}</h3>
+        <div class="text">{{ a.body | paragraphs }}</div>
+      </article>
+      {% if loop.index == 3 and c.short_news %}{{ short_news_card() }}{% endif %}
+      {% endfor %}
+      {% if c.articles | length < 3 and c.short_news %}{{ short_news_card() }}{% endif %} <article class="card"><span
+          class="label">Цифри дня</span>
+        <p class="big">{{ stats.total_messages }}</p>
+        <p class="lede">{{ plural(stats.total_messages, 'повідомлення', 'повідомлення', 'повідомлень') }} від {{
+          stats.participants }} {{ plural(stats.participants, 'учасника', 'учасників', 'учасників') }}{% if
+          media_summary %}, серед них {{ media_summary }}{% endif %}</p>
+        <div class="hours" role="img"
+          aria-label="Активність по годинах{% if stats.busiest_hour %}, пік о {{ stats.busiest_hour }}{% endif %}">
+          {%- for n in stats.messages_by_hour -%}
+          <span class="{{ 'peak' if n == hour_max and n > 0 else ('on' if n > 0 else '') }}"
+            style="height: {{ (n / (hour_max or 1) * 100) | round(1) }}%"
+            title="{{ '%02d' % loop.index0 }}:00 — {{ n }}"></span>
+          {%- endfor -%}
+        </div>
+        <div class="axis"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
+        {% for s in stats.top_senders %}
+        <div class="line"><b>{{ loop.index }} місце</b>{{ s.sender }}: {{ s.count }} {{ plural(s.count, 'повідомлення',
+          'повідомлення', 'повідомлень') }}</div>
+        {% endfor %}
+        {% if stats.first_message %}<p class="summary">Активність з {{ stats.first_message.time }} до {{
+          stats.last_message.time }}{% if stats.busiest_hour %}, пік о {{ stats.busiest_hour }}{% endif %}</p>{% endif
+        %}</article>
+
+        {% if stats.top_sticker and media.get(stats.top_sticker.media_id) %}
+        <article class="card"><span class="label">Стікер дня</span>
+          {{ sticker(media[stats.top_sticker.media_id]) }}
+          <div class="meta"><span class="pill">надіслано {{ stats.top_sticker.count }} {{
+              plural(stats.top_sticker.count, 'раз', 'рази', 'разів') }}</span></div>
+        </article>
+        {% endif %}
+    </div>
+
+    <div class="bottom">
+      {% if weekly and weekly.content %}
+      {%- set wc = weekly.content -%}
+      <article class="card week">
+        <div class="gh">
+          <div><span class="label">Головне за тиждень</span>
+            <h2>{{ wc.title }}</h2>
+          </div>
+          <div class="chips"><span class="chip on">{{ weekly.range }}</span><span class="chip">{{
+              weekly.stats.total_messages }} {{ plural(weekly.stats.total_messages, 'повідомлення', 'повідомлення',
+              'повідомлень') }}</span></div>
+        </div>
+        {% if wc.intro %}<p class="lede">{{ wc.intro }}</p>{% endif %}
+        <div class="wk">
+          <ol class="stories">
+            {% for s in wc.stories %}
+            <li>{% if s.date %}<span class="pill">{{ s.date[8:10] }}.{{ s.date[5:7] }}</span>{% endif %}
+              <h3>{{ s.title }}</h3>
+              <p>{{ s.text }}</p>
+            </li>
+            {% endfor %}
+          </ol>
+          <div>
+            {% if wc.hero_of_week and wc.hero_of_week.sender %}
+            <div class="whero"><span class="label">Герой тижня</span>
+              <h3>{{ wc.hero_of_week.sender }}</h3>
+              {% if wc.hero_of_week.title %}<p class="rank">{{ wc.hero_of_week.title }}</p>{% endif %}
+              {% if wc.hero_of_week.reason %}<p>{{ wc.hero_of_week.reason }}</p>{% endif %}
+            </div>
+            {% endif %}
+            <p class="wsub">Повідомлення по днях</p>
+            <div class="wbars" role="img" aria-label="Повідомлення по днях тижня">
+              {% for p in weekly.stats.per_day %}<div
+                class="{{ 'peak' if p.count == weekly.stats.per_day_max and p.count > 0 else '' }}"
+                title="{{ p.date }} — {{ p.count }}"><span
+                  style="height: {{ (p.count / (weekly.stats.per_day_max or 1) * 100) | round(1) }}%"></span>{{ p.label
+                }}</div>{% endfor %}
+            </div>
+            {% if weekly.stats.top_senders %}
+            <p class="wsub">Найбалакучіші за тиждень</p>
+            {% for s in weekly.stats.top_senders %}<div class="line"><b>{{ loop.index }} місце</b>{{ s.sender }}: {{
+              s.count }}</div>{% endfor %}
+            {% endif %}
+          </div>
+        </div>
+      </article>
+      {% endif %}
+
+      {% if c.jokes %}
+      <article class="card joke">
+        <span class="label">Анекдоти</span>
+        <p id="jt"></p>
+        <div class="jctl"><button class="jbtn" id="jb" type="button">Хочу ще</button></div>
+      </article>
+      {% endif %}
+
+      {% if gallery %}
+      <article class="card">
+        <div class="gh">
+          <div>
+            <span class="label">Галерея</span>
+            <h2>Фото та відео за день</h2>
+          </div>
+          <div class="chips"><span class="chip">{{ gallery | length }} {{ plural(gallery | length, 'файл', 'файли',
+              'файлів') }}</span>{% if gallery_range %}<span class="chip">{{ gallery_range }}</span>{% endif %}</div>
+        </div>
+        <div class="gal">
+          {%- for g in gallery -%}
+          {%- set m = media[g.media_id] -%}
+          <button class="g" type="button" data-lightbox
+            data-caption="{{ g.sender }}, {{ date_short }} {{ g.time }}{% if g.caption %} — {{ g.caption }}{% endif %}"
+            aria-label="Відкрити: {{ g.sender }}, {{ g.time }}">
+            {%- if m.kind == "gif" -%}<video{% if m.poster %} poster="{{ m.poster }}" preload="none" src="{{ m.data }}"
+              {% else %} preload="metadata" src="{{ m.data }}#t=0.001" {% endif %} muted loop playsinline></video><span
+                class="gp" aria-hidden="true">GIF</span>
+              {%- else -%}<img src="{{ m.data }}" alt="" loading="lazy" decoding="async" {% if m.w %} width="{{ m.w }}"
+                height="{{ m.h }}" {% endif %}>{%- endif -%}
+              <span class="gt"><b>{{ g.time }}</b>{{ g.sender }}</span></button>
+          {%- endfor -%}
+        </div>
+      </article>
+      {% endif %}
+
+      {% if cw_data %}
+      <article class="card" id="cw" data-d="{{ cw_data }}" data-day="{{ day }}">
+        <div class="gh">
+          <div><span class="label">Кросворд</span>
+            <h2>Кросворд дня</h2>
+          </div>
+          <div class="chips"><span class="chip" id="cwp"></span></div>
+        </div>
+        <div class="cwl">
+          <div class="cwg-wrap">
+            <div class="cwg" id="cwg"></div>
+          </div>
+          <div class="clues">
+            <h4>По горизонталі</h4>
+            <ol id="cwa"></ol>
+            <h4>По вертикалі</h4>
+            <ol id="cwd"></ol>
+          </div>
+        </div>
+        <div class="cwbar" id="cwcur"></div>
+        <div class="btns">
+          <button class="btn" id="cwc" type="button">Перевірити</button>
+          <button class="btn ghost" id="cww" type="button">Показати слово</button>
+          <button class="btn ghost" id="cwr" type="button">Показати все</button>
+          <button class="btn ghost" id="cwx" type="button">Очистити</button>
+        </div>
+        <p class="gmsg" id="cwm" aria-live="polite"></p>
+      </article>
+      {% endif %}
+
+      {% if quiz_data %}
+      <div class="duo">
+        <article class="card" id="qz" data-d="{{ quiz_data }}">
+          <div class="qh"><span class="label">Вгадай, хто це сказав</span><span class="chip" id="qp"></span></div>
+          <div id="qb" aria-live="polite"></div>
+        </article>
+      </div>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="card empty">
+      <h2>Тиша в ефірі</h2>
+      <p class="lede">За цю добу в чаті не було жодного повідомлення.</p>
+    </div>
+    {% endif %}
+
+    <footer>Цитати взяті з чату без змін. Переслані пости з пабліків не враховуються{% if stats.forwarded %} (за добу:
+      {{ stats.forwarded }}){% endif %}. Випуск підготувала модель {{ model }}.</footer>
+  </div>
+
+  <div id="lb" role="dialog" aria-modal="true" aria-label="Перегляд медіа">
+    <button id="lbx" type="button" aria-label="Закрити">✕</button>
+    <button id="lbp" type="button" aria-label="Попереднє">‹</button>
+    <button id="lbn" type="button" aria-label="Наступне">›</button>
+    <img id="lbi" alt="">
+    <video id="lbv" controls loop playsinline></video>
+    <div id="lbc"></div>
+  </div>
+
+  {% if has_lottie %}
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>{% endif %}
+  <script>
+    /* Тема */
+    function label() {
+      document.getElementById("tb").textContent = document.documentElement.dataset.theme === "dark" ? "☀ Світла тема" : "☾ Темна тема";
+      var bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim(), tc = document.getElementById("tc");
+      if (bg && tc) tc.setAttribute("content", bg);
+    }
+    function toggleTheme() {
+      var r = document.documentElement, t = r.dataset.theme === "dark" ? "light" : "dark";
+      r.dataset.theme = t;
+      try { localStorage.setItem("gazeta-theme", t); } catch (e) { }
+      label();
+    }
+    label();
+
+    /* Відео-гіфки та анімовані стікери */
+    (function () {
+      var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      var noHover = matchMedia("(hover: none)").matches;
+
+      /* --- Лоті-стікери (скрипт підвантажується з defer, тому стартуємо на load) --- */
+      function initLottie() {
+        document.querySelectorAll(".lottie").forEach(function (el) {
+          function fallback() { el.textContent = el.dataset.emoji || "🙂"; el.classList.add("lottie-fallback"); }
+          if (!window.lottie) { fallback(); return; }
+          try {
+            var bytes = Uint8Array.from(atob(el.dataset.src.split(",")[1]), function (ch) { return ch.charCodeAt(0); });
+            var json = JSON.parse(new TextDecoder().decode(bytes));
+            lottie.loadAnimation({ container: el, renderer: "svg", loop: !reduce, autoplay: !reduce, animationData: json });
+          } catch (e) { fallback(); }
+        });
+      }
+      if (document.querySelector(".lottie")) { if (document.readyState === "complete") initLottie(); else window.addEventListener("load", initLottie); }
+
+      /* --- Галерея: відео грають по наведенню --- */
+      var galleryVideos = document.querySelectorAll(".gal video, .mf video.pic, .nmedia video.pic");
+      galleryVideos.forEach(function (v) {
+        v.pause();
+        if (reduce) { if (!v.closest(".gal")) v.controls = true; return; }
+        if (!noHover) {
+          /* Десктоп: mouseenter/focus → play, mouseleave/blur → pause+reset */
+          var wrap = v.closest(".g") || v.closest(".mf") || v.closest(".nmedia") || v.parentElement;
+          wrap.addEventListener("mouseenter", function () { v.play().catch(function () { }); });
+          wrap.addEventListener("mouseleave", function () { v.pause(); v.currentTime = 0; });
+          wrap.addEventListener("focus", function () { v.play().catch(function () { }); }, true);
+          wrap.addEventListener("blur", function () { v.pause(); v.currentTime = 0; }, true);
+        }
+      });
+
+      /* --- IntersectionObserver: грає тільки видиме відео --- */
+      if ("IntersectionObserver" in window) {
+        /* Для галереї на тач-пристроях (hover: none) — грає у зоні видимості */
+        if (noHover && !reduce) {
+          var galIO = new IntersectionObserver(function (entries) {
+            entries.forEach(function (e) {
+              if (e.isIntersecting) e.target.play().catch(function () { });
+              else { e.target.pause(); e.target.currentTime = 0; }
+            });
+          }, { threshold: 0.6 });
+          galleryVideos.forEach(function (v) { galIO.observe(v); });
+        }
+
+        /* Для ВСІХ відео поза галереєю — пауза коли не видно */
+        var allVideos = document.querySelectorAll("video");
+        var outsideGallery = [].slice.call(allVideos).filter(function (v) {
+          return !v.closest(".gal") && !v.closest(".mf") && !v.closest(".nmedia");
+        });
+        if (outsideGallery.length) {
+          var extIO = new IntersectionObserver(function (entries) {
+            entries.forEach(function (e) {
+              if (!e.isIntersecting) e.target.pause();
+              else if (e.target.hasAttribute("autoplay") && !reduce) e.target.play().catch(function () { });
+            });
+          }, { threshold: 0.1 });
+          outsideGallery.forEach(function (v) { extIO.observe(v); });
+        }
+      }
+    })();
+
+    /* Перегляд медіа на весь екран (фото та відео) з Blob-кешуванням */
+    (function () {
+      var els = [].slice.call(document.querySelectorAll("[data-lightbox]")), i = 0,
         lb = document.getElementById("lb"), li = document.getElementById("lbi"),
         lv = document.getElementById("lbv"), lc = document.getElementById("lbc");
-    if (!els.length) return;
+      if (!els.length) return;
 
-    /* Кеш: base64 → Blob URL (конвертуємо один раз) */
-    var blobCache = {};
-    function toBlobUrl(dataUri) {
-      if (blobCache[dataUri]) return blobCache[dataUri];
-      try {
-        var parts = dataUri.split(","), meta = parts[0], b64 = parts[1];
-        var mime = meta.split(":")[1].split(";")[0];
-        var bin = atob(b64), len = bin.length, u8 = new Uint8Array(len);
-        for (var j = 0; j < len; j++) u8[j] = bin.charCodeAt(j);
-        var url = URL.createObjectURL(new Blob([u8], { type: mime }));
-        blobCache[dataUri] = url;
-        return url;
-      } catch (e) { return dataUri; }
-    }
-
-    function mediaEl(el) { return /^(IMG|VIDEO)$/.test(el.tagName) ? el : el.querySelector("img,video"); }
-    function srcOf(m) { return m.dataset.src || m.src.split("#")[0]; }
-    function show(n) {
-      i = (n + els.length) % els.length;
-      var m = mediaEl(els[i]), vid = m.tagName === "VIDEO";
-      var url = toBlobUrl(srcOf(m));
-      lv.pause(); li.style.display = vid ? "none" : ""; lv.style.display = vid ? "" : "none";
-      if (vid) { lv.src = url; lv.play().catch(function () {}); } else { lv.removeAttribute("src"); li.src = url; }
-      lc.textContent = els[i].dataset.caption || "";
-    }
-    function open(n) { show(n); lb.classList.add("on"); document.body.style.overflow = "hidden"; document.getElementById("lbx").focus(); }
-    function close() { lv.pause(); lb.classList.remove("on"); document.body.style.overflow = ""; }
-    els.forEach(function (el, n) { el.addEventListener("click", function () { open(n); }); });
-    if (els.length < 2) { document.getElementById("lbp").style.display = "none"; document.getElementById("lbn").style.display = "none"; }
-    lb.addEventListener("click", function (e) { if (e.target === lb || e.target.id === "lbx") close(); });
-    document.getElementById("lbp").onclick = function (e) { e.stopPropagation(); show(i - 1); };
-    document.getElementById("lbn").onclick = function (e) { e.stopPropagation(); show(i + 1); };
-    document.addEventListener("keydown", function (e) {
-      if (!lb.classList.contains("on")) return;
-      if (e.key === "Escape") close();
-      if (e.key === "ArrowLeft") show(i - 1);
-      if (e.key === "ArrowRight") show(i + 1);
-    });
-  })();
-
-  /* Новина дня: підлаштування під горизонтальне / вертикальне / відсутнє медіа */
-  (function () {
-    document.querySelectorAll(".news").forEach(function (n) {
-      var box = n.querySelector(".nmedia"), el = box && box.querySelector(".pic");
-      if (!el) { n.classList.add("nomedia"); return; }
-      function apply() {
-        var w = el.videoWidth || el.naturalWidth, h = el.videoHeight || el.naturalHeight;
-        if (!w || !h) return;
-        var r = w / h;
-        if (r >= 1.1) { n.classList.add("h"); box.style.aspectRatio = String(Math.min(Math.max(r, 4 / 3), 16 / 9)); }
-        else { n.classList.remove("h"); box.style.aspectRatio = ""; }
+      /* Кеш: base64 → Blob URL (конвертуємо один раз) */
+      var blobCache = {};
+      function toBlobUrl(dataUri) {
+        if (blobCache[dataUri]) return blobCache[dataUri];
+        try {
+          var parts = dataUri.split(","), meta = parts[0], b64 = parts[1];
+          var mime = meta.split(":")[1].split(";")[0];
+          var bin = atob(b64), len = bin.length, u8 = new Uint8Array(len);
+          for (var j = 0; j < len; j++) u8[j] = bin.charCodeAt(j);
+          var url = URL.createObjectURL(new Blob([u8], { type: mime }));
+          blobCache[dataUri] = url;
+          return url;
+        } catch (e) { return dataUri; }
       }
-      el.addEventListener("loadedmetadata", apply);
-      el.addEventListener("load", apply);
-      apply();
-    });
-  })();
 
-  /* Сітка-«цеглинки» з підтримкою карток на 2 колонки */
-  (function () {
-    var m = document.getElementById("masonry");
-    if (!m) return;
-    var cards = [].slice.call(m.children), gap = 16, raf = 0;
-    m.classList.add("js");
-    function layout() {
-      raf = 0;
-      var W = m.clientWidth, n = Math.max(1, Math.min(3, Math.floor((W + gap) / (300 + gap))));
-      var cw = (W - gap * (n - 1)) / n, hs = [], k, c;
-      for (k = 0; k < n; k++) hs.push(0);
-      function spanOf(card) { return Math.min(+card.dataset.span || 1, n); }
-      function pos(span) {
-        var best = 0, by = Infinity, waste = 0;
-        for (c = 0; c <= n - span; c++) {
-          var y = 0; for (k = 0; k < span; k++) y = Math.max(y, hs[c + k]);
-          if (y < by - 0.5) { by = y; best = c; }
+      var opener = null;
+      function mediaEl(el) { return /^(IMG|VIDEO)$/.test(el.tagName) ? el : el.querySelector("img,video"); }
+      function srcOf(m) { return m.getAttribute("src").split("#")[0]; }
+      function show(n) {
+        i = (n + els.length) % els.length;
+        var m = mediaEl(els[i]), vid = m.tagName === "VIDEO";
+        var url = toBlobUrl(srcOf(m));
+        lv.pause(); li.style.display = vid ? "none" : ""; lv.style.display = vid ? "" : "none";
+        if (vid) { lv.src = url; lv.play().catch(function () { }); } else { lv.removeAttribute("src"); li.src = url; }
+        lc.textContent = els[i].dataset.caption || "";
+        li.alt = lc.textContent;
+      }
+      function open(n) { opener = document.activeElement; show(n); lb.classList.add("on"); document.body.style.overflow = "hidden"; document.getElementById("lbx").focus(); }
+      function close() { lv.pause(); lb.classList.remove("on"); document.body.style.overflow = ""; if (opener && opener.focus) opener.focus(); }
+      els.forEach(function (el, n) { el.addEventListener("click", function () { open(n); }); });
+      if (els.length < 2) { document.getElementById("lbp").style.display = "none"; document.getElementById("lbn").style.display = "none"; }
+      lb.addEventListener("click", function (e) { if (e.target === lb || e.target.id === "lbx") close(); });
+      document.getElementById("lbp").onclick = function (e) { e.stopPropagation(); show(i - 1); };
+      document.getElementById("lbn").onclick = function (e) { e.stopPropagation(); show(i + 1); };
+      document.addEventListener("keydown", function (e) {
+        if (!lb.classList.contains("on")) return;
+        if (e.key === "Escape") close();
+        if (e.key === "ArrowLeft") show(i - 1);
+        if (e.key === "ArrowRight") show(i + 1);
+        if (e.key === "Tab") {
+          /* фокус не виходить за межі вікна перегляду */
+          var f = [].slice.call(lb.querySelectorAll("button")).filter(function (b) { return getComputedStyle(b).display !== "none"; });
+          if (!f.length) return;
+          var first = f[0], last = f[f.length - 1];
+          if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+          else if (!lb.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
         }
-        for (k = 0; k < span; k++) waste += by - hs[best + k];
-        return { c: best, y: by, waste: waste };
-      }
-      function place(card) {
-        var span = spanOf(card);
-        card.style.width = (cw * span + gap * (span - 1)) + "px";
-        var h = card.offsetHeight, p = pos(span);
-        card.style.left = p.c * (cw + gap) + "px";
-        card.style.top = p.y + "px";
-        for (k = 0; k < span; k++) hs[p.c + k] = p.y + h + gap;
-      }
-      var queue = cards.slice();
-      while (queue.length) {
-        var span = spanOf(queue[0]);
-        if (span > 1 && pos(span).waste > 60) {
-          /* широкий блок залишив би діру: спершу ставимо вузькі блоки, що йдуть далі */
-          var j = -1;
-          for (k = 1; k < queue.length; k++) if (spanOf(queue[k]) === 1) { j = k; break; }
-          if (j > 0) { place(queue.splice(j, 1)[0]); continue; }
-        }
-        place(queue.shift());
-      }
-      m.style.height = Math.max.apply(null, hs) - gap + "px";
-    }
-    function sched() { if (!raf) raf = requestAnimationFrame(layout); }
-    window.addEventListener("resize", sched);
-    window.addEventListener("load", sched);
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(sched);
-    if (window.ResizeObserver) { var ro = new ResizeObserver(sched); cards.forEach(function (c) { ro.observe(c); }); }
-    layout();
-  })();
+      });
+      /* Свайп на телефоні */
+      var tx = 0, ty = 0, skipSwipe = false;
+      lb.addEventListener("touchstart", function (e) { var t = e.changedTouches[0]; tx = t.clientX; ty = t.clientY; skipSwipe = e.target.id === "lbv"; }, { passive: true });
+      lb.addEventListener("touchend", function (e) {
+        if (skipSwipe || els.length < 2) return;
+        var t = e.changedTouches[0], dx = t.clientX - tx, dy = t.clientY - ty;
+        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) show(i + (dx < 0 ? 1 : -1));
+      }, { passive: true });
+    })();
 
-  /* Анекдоти — генеруються моделлю за мотивами дня */
-  (function () {
-    var J = {{ (c.jokes if c else []) | tojson }};
+    /* Новина дня: підлаштування під горизонтальне / вертикальне / відсутнє медіа */
+    (function () {
+      document.querySelectorAll(".news").forEach(function (n) {
+        var box = n.querySelector(".nmedia"), el = box && box.querySelector(".pic");
+        if (!el) { n.classList.add("nomedia"); return; }
+        function apply() {
+          var w = el.videoWidth || el.naturalWidth, h = el.videoHeight || el.naturalHeight;
+          if (!w || !h) return;
+          var r = w / h;
+          if (r >= 1.1) { n.classList.add("h"); box.style.aspectRatio = String(Math.min(Math.max(r, 4 / 3), 16 / 9)); }
+          else { n.classList.remove("h"); box.style.aspectRatio = ""; }
+        }
+        el.addEventListener("loadedmetadata", apply);
+        el.addEventListener("load", apply);
+        apply();
+      });
+    })();
+
+    /* Сітка-«цеглинки» з підтримкою карток на 2 колонки */
+    (function () {
+      var m = document.getElementById("masonry");
+      if (!m) return;
+      var cards = [].slice.call(m.children), gap = 16, raf = 0;
+      m.classList.add("js");
+      function layout() {
+        raf = 0;
+        var W = m.clientWidth, n = Math.max(1, Math.min(2, Math.floor((W + gap) / (300 + gap))));
+        var cw = (W - gap * (n - 1)) / n, hs = [], k, c;
+        for (k = 0; k < n; k++) hs.push(0);
+        function spanOf(card) { return Math.min(+card.dataset.span || 1, n); }
+        function pos(span) {
+          var best = 0, by = Infinity, waste = 0;
+          for (c = 0; c <= n - span; c++) {
+            var y = 0; for (k = 0; k < span; k++) y = Math.max(y, hs[c + k]);
+            if (y < by - 0.5) { by = y; best = c; }
+          }
+          for (k = 0; k < span; k++) waste += by - hs[best + k];
+          return { c: best, y: by, waste: waste };
+        }
+        function place(card) {
+          var span = spanOf(card);
+          card.style.width = (cw * span + gap * (span - 1)) + "px";
+          var h = card.offsetHeight, p = pos(span);
+          card.style.left = p.c * (cw + gap) + "px";
+          card.style.top = p.y + "px";
+          for (k = 0; k < span; k++) hs[p.c + k] = p.y + h + gap;
+        }
+        var queue = cards.slice();
+        while (queue.length) {
+          var span = spanOf(queue[0]), cur = span > 1 ? pos(span).waste : 0;
+          if (cur > 60) {
+            /* широкий блок залишив би діру: добираємо з найближчих вузьких той, після якого діра найменша */
+            var j = -1, bw = cur, q, seen = 0;
+            for (q = 1; q < queue.length && seen < 3; q++) {
+              if (spanOf(queue[q]) !== 1) continue;
+              seen++;
+              var p1 = pos(1), old = hs[p1.c];
+              hs[p1.c] = p1.y + queue[q].offsetHeight + gap;
+              var w2 = pos(span).waste;
+              hs[p1.c] = old;
+              if (w2 < bw - 20) { bw = w2; j = q; }
+            }
+            if (j > 0) { place(queue.splice(j, 1)[0]); continue; }
+          }
+          place(queue.shift());
+        }
+        m.style.height = Math.max.apply(null, hs) - gap + "px";
+      }
+      function sched() { if (!raf) raf = requestAnimationFrame(layout); }
+      window.addEventListener("resize", sched);
+      window.addEventListener("load", sched);
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(sched);
+      if (window.ResizeObserver) { var ro = new ResizeObserver(sched); cards.forEach(function (c) { ro.observe(c); }); }
+      layout();
+    })();
+
+    /* Анекдоти — генеруються моделлю за мотивами дня */
+    (function () {
+      var J = {{ (c.jokes if c else[]) | tojson
+    }};
     var t = document.getElementById("jt");
     if (!t || !J.length) return;
     var n = Math.floor(Math.random() * J.length);
     function show() { t.textContent = J[n]; }
     document.getElementById("jb").addEventListener("click", function () { n = (n + 1) % J.length; show(); });
     show();
-  })();
+  }) ();
 
-  /* Погода: у кожного читача своя, за місцезнаходженням */
-  (function () {
-    var box = document.getElementById("wx");
-    if (!box) return;
-    var W = [[0,"☀️","Ясно"],[1,"🌤️","Переважно ясно"],[2,"⛅","Мінлива хмарність"],[3,"☁️","Хмарно"],[45,"🌫️","Туман"],[51,"🌦️","Мряка"],[56,"🌧️","Крижана мряка"],[61,"🌧️","Дощ"],[66,"🌧️","Крижаний дощ"],[71,"🌨️","Сніг"],[77,"🌨️","Снігові зерна"],[80,"🌦️","Злива"],[85,"🌨️","Снігопад"],[95,"⛈️","Гроза"]];
-    function wc(c) { var r = W[0]; W.forEach(function (x) { if (c >= x[0]) r = x; }); return r; }
-    function msg(text, retry) {
-      box.innerHTML = '<p class="wmsg"></p>' + (retry ? '<button class="wgeo" type="button" id="wr">Спробувати знову</button>' : "");
-      box.firstChild.textContent = text;
-      if (retry) document.getElementById("wr").onclick = start;
+    /* Погода: у кожного читача своя, за місцезнаходженням */
+    (function () {
+      var box = document.getElementById("wx");
+      if (!box) return;
+      /* fetch із таймаутом, щоб «Завантажуємо…» не висіло вічно */
+      function jf(url) {
+        var c = new AbortController(), t = setTimeout(function () { c.abort(); }, 8000);
+        return fetch(url, { signal: c.signal, cache: "no-store" }).then(function (r) { clearTimeout(t); if (!r.ok) throw new Error("http"); return r.json(); }, function (e) { clearTimeout(t); throw e; });
+      }
+      var W = [[0, "☀️", "Ясно"], [1, "🌤️", "Переважно ясно"], [2, "⛅", "Мінлива хмарність"], [3, "☁️", "Хмарно"], [45, "🌫️", "Туман"], [51, "🌦️", "Мряка"], [56, "🌧️", "Крижана мряка"], [61, "🌧️", "Дощ"], [66, "🌧️", "Крижаний дощ"], [71, "🌨️", "Сніг"], [77, "🌨️", "Снігові зерна"], [80, "🌦️", "Злива"], [85, "🌨️", "Снігопад"], [95, "⛈️", "Гроза"]];
+      function wc(c) { var r = W[0]; W.forEach(function (x) { if (c >= x[0]) r = x; }); return r; }
+      var SK = box.innerHTML;  /* скелетон з розмітки */
+      var stale = false;  /* показано минулу погоду, поки вантажиться свіжа */
+      function skel() { if (!stale) box.innerHTML = SK; }
+      function msg(text, retry) {
+        if (stale) return;  /* краще лишити стару погоду, ніж показати помилку */
+        box.innerHTML = '<p class="wmsg"></p>' + (retry ? '<button class="wgeo" type="button" id="wr">Спробувати знову</button>' : "");
+        box.firstChild.textContent = text;
+        if (retry) document.getElementById("wr").onclick = start;
+      }
+      function named(la, lo, fb) {
+        jf("https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=" + la + "&longitude=" + lo + "&localityLanguage=uk")
+          .then(function (g) { render(la, lo, g.city || g.locality || fb); })
+          .catch(function () { render(la, lo, fb); });
+      }
+      function render(lat, lon, name) {
+        jf("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon +
+          "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=3&wind_speed_unit=ms")
+          .then(function (d) {
+            var c = d.current, w = wc(c.weather_code), days = "", icon = w[1];
+            if (c.is_day === 0) { if (c.weather_code <= 1) icon = "🌙"; else if (c.weather_code === 2) icon = "☁️"; }
+            d.daily.time.forEach(function (day, k) {
+              var x = wc(d.daily.weather_code[k]);
+              days += '<div class="wd">' + (k ? new Date(day + "T12:00:00").toLocaleDateString("uk", { weekday: "short" }) : "Сьогодні") + "<span>" + x[1] + "</span><b>" +
+                Math.round(d.daily.temperature_2m_max[k]) + "°</b> " + Math.round(d.daily.temperature_2m_min[k]) + "°</div>";
+            });
+            box.innerHTML = '<p class="wloc"></p><div class="wnow"><span class="wicon">' + icon + '</span><div><div class="wtemp">' + Math.round(c.temperature_2m) +
+              '°</div><div class="wdesc">' + w[2] + '</div></div></div><div class="wmeta"><span class="pill">відчувається як ' + Math.round(c.apparent_temperature) +
+              '°</span><span class="pill">вітер ' + Math.round(c.wind_speed_10m) + ' м/с</span><span class="pill">вологість ' + c.relative_humidity_2m + '%</span></div><div class="wdays">' + days + "</div>";
+            box.querySelector(".wloc").textContent = "📍 " + name;
+            stale = false; lastOk = Date.now();
+            var pack = JSON.stringify({ t: Date.now(), h: box.innerHTML });
+            try { sessionStorage.setItem("gazeta-wx", pack); } catch (e) { }
+            try { localStorage.setItem("gazeta-wx-last", pack); } catch (e) { }
+          })
+          .catch(function () { msg("Не вдалося завантажити погоду. Перевірте інтернет.", true); });
+      }
+      function byIp() {
+        jf("https://ipwho.is/").then(function (j) {
+          if (!j.success) throw 0;
+          named(j.latitude, j.longitude, j.city || "Ваше місто");
+        }).catch(function () { msg("Не вдалося визначити місце. Натисніть «Моя геолокація».", true); });
+      }
+      function byGps() {
+        if (!navigator.geolocation) return byIp();
+        skel();
+        navigator.geolocation.getCurrentPosition(function (p) {
+          var la = p.coords.latitude, lo = p.coords.longitude;
+          try { localStorage.setItem("gazeta-geo", JSON.stringify([la, lo])); } catch (e) { }
+          named(la, lo, "Ваше місце");
+        }, function () { byIp(); }, { timeout: 8000, maximumAge: 3600000 });
+      }
+      var lastOk = 0;
+      function start(force) {
+        var cache = null;
+        try { cache = JSON.parse(sessionStorage.getItem("gazeta-wx") || localStorage.getItem("gazeta-wx-last") || "null"); } catch (e) { }
+        if (cache && cache.h) {
+          box.innerHTML = cache.h; stale = true; lastOk = cache.t;
+          if (!force && Date.now() - cache.t < 2 * 60 * 1000) { stale = false; return; }  /* зовсім свіже — не смикаємо API */
+        }
+        var s = null;
+        try { s = JSON.parse(localStorage.getItem("gazeta-geo")); } catch (e) { }
+        skel();
+        if (s && s.length === 2) byGps(); else byIp();
+      }
+      /* погода живе: оновлюється кожні 10 хв і коли читач повертається на вкладку */
+      setInterval(function () { if (!document.hidden) start(true); }, 10 * 60 * 1000);
+      document.addEventListener("visibilitychange", function () { if (!document.hidden && Date.now() - lastOk > 5 * 60 * 1000) start(true); });
+      document.getElementById("wg").onclick = function () { stale = false; skel(); byGps(); };
+      start();
+    })();
+
+    /* ---------- Спільне для ігор ---------- */
+    function dec(s) { return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(s), function (c) { return c.charCodeAt(0); }))); }
+    function store(k, v) { try { if (v === undefined) return JSON.parse(localStorage.getItem(k)); localStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } }
+    var UA = "АБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯ";
+    var CODEMAP = {
+      KeyQ: "Й", KeyW: "Ц", KeyE: "У", KeyR: "К", KeyT: "Е", KeyY: "Н", KeyU: "Г", KeyI: "Ш", KeyO: "Щ", KeyP: "З", BracketLeft: "Х", BracketRight: "Ї",
+      KeyA: "Ф", KeyS: "І", KeyD: "В", KeyF: "А", KeyG: "П", KeyH: "Р", KeyJ: "О", KeyK: "Л", KeyL: "Д", Semicolon: "Ж", Quote: "Є",
+      KeyZ: "Я", KeyX: "Ч", KeyC: "С", KeyV: "М", KeyB: "И", KeyN: "Т", KeyM: "Ь", Comma: "Б", Period: "Ю", Backslash: "Ґ"
+    };
+    function letterOf(e) {
+      var k = (e.key || "").toUpperCase();
+      if (k.length === 1 && UA.indexOf(k) >= 0) return k;
+      return CODEMAP[e.code] || "";
     }
-    function named(la, lo, fb) {
-      fetch("https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=" + la + "&longitude=" + lo + "&localityLanguage=uk")
-        .then(function (r) { return r.json(); })
-        .then(function (g) { render(la, lo, g.city || g.locality || fb); })
-        .catch(function () { render(la, lo, fb); });
-    }
-    function render(lat, lon, name) {
-      fetch("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon +
-        "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=3&wind_speed_unit=ms")
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-          var c = d.current, w = wc(c.weather_code), days = "";
-          d.daily.time.forEach(function (day, k) {
-            var x = wc(d.daily.weather_code[k]);
-            days += '<div class="wd">' + (k ? new Date(day).toLocaleDateString("uk", { weekday: "short" }) : "Сьогодні") + "<span>" + x[1] + "</span><b>" +
-              Math.round(d.daily.temperature_2m_max[k]) + "°</b> " + Math.round(d.daily.temperature_2m_min[k]) + "°</div>";
+
+    /* ---------- Кросворд ---------- */
+    (function () {
+      var root = document.getElementById("cw");
+      if (!root) return;
+      var D = dec(root.dataset.d), KEY = "gazeta-cw-" + root.dataset.day;
+      var grid = document.getElementById("cwg"), cells = {}, starts = {}, cur = 0, list = [];
+      var E = D.entries;
+      var size = Math.max(26, Math.min(38, Math.floor((Math.min(window.innerWidth, 1120) - 70) / D.w) - 2));
+      grid.style.setProperty("--cs", size + "px");
+      grid.style.gridTemplateColumns = "repeat(" + D.w + ", var(--cs))";
+
+      E.forEach(function (e, i) {
+        e.cells = [];
+        for (var k = 0; k < e.ans.length; k++) {
+          var r = e.r + (e.d === "d" ? k : 0), c = e.c + (e.d === "a" ? k : 0), id = r + "_" + c;
+          var cell = cells[id] || (cells[id] = { id: id, r: r, c: c, ch: e.ans[k], e: {} });
+          cell.e[e.d] = i;
+          e.cells.push(cell);
+        }
+        starts[e.r + "_" + e.c] = e.n;
+      });
+
+      var saved = store(KEY) || {};
+      for (var r = 0; r < D.h; r++) for (var c = 0; c < D.w; c++) {
+        var id = r + "_" + c, div = document.createElement("div"), cell = cells[id];
+        if (cell) {
+          div.className = "cell";
+          if (starts[id]) { var n = document.createElement("span"); n.className = "n"; n.textContent = starts[id]; div.appendChild(n); }
+          var inp = document.createElement("input");
+          inp.maxLength = 2; inp.autocomplete = "off"; inp.spellcheck = false;
+          inp.setAttribute("autocapitalize", "characters");
+          inp.setAttribute("aria-label", "Клітинка " + (r + 1) + ", " + (c + 1));
+          inp.value = saved[id] || "";
+          div.appendChild(inp);
+          cell.el = div; cell.inp = inp;
+          (function (cell) {
+            inp.addEventListener("focus", function () { select(cell, null); });
+            inp.addEventListener("mousedown", function () {
+              if (document.activeElement === inp && cell.e.a !== undefined && cell.e.d !== undefined)
+                setTimeout(function () { select(cell, E[cur].d === "a" ? "d" : "a"); }, 0);
+            });
+            inp.addEventListener("input", function () {
+              var v = inp.value.toUpperCase().replace(/[^А-ЯҐЄІЇ]/g, "");
+              inp.value = v.slice(-1);
+              cell.el.classList.remove("bad", "ok");
+              save();
+              if (inp.value) move(cell, 1);
+            });
+            inp.addEventListener("keydown", function (ev) { keys(ev, cell); });
+          })(cell);
+        }
+        grid.appendChild(div);
+      }
+
+      ["a", "d"].forEach(function (d) {
+        var ol = document.getElementById(d === "a" ? "cwa" : "cwd");
+        E.forEach(function (e, i) {
+          if (e.d !== d) return;
+          var li = document.createElement("li");
+          li.innerHTML = "<b></b><span></span>";
+          li.firstChild.textContent = e.n;
+          li.lastChild.textContent = e.clue + " (" + e.ans.length + ")";
+          li.onclick = function () { cur = i; e.cells[0].inp.focus(); select(e.cells[0], d); };
+          ol.appendChild(li);
+          list[i] = li;
+        });
+      });
+
+      function select(cell, dir) {
+        var want = dir || (E[cur] && cell.e[E[cur].d] !== undefined ? E[cur].d : (cell.e.a !== undefined ? "a" : "d"));
+        if (cell.e[want] === undefined) want = want === "a" ? "d" : "a";
+        cur = cell.e[want];
+        Object.keys(cells).forEach(function (k) { cells[k].el.classList.remove("hl", "cur"); });
+        E[cur].cells.forEach(function (x) { x.el.classList.add("hl"); });
+        cell.el.classList.add("cur");
+        list.forEach(function (li, i) { if (li) li.classList.toggle("act", i === cur); });
+        document.getElementById("cwcur").textContent = E[cur].n + (E[cur].d === "a" ? " →  " : " ↓  ") + E[cur].clue;
+      }
+      function move(cell, step) {
+        var e = E[cur], i = e.cells.indexOf(cell) + step;
+        if (i >= 0 && i < e.cells.length) e.cells[i].inp.focus();
+      }
+      function keys(ev, cell) {
+        var l = letterOf(ev);
+        if (l && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {  /* працює з будь-якою розкладкою клавіатури */
+          ev.preventDefault();
+          cell.inp.value = l; cell.el.classList.remove("bad", "ok", "rev");
+          save(); move(cell, 1);
+          return;
+        }
+        var map = { ArrowRight: [0, 1, "a"], ArrowLeft: [0, -1, "a"], ArrowDown: [1, 0, "d"], ArrowUp: [-1, 0, "d"] };
+        if (ev.key === "Backspace" && !cell.inp.value) {
+          ev.preventDefault();
+          var e = E[cur], i = e.cells.indexOf(cell);
+          if (i > 0) { var p = e.cells[i - 1]; p.inp.value = ""; p.el.classList.remove("bad", "ok"); p.inp.focus(); save(); }
+        } else if (map[ev.key]) {
+          ev.preventDefault();
+          var m = map[ev.key], nx = cells[(cell.r + m[0]) + "_" + (cell.c + m[1])];
+          if (cell.e[m[2]] !== undefined && E[cur].d !== m[2]) { select(cell, m[2]); return; }
+          if (nx) { nx.inp.focus(); select(nx, nx.e[m[2]] !== undefined ? m[2] : null); }
+        } else if (ev.key === "Enter") {
+          ev.preventDefault();
+          var next = E[(cur + 1) % E.length]; next.cells[0].inp.focus(); select(next.cells[0], next.d);
+        }
+      }
+      function all() { return Object.keys(cells).map(function (k) { return cells[k]; }); }
+      function save() {
+        var s = {}, filled = 0, cs = all();
+        cs.forEach(function (x) { if (x.inp.value) { s[x.id] = x.inp.value; filled++; } });
+        store(KEY, s);
+        document.getElementById("cwp").textContent = filled + " / " + cs.length + " клітинок";
+        E.forEach(function (e, i) { list[i].classList.toggle("done", e.cells.every(function (x) { return x.inp.value === x.ch; })); });
+        if (cs.every(function (x) { return x.inp.value === x.ch; }) && !cs.some(function (x) { return x.el.classList.contains("rev"); }))
+          document.getElementById("cwm").textContent = "🎉 Кросворд розгадано! Редакція аплодує стоячи.";
+      }
+      document.getElementById("cwc").onclick = function () {
+        var bad = 0, empty = 0;
+        all().forEach(function (x) {
+          x.el.classList.remove("bad", "ok");
+          if (!x.inp.value) empty++;
+          else if (x.inp.value !== x.ch) { x.el.classList.add("bad"); bad++; }
+          else x.el.classList.add("ok");
+        });
+        document.getElementById("cwm").textContent = bad ? "Помилок: " + bad + (empty ? ", порожніх клітинок: " + empty : "")
+          : (empty ? "Поки без помилок, залишилось " + empty + " клітинок" : "🎉 Усе правильно!");
+      };
+      function reveal(cs) { cs.forEach(function (x) { if (x.inp.value !== x.ch) { x.inp.value = x.ch; x.el.classList.add("rev"); } x.el.classList.remove("bad"); }); save(); }
+      document.getElementById("cww").onclick = function () { reveal(E[cur].cells); };
+      document.getElementById("cwr").onclick = function () { if (confirm("Показати всі відповіді?")) { reveal(all()); document.getElementById("cwm").textContent = "Відповіді показано — наступного разу без підглядань 🙂"; } };
+      document.getElementById("cwx").onclick = function () {
+        all().forEach(function (x) { x.inp.value = ""; x.el.classList.remove("bad", "ok", "rev"); });
+        document.getElementById("cwm").textContent = ""; save();
+      };
+      save();
+    })();
+
+    /* ---------- Угадай, хто це сказав ---------- */
+    (function () {
+      var root = document.getElementById("qz");
+      if (!root) return;
+      var Q = dec(root.dataset.d), box = document.getElementById("qb"), prog = document.getElementById("qp"), i = 0, score = 0;
+      function el(tag, cls, text) { var x = document.createElement(tag); if (cls) x.className = cls; if (text !== undefined) x.textContent = text; return x; }
+      function ask() {
+        box.innerHTML = "";
+        prog.textContent = (i + 1) + " / " + Q.length;
+        var q = Q[i];
+        box.appendChild(el("div", "qq", "«" + q.text + "»"));
+        box.appendChild(el("p", "qt", "написано о " + q.time));
+        var opts = el("div", "opts"), btns = [];
+        q.options.forEach(function (o, k) {
+          var b = el("button", "opt", o);
+          b.type = "button";
+          b.onclick = function () {
+            btns.forEach(function (x) { x.disabled = true; });
+            btns[q.answer].classList.add("right");
+            if (k === q.answer) score++; else b.classList.add("wrong");
+            var nx = el("button", "btn", i + 1 < Q.length ? "Далі →" : "Результат");
+            nx.type = "button";
+            nx.onclick = function () { i++; i < Q.length ? ask() : finish(); };
+            var bar = el("div", "btns"); bar.appendChild(nx); box.appendChild(bar);
+            nx.focus();
+          };
+          btns.push(b); opts.appendChild(b);
+        });
+        box.appendChild(opts);
+      }
+      function finish() {
+        box.innerHTML = "";
+        prog.textContent = "готово";
+        var r = score / Q.length;
+        box.appendChild(el("p", "score", score + " / " + Q.length));
+        box.appendChild(el("p", "lede", r === 1 ? "Ти знаєш цей чат краще за його учасників." :
+          r >= .6 ? "Непогано! Видно, що читаєш чат, а не тільки стікери." :
+            r >= .3 ? "Щось знайоме є, але варто гортати уважніше." : "Схоже, ти в чаті тільки заради мемів."));
+        var again = el("button", "btn ghost", "Пройти ще раз");
+        again.type = "button";
+        again.onclick = function () { i = 0; score = 0; ask(); };
+        var bar = el("div", "btns"); bar.appendChild(again); box.appendChild(bar);
+      }
+      ask();
+    })();
+
+    /* ---------- Wordle ---------- */
+    (function () {
+      var root = document.getElementById("wd");
+      if (!root) return;
+      var W = dec(root.dataset.d), ANS = W.word.toUpperCase(), L = ANS.length, TRIES = 6;
+      var KEY = "gazeta-wordle-" + root.dataset.id;
+      var st = store(KEY) || { guesses: [] };
+      if (!st.guesses) st = { guesses: [] };
+      var wid = (/^(\d{4})-(\d\d)-(\d\d)$/.exec(root.dataset.id || "") || []).slice(1).reverse().join(".") || root.dataset.id;
+      var wst = document.getElementById("wst"), wbody = document.getElementById("wbody"), go = document.getElementById("wgo"), booted = false;
+
+      /* Гра збирається лише після «Грати» (або одразу, якщо сьогодні вже грали): картка не стрибає,
+         а великий словник не розбирається, поки він не потрібен */
+      function boot() {
+        if (booted) return;
+        booted = true;
+        try { build(); } catch (e) {
+          booted = false;
+          var m = wst.querySelector(".wsmsg"); if (m) m.textContent = "Не вдалося запустити гру. Оновіть сторінку.";
+          return;
+        }
+        wst.hidden = true; wbody.hidden = false;
+        setTimeout(function () { window.dispatchEvent(new Event("resize")); }, 0);
+      }
+      function build() {
+        /* словник справжніх слів (+ слова з чату): вигадані набори літер не приймаються */
+        var DICT = null, dn = document.getElementById("wdict");
+        if (dn && dn.textContent.trim()) {
+          DICT = new Set(dn.textContent.trim().toUpperCase().split(/\s+/));
+          (W.dictionary || []).forEach(function (x) { DICT.add(String(x).toUpperCase()); });
+        }
+        var curr = "", over = false, visible = false;
+        var gr = document.getElementById("wgr"), msg = document.getElementById("wdm"), kb = document.getElementById("wkb"), res = document.getElementById("wres"), keyEls = {};
+
+        gr.style.setProperty("--l", L);
+        for (var r = 0; r < TRIES; r++) {
+          var row = document.createElement("div");
+          row.className = "wrow"; row.style.gridTemplateColumns = "repeat(" + L + ", auto)";
+          for (var c = 0; c < L; c++) { var t = document.createElement("div"); t.className = "tile"; row.appendChild(t); }
+          gr.appendChild(row);
+        }
+        [["Й", "Ц", "У", "К", "Е", "Н", "Г", "Ш", "Щ", "З", "Х", "Ї"], ["Ф", "І", "В", "А", "П", "Р", "О", "Л", "Д", "Ж", "Є"], ["⏎", "Я", "Ч", "С", "М", "И", "Т", "Ь", "Б", "Ю", "Ґ", "⌫"]]
+          .forEach(function (keys) {
+            var kr = document.createElement("div"); kr.className = "kr";
+            keys.forEach(function (k) {
+              var b = document.createElement("button");
+              b.type = "button"; b.className = "key" + (k.length > 1 || k === "⏎" || k === "⌫" ? " wide" : ""); b.textContent = k;
+              b.setAttribute("aria-label", k === "⏎" ? "Ввести" : k === "⌫" ? "Стерти" : k);
+              b.onclick = function () { press(k === "⏎" ? "ENTER" : k === "⌫" ? "BACK" : k); };
+              keyEls[k] = b; kr.appendChild(b);
+            });
+            kb.appendChild(kr);
           });
-          box.innerHTML = '<p class="wloc"></p><div class="wnow"><span class="wicon">' + w[1] + '</span><div><div class="wtemp">' + Math.round(c.temperature_2m) +
-            '°</div><div class="wdesc">' + w[2] + '</div></div></div><div class="wmeta"><span class="pill">відчувається як ' + Math.round(c.apparent_temperature) +
-            '°</span><span class="pill">вітер ' + Math.round(c.wind_speed_10m) + ' м/с</span><span class="pill">вологість ' + c.relative_humidity_2m + '%</span></div><div class="wdays">' + days + "</div>";
-          box.querySelector(".wloc").textContent = "📍 " + name;
-          try { sessionStorage.setItem("gazeta-wx", box.innerHTML); } catch (e) {}
-        })
-        .catch(function () { msg("Не вдалося завантажити погоду. Перевірте інтернет.", true); });
-    }
-    function byIp() {
-      fetch("https://ipwho.is/").then(function (r) { return r.json(); }).then(function (j) {
-        if (!j.success) throw 0;
-        named(j.latitude, j.longitude, j.city || "Ваше місто");
-      }).catch(function () { msg("Не вдалося визначити місце. Натисніть «Моя геолокація».", true); });
-    }
-    function byGps() {
-      if (!navigator.geolocation) return byIp();
-      msg("Визначаємо місце…");
-      navigator.geolocation.getCurrentPosition(function (p) {
-        var la = p.coords.latitude, lo = p.coords.longitude;
-        try { localStorage.setItem("gazeta-geo", JSON.stringify([la, lo])); } catch (e) {}
-        named(la, lo, "Ваше місце");
-      }, function () { byIp(); }, { timeout: 8000, maximumAge: 3600000 });
-    }
-    function start() {
-      try {
-        var cache = sessionStorage.getItem("gazeta-wx");
-        if (cache) { box.innerHTML = cache; return; }
-      } catch (e) {}
-      var s = null;
-      try { s = JSON.parse(localStorage.getItem("gazeta-geo")); } catch (e) {}
-      msg("Завантажуємо погоду…");
-      if (s && s.length === 2) byGps(); else byIp();
-    }
-    document.getElementById("wg").onclick = byGps;
-    start();
-  })();
-</script>
+
+        function score(g) {
+          var res = Array(L).fill("a"), left = {};
+          for (var i = 0; i < L; i++) { if (g[i] === ANS[i]) res[i] = "c"; else left[ANS[i]] = (left[ANS[i]] || 0) + 1; }
+          for (i = 0; i < L; i++) if (res[i] !== "c" && left[g[i]]) { res[i] = "p"; left[g[i]]--; }
+          return res;
+        }
+        function paint() {
+          var rank = { a: 1, p: 2, c: 3 }, best = {};
+          for (var r = 0; r < TRIES; r++) {
+            var tiles = gr.children[r].children, g = st.guesses[r], s = g ? score(g) : null;
+            for (var c = 0; c < L; c++) {
+              var ch = g ? g[c] : (r === st.guesses.length ? (curr[c] || "") : "");
+              tiles[c].textContent = ch;
+              tiles[c].className = "tile" + (s ? " " + s[c] : ch ? " fill" : "");
+              if (s && (!best[ch] || rank[s[c]] > rank[best[ch]])) best[ch] = s[c];
+            }
+          }
+          Object.keys(keyEls).forEach(function (k) { keyEls[k].className = keyEls[k].className.replace(/ [cpa]$/, "") + (best[k] ? " " + best[k] : ""); });
+        }
+        function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
+        function finish(win) {
+          over = true; msg.textContent = ""; kb.hidden = true;
+          res.hidden = false; res.className = "wres " + (win ? "win" : "lose"); res.textContent = "";
+          res.appendChild(el("div", "wres-h", win ? "🎉 Вгадано з " + st.guesses.length + "-ї спроби!" : "Цього разу не вийшло"));
+          var word = el("div", "wres-w"); word.setAttribute("aria-label", "Слово дня: " + ANS);
+          ANS.split("").forEach(function (ch) { word.appendChild(el("span", "mt", ch)); });
+          res.appendChild(word);
+          if (W.why) {
+            var n = W.count, f = n % 10 === 1 && n % 100 !== 11 ? "раз" : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "рази" : "разів");
+            res.appendChild(el("p", "wwhy", W.why + (n ? " (у чаті — " + n + " " + f + ")" : "")));
+          }
+          var share = el("button", "btn ghost", "Скопіювати результат");
+          share.type = "button";
+          share.onclick = function () {
+            var txt = "Wordle " + wid + " " + (win ? st.guesses.length : "X") + "/" + TRIES + "\n" +
+              st.guesses.map(function (g) { return score(g).map(function (x) { return x === "c" ? "🟪" : x === "p" ? "🟨" : "⬛"; }).join(""); }).join("\n");
+            (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function () { share.textContent = "Скопійовано ✓"; }, function () { prompt("Скопіюй:", txt); });
+          };
+          var bar = el("div", "btns"); bar.appendChild(share); res.appendChild(bar);
+          res.appendChild(el("p", "wnext", "Нове слово — у наступному випуску"));
+        }
+        function shake() { var row = gr.children[st.guesses.length]; row.classList.remove("shake"); void row.offsetWidth; row.classList.add("shake"); }
+        function press(k) {
+          if (over) return;
+          if (k === "BACK") curr = curr.slice(0, -1);
+          else if (k === "ENTER") {
+            if (curr.length < L) { msg.textContent = "Потрібно " + L + " " + (L < 5 ? "літери" : "літер"); shake(); return; }
+            if (DICT && !DICT.has(curr) && curr !== ANS) { msg.textContent = "Такого слова немає у словнику"; shake(); return; }
+            st.guesses.push(curr); curr = ""; msg.textContent = ""; store(KEY, st);
+            var last = st.guesses[st.guesses.length - 1];
+            paint();
+            if (last === ANS) return finish(true);
+            if (st.guesses.length >= TRIES) return finish(false);
+            return;
+          } else if (curr.length < L) { curr += k; msg.textContent = ""; }
+          paint();
+        }
+        if ("IntersectionObserver" in window) new IntersectionObserver(function (en) { visible = en[0].isIntersecting; }, { threshold: .3 }).observe(root);
+        else visible = true;
+        document.addEventListener("keydown", function (e) {
+          if (!visible || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+          if (document.getElementById("lb").classList.contains("on")) return;
+          if (e.key === "Enter" && e.target.closest && e.target.closest("button, a") && !root.contains(e.target)) return;
+          if (e.key === "Enter") { e.preventDefault(); press("ENTER"); }
+          else if (e.key === "Backspace") { e.preventDefault(); press("BACK"); }
+          else { var l = letterOf(e); if (l) { e.preventDefault(); press(l); } }
+        });
+        paint();
+        var lastG = st.guesses[st.guesses.length - 1];
+        if (lastG === ANS) finish(true); else if (st.guesses.length >= TRIES) finish(false);
+      }
+
+      if (st.guesses.length) { wst.hidden = true; wbody.hidden = false; boot(); if (!booted) { wst.hidden = false; wbody.hidden = true; } }
+      if (go) go.onclick = boot;
+    })();
+  </script>
 </body>
+
 </html>
