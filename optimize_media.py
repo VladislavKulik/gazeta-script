@@ -67,6 +67,8 @@ def _optimize_image(
     elif img.mode not in ("RGB", "RGBA"):
         img = img.convert("RGB")
 
+    w, h = img.width, img.height
+
     buf = io.BytesIO()
     img.save(
         buf, format="WEBP", quality=quality, method=4
@@ -74,8 +76,8 @@ def _optimize_image(
 
     webp_bytes = buf.getvalue()
     if len(webp_bytes) < len(raw):
-        return "image/webp", webp_bytes
-    return mime, raw  # оригінал менший
+        return "image/webp", webp_bytes, w, h
+    return mime, raw, w, h  # оригінал менший
 
 
 # ── Відео: перекодування ffmpeg ───────────────────────────────────────────────
@@ -279,7 +281,8 @@ def optimize_media(media: dict, used_ids: set[str]) -> dict:
         if kind in ("photo", "gif_preview"):
             # Фото → WebP
             if mime in ("image/jpeg", "image/png"):
-                new_mime, new_raw = _optimize_image(raw, mime)
+                new_mime, new_raw, w, h = _optimize_image(raw, mime)
+                m["w"], m["h"] = w, h
                 if new_mime != mime:
                     report["images_converted"] += 1
                     m["data"] = _encode_data_uri(new_mime, new_raw)
@@ -325,3 +328,59 @@ def optimize_media(media: dict, used_ids: set[str]) -> dict:
     report["total_after"] = total_after
 
     return {"media": optimized, "report": report}
+
+
+def ensure_media_dimensions(media: dict, ids: set[str] | list[str]) -> None:
+    """Визначає ширину та висоту (w, h) для фото/відео/стікерів, якщо вони ще не задані."""
+    from PIL import Image, ImageOps
+    import io
+
+    for mid in ids:
+        if mid not in media:
+            continue
+        m = media[mid]
+        if m.get("w") and m.get("h"):
+            continue
+        data = m.get("data", "")
+        if not data or not data.startswith("data:"):
+            continue
+        kind = m.get("kind", "")
+        try:
+            mime, raw = _decode_data_uri(data)
+            if "image" in mime or kind in ("photo", "sticker", "gif_preview"):
+                img = Image.open(io.BytesIO(raw))
+                img = ImageOps.exif_transpose(img)
+                m["w"], m["h"] = img.width, img.height
+            elif kind == "gif" and FFPROBE:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as f:
+                    f.write(raw)
+                    tmp_name = f.name
+                try:
+                    r = subprocess.run(
+                        [
+                            FFPROBE,
+                            "-v",
+                            "error",
+                            "-select_streams",
+                            "v:0",
+                            "-show_entries",
+                            "stream=width,height",
+                            "-of",
+                            "csv=p=0",
+                            tmp_name,
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                    )
+                    parts = r.stdout.strip().split(",")
+                    if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                        m["w"], m["h"] = int(parts[0]), int(parts[1])
+                finally:
+                    try:
+                        os.unlink(tmp_name)
+                    except OSError:
+                        pass
+        except Exception:
+            pass
+
