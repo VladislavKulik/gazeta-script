@@ -18,9 +18,22 @@ import sys
 from datetime import date as Date, datetime
 from pathlib import Path
 
-from optimize_media import optimize_media, make_posters
-from games import obf, is_games_day
-from weekly import WORDLE_STRICT, cached_word, load_wordlist, word_of_day
+from optimize_media import optimize_media, make_posters, ensure_media_dimensions
+from games import (
+    WORDLE_STRICT,
+    build_quiz_from_quotes,
+    cached_word,
+    is_games_day,
+    load_wordlist,
+    obf,
+    word_of_day,
+)
+from weekly import (
+    _load,
+    collect_weekly_quotes,
+    get_weekly_headlines,
+    is_weekly_day,
+)
 from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
@@ -214,6 +227,22 @@ def main():
     if stats.get("top_sticker"):
         used.add(stats["top_sticker"]["media_id"])
     used.discard(None)
+
+    # Тижневі новини дня (для спецвипуску)
+    weekly_headlines = []
+    if is_weekly_day(day) or paper.get("weekly"):
+        weekly_headlines = (paper.get("weekly") or {}).get(
+            "headlines"
+        ) or get_weekly_headlines(day, paper)
+        for wh in weekly_headlines:
+            mid = wh.get("media_id")
+            if mid and mid not in data.get("media", {}):
+                raw_day = _load(DATA_DIR / f"{wh['date']}.json")
+                if raw_day and mid in raw_day.get("media", {}):
+                    data["media"][mid] = raw_day["media"][mid]
+            if mid and mid in data.get("media", {}):
+                used.add(mid)
+
     gallery = pick_gallery(data, used) if content else []
 
     gallery_range = (
@@ -244,13 +273,75 @@ def main():
             opt_media[mid] = {**opt_media[mid], "poster": uri}
         print(f"Постерів для гіфок: {len(posters)}")
 
+    ensure_media_dimensions(opt_media, all_ids)
+
     # ── Ігри та тижневі блоки ─────────────────────────────────────────────
     weekly = paper.get("weekly")
+    if weekly and weekly.get("stats"):
+        ws = weekly["stats"]
+        tot = ws.get("total_messages", 0)
+        days_list = ws.get("per_day") or []
+        days_cnt = len(days_list) or 7
+        top_senders = ws.get("top_senders") or []
+        top_cnt = top_senders[0]["count"] if top_senders else 0
+        top_share = round((top_cnt / tot * 100)) if tot else 0
+        avg_day = round(tot / days_cnt) if days_cnt else 0
+        busiest = ws.get("busiest_day") or {}
+        b_date_str = busiest.get("date")
+        b_name = ""
+        if b_date_str:
+            try:
+                b_name = WEEKDAYS[Date.fromisoformat(b_date_str).weekday()]
+            except Exception:
+                b_name = busiest.get("label", "")
+
+        ws["avg_per_day"] = avg_day
+        ws["top_share"] = top_share
+        ws["msgs_per_hour"] = round(tot / 168, 1)
+        ws["busiest_day_name"] = b_name
+    w_quotes = []
+    if is_weekly_day(day) or paper.get("weekly"):
+        w_quotes, w_senders = collect_weekly_quotes(day, paper)
+
     games_day = is_games_day(
         day
     )  # кросворд і вікторина — лише у «ігровий» день (неділя)
     cw = (content or {}).get("crossword") if games_day else None
     quiz = ((content or {}).get("quiz") or []) if games_day else []
+    if games_day and len(quiz) < 3:
+        if not w_quotes:
+            w_quotes, w_senders = collect_weekly_quotes(day, paper)
+        quiz = build_quiz_from_quotes(w_quotes, w_senders, seed=day)
+
+    weekly_quotes = []
+    if w_quotes:
+        candidates = [q for q in w_quotes if 6 <= len(q.get("text", "")) <= 95]
+        seen_senders = set()
+        hero_sender = (
+            ((weekly or {}).get("content") or {}).get("hero_of_week", {}).get("sender")
+        )
+
+        # Спочатку цитата Героя тижня, якщо є
+        hero_q = next((q for q in candidates if q.get("sender") == hero_sender), None)
+        if hero_q:
+            weekly_quotes.append(hero_q)
+            seen_senders.add(hero_sender)
+
+        # Потім по одній від інших різних авторів
+        for q in candidates:
+            if len(weekly_quotes) >= 5:
+                break
+            s = q.get("sender")
+            if s not in seen_senders:
+                weekly_quotes.append(q)
+                seen_senders.add(s)
+
+        # Добираємо до 5, якщо авторів менше
+        for q in candidates:
+            if len(weekly_quotes) >= 5:
+                break
+            if q not in weekly_quotes:
+                weekly_quotes.append(q)
 
     # Wordle — у кожному випуску, нове слово щодня. Беремо зі спарсеного випуску, інакше з кешу дня,
     # інакше (без моделі, без запису в кеш) найчастіше слово дня.
@@ -284,6 +375,16 @@ def main():
                 "  УВАГА: немає словника data/words/uk_words.txt — Wordle прийматиме будь-які літери"
             )
 
+    hm_mid = content["headline"].get("media_id") if content else None
+    hm_media = opt_media.get(hm_mid) if hm_mid else None
+    hm_is_h = False
+    hm_aspect = ""
+    if hm_media and hm_media.get("w") and hm_media.get("h"):
+        r = hm_media["w"] / hm_media["h"]
+        if r >= 1.1:
+            hm_is_h = True
+            hm_aspect = f"{min(max(r, 4 / 3), 16 / 9):.3f}"
+
     env = Environment(
         loader=FileSystemLoader(BASE), autoescape=select_autoescape(["html"])
     )
@@ -309,12 +410,17 @@ def main():
         generated_at=paper.get("generated_at", ""),
         day=day,
         weekly=weekly,
+        weekly_headlines=weekly_headlines,
+        weekly_quotes=weekly_quotes,
         cw_data=obf(cw) if cw else None,
         quiz_data=obf(quiz) if len(quiz) >= 3 else None,
         word_data=word_data,
         word_meta=word_meta,
         word_dict=word_dict,
         fonts_css=Markup(fonts_css()),
+        hm_is_h=hm_is_h,
+        hm_aspect=hm_aspect,
+        is_sunday=(d.weekday() == 6),
     )
 
     OUT_DIR.mkdir(exist_ok=True)

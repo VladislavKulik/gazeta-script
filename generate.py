@@ -488,8 +488,15 @@ def main():
     # ---------- ігри ----------
     words = games.clean_crossword_words(c.pop("crossword_raw", []))
     c["crossword"] = games.build_crossword(words, seed=date)
+    quiz_ids = c.pop("quiz_message_ids", [])
     quoted = {q["message_id"] for q in c["quotes"]}
-    c["quiz"] = games.build_quiz(c.pop("quiz_message_ids", []), data, quoted, seed=date, size=QUIZ_SIZE)
+    if weekly.is_weekly_day(date) or games.is_games_day(date):
+        w_quotes, w_senders = weekly.collect_weekly_quotes(date, result)
+        c["quiz"] = games.build_quiz_from_quotes(w_quotes, w_senders, seed=date, size=QUIZ_SIZE)
+        if not c["quiz"]:
+            c["quiz"] = games.build_quiz(quiz_ids, data, quoted, seed=date, size=QUIZ_SIZE)
+    else:
+        c["quiz"] = games.build_quiz(quiz_ids, data, quoted, seed=date, size=QUIZ_SIZE)
     print(f"Кросворд: {len(c['crossword']['entries']) if c['crossword'] else 0} слів із {len(words)}, "
           f"«Угадай цитату»: {len(c['quiz'])} питань")
 
@@ -498,11 +505,11 @@ def main():
         if weekly.is_weekly_day(date):
             print("Готую «Головне за тиждень»...")
             result["weekly"] = weekly.build_weekly(date, result, ollama_json, NEWSPAPER_NAME)
-        result["word"] = weekly.word_of_week(date, ollama_json)
+        result["word"] = games.word_of_day(date, ollama_json)
         if result.get("word"):
-            print(f"Слово тижня ({result['word']['week']}): {len(result['word']['word'])} літер")
+            print(f"Слово дня ({result['word']['id']}): {len(result['word']['word'])} літер")
     except Exception as e:  # тижневі блоки не повинні ламати щоденний випуск
-        print(f"  ! тижневі блоки пропущено: {e}")
+        print(f"  ! тижневі блоки / Wordle пропущено: {e}")
 
     out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"\nГотово за {time.time() - t0:.0f} с -> {out}")

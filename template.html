@@ -45,6 +45,7 @@
     href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@600;800&display=swap"
     rel="stylesheet">{% endif %}
   <script>
+    document.documentElement.classList.add("js");
     (function () {
       var t;
       try { t = localStorage.getItem("gazeta-theme"); } catch (e) { }
@@ -115,6 +116,8 @@
       transition: background .25s, color .25s;
       padding-top: env(safe-area-inset-top, 0px);
       padding-bottom: env(safe-area-inset-bottom, 0px);
+      padding-left: env(safe-area-inset-left, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
     }
 
     .wrap {
@@ -164,6 +167,13 @@
       font-weight: 600;
     }
 
+    .chip.sp {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--on-accent);
+      font-weight: 700;
+    }
+
     .theme {
       border: 1px solid var(--line);
       background: var(--card);
@@ -173,6 +183,8 @@
       border-radius: 999px;
       cursor: pointer;
       white-space: nowrap;
+      min-width: 130px;
+      text-align: center;
     }
 
     .theme:hover {
@@ -195,43 +207,39 @@
       max-width: 58ch;
     }
 
-    /* Сітка */
+    /* Сітка карток (CSS Multi-column) */
     .masonry {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
-      align-items: start;
+      display: block;
+      column-count: 2;
+      column-gap: 16px;
+    }
+
+    .masonry>.card {
+      break-inside: avoid;
+      margin: 0 0 16px 0;
+      width: 100%;
+      display: block;
+      position: static;
+    }
+
+    .masonry>.card.weather {
+      break-before: column;
+    }
+
+    .masonry>[data-span="2"] {
+      column-span: all;
+      width: 100%;
+      margin: 0 0 16px 0;
     }
 
     @media (max-width: 660px) {
       .masonry {
-        grid-template-columns: minmax(0, 1fr);
+        column-count: 1 !important;
       }
 
-      .masonry>[data-span="2"] {
-        grid-column: auto;
+      .masonry>.card.weather {
+        break-before: auto !important;
       }
-    }
-
-    .masonry>[data-span="2"] {
-      grid-column: span 2;
-    }
-
-    .masonry.js {
-      display: block;
-      position: relative;
-    }
-
-    .masonry.js>.card {
-      position: absolute;
-      margin: 0;
-    }
-
-    .bottom {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      margin-top: 16px;
     }
 
     .card {
@@ -417,25 +425,23 @@
       background: var(--ink);
       border-color: var(--ink);
       color: var(--ink-text);
-      display: grid;
-      grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-      gap: 28px;
       padding: 26px;
+      display: block;
     }
 
-    .news .nmedia {
-      position: relative;
-      overflow: hidden;
+    .news .mf {
+      margin: 0 0 20px;
       border-radius: 16px;
-      min-height: 240px;
-      background: var(--pill);
+      overflow: hidden;
+      max-height: 480px;
     }
 
-    .news .nmedia .pic {
-      position: absolute;
-      inset: 0;
-      height: 100%;
-      aspect-ratio: auto;
+    .news .pic {
+      width: 100%;
+      max-height: 480px;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+      display: block;
     }
 
     .news .label {
@@ -449,14 +455,26 @@
     .news h2 {
       color: #fff;
       font-size: clamp(22px, 2.8vw, 32px);
+      margin: 0 0 10px;
+      line-height: 1.22;
     }
 
     .news .lede {
       color: var(--ink-soft);
+      font-size: 16px;
+      line-height: 1.45;
+      margin: 0 0 14px;
     }
 
     .news .text p {
       color: #f1effc;
+      font-size: 15.5px;
+      line-height: 1.55;
+      margin: 0 0 12px;
+    }
+
+    .news .text p:last-child {
+      margin-bottom: 0;
     }
 
     /* Герой дня */
@@ -581,7 +599,7 @@
 
     /* висота блоку не залежить від стану завантаження, тому верстка не стрибає */
     .weather #wx {
-      min-height: var(--wxh, 266px);
+      min-height: 254px;
     }
 
     .sk {
@@ -594,15 +612,8 @@
 
     .sk-pill {
       display: inline-block;
-      height: 24px;
+      height: 25px;
       border-radius: 999px;
-    }
-
-    .sk-box {
-      height: 66px;
-      background: linear-gradient(100deg, var(--pill) 30%, var(--line) 50%, var(--pill) 70%);
-      background-size: 220% 100%;
-      animation: skl 1.3s ease-in-out infinite;
     }
 
     @keyframes skl {
@@ -616,9 +627,7 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-
-      .sk,
-      .sk-box {
+      .sk {
         animation: none;
       }
     }
@@ -637,24 +646,33 @@
       background: var(--pill);
       border-radius: 4px 4px 0 0;
       min-height: 3px;
+      transition: opacity .15s ease, filter .15s ease;
+      cursor: default;
     }
 
     .hours span.on {
       background: var(--accent);
-      opacity: .4;
+      opacity: .5;
     }
 
     .hours span.peak {
       background: var(--accent);
       opacity: 1;
+      box-shadow: 0 0 10px rgba(139, 92, 246, .35);
+    }
+
+    .hours span:hover {
+      opacity: 1;
+      filter: brightness(1.25);
     }
 
     .axis {
       display: flex;
       justify-content: space-between;
       font-size: 11.5px;
+      font-weight: 600;
       color: var(--muted);
-      margin-top: 4px;
+      margin-top: 6px;
     }
 
     /* Галерея */
@@ -817,10 +835,18 @@
       font-weight: 600;
       font-size: 14.5px;
       cursor: pointer;
+      transition: background .2s ease, color .2s ease, opacity .2s ease;
     }
 
-    .btn:hover {
+    .btn:hover:not(:disabled) {
       opacity: .88;
+    }
+
+    .btn:disabled {
+      background: var(--line);
+      color: var(--muted);
+      cursor: not-allowed;
+      opacity: .65;
     }
 
     .btn.ghost {
@@ -868,7 +894,7 @@
 
     .week .lede {
       color: var(--ink-soft);
-      max-width: 70ch;
+      max-width: 72ch;
     }
 
     .week .chip {
@@ -886,8 +912,9 @@
     .wk {
       display: grid;
       grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-      gap: 28px;
-      margin-top: 8px;
+      gap: 24px;
+      margin-top: 14px;
+      align-items: start;
     }
 
     .stories {
@@ -898,15 +925,15 @@
     }
 
     .stories li {
-      padding: 14px 0 14px 44px;
-      border-top: 1px solid rgba(255, 255, 255, .14);
+      padding: 14px 0 14px 42px;
+      border-top: 1px solid rgba(255, 255, 255, .12);
       position: relative;
       counter-increment: st;
     }
 
     .stories li:first-child {
       border-top: 0;
-      padding-top: 4px;
+      padding-top: 0;
     }
 
     .stories li::before {
@@ -916,43 +943,46 @@
       top: 12px;
       font-family: var(--display);
       font-weight: 800;
-      font-size: 26px;
+      font-size: 24px;
       color: var(--hi);
       line-height: 1;
     }
 
     .stories li:first-child::before {
-      top: 2px;
+      top: 0;
     }
 
     .stories h3 {
       color: #fff;
-      margin: 6px 0 6px;
+      margin: 6px 0 4px;
       font-size: 19px;
+      font-weight: 700;
+      line-height: 1.25;
     }
 
     .stories p {
       margin: 0;
-      color: #f1effc;
-      font-size: 15.5px;
+      color: var(--ink-soft);
+      font-size: 15px;
+      line-height: 1.5;
     }
 
     .stories .pill {
-      background: rgba(255, 255, 255, .1);
+      background: rgba(255, 255, 255, .12);
       color: var(--ink-soft);
+      font-size: 12px;
     }
 
     .whero {
       background: var(--hi);
       color: var(--hi-text);
-      border-radius: 16px;
-      padding: 16px 18px;
-      margin-bottom: 18px;
+      border-radius: 18px;
+      padding: 20px;
     }
 
     .whero .label {
       color: var(--hi-text);
-      margin-bottom: 6px;
+      margin-bottom: 8px;
     }
 
     .whero .label::before {
@@ -962,63 +992,385 @@
     .whero h3 {
       margin: 0 0 4px;
       color: var(--hi-text);
+      font-size: 21px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .whero .rank {
+      font-weight: 600;
+      font-size: 14px;
+      opacity: .85;
+      margin: 0 0 8px;
     }
 
     .whero p {
       margin: 0;
       font-size: 14.5px;
+      line-height: 1.45;
+      color: var(--hi-text);
     }
 
-    .whero .rank {
-      font-weight: 600;
+    .wside {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .wside-quotes {
+      background: rgba(255, 255, 255, .05);
+      border: 1px solid rgba(255, 255, 255, .12);
+      border-radius: 18px;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .wside-quotes .label {
+      color: var(--hi);
+      margin-bottom: 2px;
+    }
+
+    .wside-quotes .label::before {
+      background: var(--hi);
+    }
+
+    .wq-item {
+      background: rgba(255, 255, 255, .05);
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: 14px 14px 14px 4px;
+      padding: 9px 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .wq-meta {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--hi);
+      line-height: 1.2;
+    }
+
+    .wq-meta span {
+      color: var(--ink-soft);
+      font-weight: 400;
+      font-size: 11px;
+      margin-left: 4px;
+    }
+
+    .wq-text {
+      font-size: 13.5px;
+      line-height: 1.35;
+      color: #fff;
+    }
+
+    @media (max-width: 660px) {
+      .wk {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+    }
+
+    /* Хроніка тижня (Календарний огляд за 7 днів) */
+    .week-chronicle .gh {
+      margin-bottom: 16px;
+    }
+
+    .wh-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 10px;
+    }
+
+    .wh-card {
+      background: var(--pill);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .wh-cal-head {
+      padding: 10px 8px 8px;
+      text-align: center;
+      background: rgba(255, 255, 255, .03);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+    }
+
+    .wh-cal-wday {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+    }
+
+    .wh-cal-day {
+      font-family: var(--display);
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.1;
+    }
+
+    .wh-cal-month {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 500;
       opacity: .8;
-      margin-bottom: 6px;
+    }
+
+    .wh-card.is-weekend .wh-cal-wday {
+      color: #b85000;
+    }
+
+    :root[data-theme=dark] .wh-card.is-weekend .wh-cal-wday {
+      color: #ff9f43;
+    }
+
+    /* День поточного випуску (Сьогодні / Нд) */
+    .wh-card.is-today {
+      border-color: rgba(212, 175, 55, .55);
+      background: #fffdf5;
+    }
+
+    .wh-card.is-today .wh-cal-head {
+      background: #fcf1be;
+      border-bottom-color: rgba(212, 175, 55, .35);
+    }
+
+    .wh-card.is-today .wh-cal-wday {
+      color: #7a5f00;
+    }
+
+    .wh-card.is-today .wh-cal-day {
+      color: #1a162b;
+    }
+
+    .wh-card.is-today .wh-cal-month {
+      color: #61531c;
+    }
+
+    :root[data-theme=dark] .wh-card.is-today {
+      border-color: rgba(255, 222, 89, .35);
+      background: rgba(255, 222, 89, .03);
+    }
+
+    :root[data-theme=dark] .wh-card.is-today .wh-cal-head {
+      background: rgba(255, 222, 89, .1);
+      border-bottom-color: rgba(255, 222, 89, .25);
+    }
+
+    :root[data-theme=dark] .wh-card.is-today .wh-cal-wday {
+      color: var(--hi);
+    }
+
+    :root[data-theme=dark] .wh-card.is-today .wh-cal-day {
+      color: var(--hi);
+    }
+
+    :root[data-theme=dark] .wh-card.is-today .wh-cal-month {
+      color: var(--muted);
+    }
+
+    .wh-media {
+      position: relative;
+      aspect-ratio: 16 / 10;
+      background: rgba(0, 0, 0, .18);
+      overflow: hidden;
+    }
+
+    .wh-media .mf,
+    .wh-media img,
+    .wh-media video,
+    .wh-media .stk,
+    .wh-media .pic {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .wh-media .mf img,
+    .wh-media .mf video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .wh-body {
+      padding: 13px 11px 15px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .wh-body h3 {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.3;
+      margin: 0;
+      color: var(--text);
+      display: -webkit-box;
+      -webkit-line-clamp: 5;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    @media (max-width: 960px) {
+      .wh-grid {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        gap: 12px;
+        padding-bottom: 12px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, .2) transparent;
+      }
+
+      .wh-card {
+        flex: 0 0 220px;
+        scroll-snap-align: start;
+      }
+    }
+
+    /* Цифри тижня */
+    .week-stats .gh {
+      margin-bottom: 14px;
+    }
+
+    .wstat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+      gap: 14px;
+      margin: 18px 0 24px;
+    }
+
+    .wstat-card {
+      background: var(--pill);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .wstat-card .big {
+      font-family: var(--display);
+      font-size: clamp(34px, 3.8vw, 46px);
+      line-height: 1;
+      font-weight: 800;
+      letter-spacing: -.05em;
+      margin: 0 0 6px;
+      color: var(--accent);
+    }
+
+    .wstat-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0 0 4px;
+    }
+
+    .wstat-sub {
+      font-size: 13px;
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.35;
+    }
+
+    .wstat-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+      gap: 28px;
+      padding-top: 22px;
+    }
+
+    .wstat-chart-col {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 100%;
     }
 
     .wbars {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
-      gap: 6px;
+      gap: 8px;
       align-items: end;
-      height: 110px;
+      height: 180px;
+      margin-top: 16px;
     }
 
     .wbars div {
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      align-items: center;
+      display: grid;
+      grid-template-rows: 1fr auto auto;
+      align-items: end;
+      justify-items: center;
       height: 100%;
       gap: 4px;
       font-size: 11.5px;
-      color: var(--ink-soft);
+      font-weight: 600;
+      color: var(--muted);
+      cursor: default;
     }
 
     .wbars span {
       width: 100%;
-      background: rgba(255, 255, 255, .22);
-      border-radius: 6px 6px 0 0;
-      min-height: 3px;
+      background: var(--pill);
+      border-radius: 5px 5px 0 0;
+      min-height: 4px;
+      transition: opacity .15s ease, filter .15s ease;
     }
 
-    .wbars .peak span {
-      background: var(--hi);
+    .wbars div.on span {
+      background: var(--accent);
+      opacity: .5;
     }
 
-    .week .line {
-      background: rgba(255, 255, 255, .08);
-      color: #f1effc;
+    .wbars div.peak span {
+      background: var(--accent);
+      opacity: 1;
+      box-shadow: 0 0 10px rgba(139, 92, 246, .35);
     }
 
-    .week .line b {
-      color: var(--ink-soft);
+    .wbars div:hover span {
+      opacity: 1;
+      filter: brightness(1.25);
     }
 
-    .wsub {
-      font-size: 13px;
-      color: var(--ink-soft);
-      margin: 16px 0 6px;
+    .wbars div.peak b {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .wbars b {
+      font-size: 11.5px;
       font-weight: 600;
+      color: var(--text2);
+    }
+
+    @media (max-width: 660px) {
+      .wstat-body {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      .wbars {
+        height: 150px;
+        margin-bottom: 24px;
+      }
     }
 
     /* Кросворд */
@@ -1160,69 +1512,272 @@
       display: none;
     }
 
-    /* Угадай цитату */
+    /* Угадай цитату (у стилі Wordle: стабільний розмір, стартовий екран, оверлей результатів) */
+    .quiz-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      container-type: inline-size;
+    }
+
+    .qprog {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .qprog[hidden] {
+      display: none !important;
+    }
+
+    .quiz-card:has(#qst:not([hidden])) .qprog {
+      display: none;
+    }
+
+    .qdot {
+      width: 22px;
+      height: 5px;
+      border-radius: 3px;
+      background: var(--line);
+      transition: background .2s ease, box-shadow .2s ease;
+    }
+
+    .qdot.active {
+      background: var(--accent);
+      box-shadow: 0 0 8px rgba(139, 92, 246, .45);
+    }
+
+    .qdot.correct {
+      background: #2fa36b;
+    }
+
+    .qdot.wrong {
+      background: #e0324b;
+    }
+
+    .qstage {
+      position: relative;
+      min-height: 420px;
+      max-width: 680px;
+      margin: 8px auto 0;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow: hidden;
+      border-radius: 16px;
+    }
+
+    .qbody {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .qq-wrap {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      margin: 0;
+    }
+
     .qq {
-      margin: 10px 0 4px;
-      padding: 14px 16px;
+      margin: 0 0 8px;
+      padding: 16px 20px;
       background: var(--pill);
       border-radius: 18px 18px 18px 4px;
-      font-size: 17px;
+      font-size: 16.5px;
       line-height: 1.45;
       overflow-wrap: anywhere;
+      color: var(--text);
     }
 
     .qt {
       font-size: 13px;
       color: var(--muted);
-      margin: 0 0 12px;
+      margin: 0;
+      padding-left: 2px;
     }
 
-    .opts {
+    .qstage .opts {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
+      gap: 10px;
+      margin: 0;
     }
 
-    .opt {
+    .qstage .opt {
       border: 1.5px solid var(--line);
       background: var(--card);
       color: var(--text);
       border-radius: 14px;
-      padding: 11px 12px;
-      font-size: 14.5px;
+      padding: 12px 14px;
+      font-size: 15px;
       font-weight: 600;
       cursor: pointer;
       text-align: left;
+      transition: border-color .15s ease, background .15s ease;
     }
 
-    .opt:hover:not(:disabled) {
+    .qstage .opt:hover:not(:disabled) {
       border-color: var(--accent);
     }
 
-    .opt:disabled {
+    .qstage .opt:disabled {
       cursor: default;
     }
 
-    .opt.right {
+    .qstage .opt.right {
       background: #2fa36b;
       border-color: #2fa36b;
       color: #fff;
     }
 
-    .opt.wrong {
+    .qstage .opt.wrong {
       background: #e0324b;
       border-color: #e0324b;
       color: #fff;
     }
 
-    .score {
+    .qbar {
+      min-height: 44px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 4px 0 0;
+    }
+
+    .qov,
+    .wov {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      overflow: auto;
+      background: var(--card);
+      border-radius: 16px;
+    }
+
+    .qov.wanim,
+    .wov.wanim {
+      animation: wfade .25s ease-out;
+    }
+
+    .qov[hidden],
+    .wov[hidden] {
+      display: none;
+    }
+
+    .qov>.wstart,
+    .wov>.wstart {
+      margin: auto;
+      width: 100%;
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 12px;
+    }
+
+    .qdemo {
+      display: inline-block;
+      margin: 0 0 6px;
+      padding: 14px 24px;
+      background: var(--pill);
+      border: 1px solid var(--line);
+      border-radius: 18px 18px 18px 4px;
+      font-size: 17px;
+      font-weight: 600;
+      line-height: 1.4;
+      color: var(--text);
+      max-width: min(100%, 360px);
+      text-align: center;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, .04);
+    }
+
+    .qclose,
+    .wclose {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 3;
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      background: var(--pill);
+      color: var(--text2);
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0;
+      transition: background .15s ease, color .15s ease;
+    }
+
+    .qclose:hover,
+    .wclose:hover {
+      background: var(--line);
+      color: var(--text);
+    }
+
+
+    .qpat {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 8px 0 12px;
+    }
+
+    .qpat span {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .qpat span.c {
+      background: #2fa36b;
+    }
+
+    .qpat span.w {
+      background: #e0324b;
+    }
+
+    .qov .score,
+    .wov .score {
       font-family: var(--display);
       font-weight: 800;
-      font-size: 56px;
+      font-size: 52px;
       line-height: 1;
       color: var(--accent);
       letter-spacing: -.04em;
-      margin: 14px 0 6px;
+      margin: 0;
+    }
+
+    .wst-h,
+    .qres-h {
+      font-family: var(--display);
+      font-weight: 700;
+      font-size: 22px;
+      letter-spacing: -.02em;
+      line-height: 1.25;
+      margin: 8px 0 4px;
+      color: var(--text);
+    }
+
+    .qov .lede {
+      margin: 0 0 10px;
+      max-width: 44ch;
+      color: var(--muted);
+      font-size: 15px;
     }
 
     /* Wordle: один блок — поле і клавіатура одна під одною */
@@ -1239,9 +1794,61 @@
       padding: 6px 0 4px;
     }
 
-    .wstart[hidden],
-    .wbody[hidden] {
-      display: none;
+    /* Сцена: ігрове поле і клавіатура збираються одразу, тож картка завжди одного розміру.
+       Стартовий екран і екран результату — оверлей поверх сцени, він не впливає на висоту */
+    .wstage {
+      position: relative;
+      min-height: 480px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow: hidden;
+      border-radius: 16px;
+    }
+
+    @keyframes wfade {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      .qov.wanim,
+      .wov.wanim {
+        animation: none;
+      }
+    }
+
+    .wpat {
+      display: grid;
+      gap: 3px;
+      margin: 2px 0 4px;
+    }
+
+    .wpat div {
+      display: flex;
+      gap: 3px;
+      justify-content: center;
+    }
+
+    .wpat i {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      background: var(--absent);
+    }
+
+    .wpat i.c {
+      background: #2fa36b;
+    }
+
+    .wpat i.p {
+      background: var(--hi);
     }
 
     .wdemo {
@@ -1252,15 +1859,6 @@
 
     .wdemo .tile {
       --ts: 44px;
-    }
-
-    .wst-h {
-      font-family: var(--display);
-      font-weight: 600;
-      font-size: 20px;
-      letter-spacing: -.02em;
-      line-height: 1.2;
-      margin: 6px 0 0;
     }
 
     .wst-p {
@@ -1294,6 +1892,11 @@
       border-radius: 7px;
     }
 
+    .mt.c {
+      background: #2fa36b;
+      color: #fff;
+    }
+
     .mt.p {
       background: var(--hi);
       color: var(--hi-text);
@@ -1302,18 +1905,6 @@
     .mt.a {
       background: var(--absent);
       color: #fff;
-    }
-
-    .wsmsg {
-      margin: 0;
-      min-height: 1.2em;
-      font-size: 13px;
-      color: var(--muted);
-    }
-
-    .wstart .btn {
-      padding: 11px 34px;
-      font-size: 16px;
     }
 
     .wbody {
@@ -1329,6 +1920,7 @@
       gap: 6px;
       width: max-content;
       margin: 4px 0 0;
+      min-height: calc(var(--ts) * 6 + 30px);
     }
 
     @supports (width: 1cqw) {
@@ -1361,9 +1953,9 @@
     }
 
     .tile.c {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: var(--on-accent);
+      background: #2fa36b;
+      border-color: #2fa36b;
+      color: #fff;
     }
 
     .tile.p {
@@ -1399,7 +1991,11 @@
     #wdm {
       margin: 0;
       text-align: center;
-      min-height: 1.4em;
+      height: 24px;
+      line-height: 24px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
       font-size: 14.5px;
       color: var(--text2);
     }
@@ -1440,8 +2036,8 @@
     }
 
     .key.c {
-      background: var(--accent);
-      color: var(--on-accent);
+      background: #2fa36b;
+      color: #fff;
     }
 
     .key.p {
@@ -1456,37 +2052,29 @@
     }
 
     .kb[hidden],
-    .wres[hidden] {
+    .wview[hidden] {
       display: none;
     }
 
-    /* результат: заміщає клавіатуру на тому ж місці */
-    .wres {
+    /* «док» під полем: клавіатура, а після гри — кнопка «Подивитись результат»; висота однакова */
+    .wdock {
       width: 100%;
-      box-sizing: border-box;
-      background: var(--pill);
-      border-radius: 18px;
-      padding: 16px 18px;
-      text-align: center;
-    }
-
-    .wres-h {
-      font-family: var(--display);
-      font-weight: 600;
-      font-size: 18px;
-      line-height: 1.2;
-      letter-spacing: -.02em;
-      margin: 0 0 12px;
-    }
-
-    .wres-w {
+      height: 144px;
       display: flex;
+      align-items: center;
       justify-content: center;
-      flex-wrap: wrap;
-      gap: 5px;
-      margin: 0 0 12px;
     }
 
+    .wdock .kb {
+      height: 144px;
+    }
+
+    .wword {
+      display: flex;
+      gap: 6px;
+    }
+
+    /* маркери легенди на стартовому екрані */
     .mt {
       width: 34px;
       height: 34px;
@@ -1499,30 +2087,8 @@
       color: var(--on-accent);
     }
 
-    .wres.lose .mt {
-      background: var(--hi);
-      color: var(--hi-text);
-    }
-
-    .wwhy {
-      margin: 0 0 12px;
-      font-size: 14.5px;
-      color: var(--text2);
-    }
-
-    .wres .btns {
+    .wov .wnext {
       margin: 0;
-      justify-content: center;
-    }
-
-    .wres .btn.ghost {
-      background: var(--card);
-      border: 1px solid var(--line);
-      color: var(--text);
-    }
-
-    .wnext {
-      margin: 10px 0 0;
       font-size: 12.5px;
       color: var(--muted);
     }
@@ -1613,6 +2179,8 @@
       .gp,
       .btns,
       .kb,
+      .wview,
+      .wclose,
       .cwbar,
       #wdict {
         display: none !important;
@@ -1640,7 +2208,6 @@
       }
 
       .card,
-      .bottom>.card,
       .duo>.card {
         break-inside: avoid;
       }
@@ -1720,52 +2287,28 @@
       top: 50%;
     }
 
-    .news.h {
-      grid-template-columns: minmax(0, 1fr);
-    }
-
-    .news.h .nmedia {
-      min-height: 0;
-      max-height: 400px;
-    }
-
-    .news.nomedia {
-      display: block;
-    }
-
-    .news.nomedia .text {
-      column-count: 2;
-      column-gap: 28px;
-    }
-
     .empty {
       text-align: center;
       padding: 60px 20px;
     }
 
-    @media (max-width: 640px) {
-      .news.nomedia .text {
-        column-count: 1;
-      }
-
-      .news {
-        grid-template-columns: 1fr;
-      }
-
-      .news .nmedia {
-        min-height: 0;
-        aspect-ratio: 16 / 9;
-      }
-    }
-
-    @media (max-width: 600px) {
+    @media (max-width: 660px) {
       .wrap {
-        padding: 14px 14px 40px;
+        padding: 14px max(14px, env(safe-area-inset-right, 0px)) 40px max(14px, env(safe-area-inset-left, 0px));
       }
 
       .card {
         padding: 18px;
         border-radius: 20px;
+      }
+
+      .news {
+        padding: 18px;
+      }
+
+      .news .nmedia {
+        min-height: 0;
+        aspect-ratio: 16 / 9;
       }
 
       .joke {
@@ -1801,74 +2344,323 @@
     <div class="top">
       <div class="chips">
         <span class="chip on">{{ date_short }}</span>
+        {% if is_sunday %}<span class="chip sp">Спецвипуск</span>{% endif %}
         {% if issue %}<span class="chip">випуск № {{ issue }}</span>{% endif %}
         <span class="chip">{{ stats.total_messages }} {{ plural(stats.total_messages, 'повідомлення', 'повідомлення',
           'повідомлень') }}</span>
       </div>
-      <button class="theme" id="tb" type="button" onclick="toggleTheme()"></button>
+      <button class="theme" id="tb" type="button" onclick="toggleTheme()">☾ Темна тема</button>
+      <script>
+        function updateTheme() {
+          var b = document.getElementById("tb");
+          if (b) b.textContent = document.documentElement.dataset.theme === "dark" ? "☀ Світла тема" : "☾ Темна тема";
+          var tc = document.getElementById("tc");
+          if (tc) {
+            var bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+            if (bg) tc.setAttribute("content", bg);
+          }
+        }
+        function toggleTheme() {
+          var r = document.documentElement, t = r.dataset.theme === "dark" ? "light" : "dark";
+          r.dataset.theme = t;
+          try { localStorage.setItem("gazeta-theme", t); } catch (e) { }
+          updateTheme();
+        }
+        updateTheme();
+      </script>
     </div>
     <h1>{{ name }}</h1>
     <p class="sub">{{ c.tagline if c and c.tagline else 'Головне за добу' }}</p>
 
+    <script>
+      /* ---------- Спільне для ігор (декодування, збереження, клавіатура) ---------- */
+      function dec(s) { return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(s), function (c) { return c.charCodeAt(0); }))); }
+      function store(k, v) { try { if (v === undefined) return JSON.parse(localStorage.getItem(k)); localStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } }
+      var UA = "АБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯ";
+      var CODEMAP = {
+        KeyQ: "Й", KeyW: "Ц", KeyE: "У", KeyR: "К", KeyT: "Е", KeyY: "Н", KeyU: "Г", KeyI: "Ш", KeyO: "Щ", KeyP: "З", BracketLeft: "Х", BracketRight: "Ї",
+        KeyA: "Ф", KeyS: "І", KeyD: "В", KeyF: "А", KeyG: "П", KeyH: "Р", KeyJ: "О", KeyK: "Л", KeyL: "Д", Semicolon: "Ж", Quote: "Є",
+        KeyZ: "Я", KeyX: "Ч", KeyC: "С", KeyV: "М", KeyB: "И", KeyN: "Т", KeyM: "Ь", Comma: "Б", Period: "Ю", Backslash: "Ґ"
+      };
+      function letterOf(e) {
+        var k = (e.key || "").toUpperCase();
+        if (k.length === 1 && UA.indexOf(k) >= 0) return k;
+        return CODEMAP[e.code] || "";
+      }
+    </script>
+
     {% if c %}
     {%- set hm = c.headline.media_id -%}
-    {%- set hm_wide = hm and media.get(hm) and not is_sticker(hm) -%}
     <div id="masonry" class="masonry">
-      <article class="card news{{ '' if hm_wide else ' nomedia' }}" data-span="2">
-        {%- if hm_wide %}<div class="nmedia">{{ pic(media[hm], c.headline.title) }}</div>{% endif -%}
-        <div class="nbody"><span class="label">Новина дня</span>
-          <h2>{{ c.headline.title }}</h2>
-          {% if c.headline.subtitle %}<p class="lede">{{ c.headline.subtitle }}</p>{% endif %}
-          <div class="text">{{ c.headline.body | paragraphs }}</div>
-        </div>
+      <article class="card news" data-span="2">
+        {%- if hm and media.get(hm) -%}
+        {{ show(hm, c.headline.title) }}
+        {%- endif -%}
+        <span class="label">Новина дня</span>
+        <h2>{{ c.headline.title }}</h2>
+        {% if c.headline.subtitle %}<p class="lede">{{ c.headline.subtitle }}</p>{% endif %}
+        <div class="text">{{ c.headline.body | paragraphs }}</div>
       </article>
 
       {% if word_data %}
       <article class="card wordle" id="wd" data-d="{{ word_data }}" data-id="{{ word_meta.id }}"
         data-len="{{ word_meta.len }}">
         <div class="qh"><span class="label">Wordle</span></div>
-        <div class="wstart" id="wst">
-          <div class="wdemo" aria-hidden="true"><span class="tile a">С</span><span class="tile p">Л</span><span
-              class="tile c">О</span><span class="tile a">В</span><span class="tile c">О</span></div>
-          <h3 class="wst-h">Вгадай слово дня</h3>
-          <p class="wst-p">{{ word_meta.len }} {{ plural(word_meta.len, 'літера', 'літери', 'літер') }}, 6 спроб. Вводь
-            справжні українські слова — після кожної спроби плитки підкажуть, наскільки ти близько.</p>
-          <ul class="wleg">
-            <li><span class="mt c" aria-hidden="true"></span>літера на своєму місці</li>
-            <li><span class="mt p" aria-hidden="true"></span>є в слові, але на іншому місці</li>
-            <li><span class="mt a" aria-hidden="true"></span>такої літери немає</li>
-          </ul>
-          <button class="btn" id="wgo" type="button">Грати</button>
-          <p class="wsmsg" aria-live="polite"></p>
+        <div class="wstage">
+          <div class="wbody" id="wbody">
+            <div class="wgr" id="wgr" role="grid" aria-label="Спроби"></div>
+            <p class="gmsg" id="wdm" aria-live="polite"></p>
+            <div class="wdock">
+              <div class="kb" id="wkb"></div>
+              <button class="btn wview" id="wsee" type="button" hidden>Подивитись результат</button>
+            </div>
+          </div>
+          <div class="wov" id="wst">
+            <div class="wstart">
+              <div class="wdemo" aria-hidden="true"><span class="tile a">С</span><span class="tile p">Л</span><span
+                  class="tile c">О</span><span class="tile a">В</span><span class="tile c">О</span></div>
+              <h3 class="wst-h">Вгадай слово дня</h3>
+              <p class="wst-p">{{ word_meta.len }} {{ plural(word_meta.len, 'літера', 'літери', 'літер') }}, 6 спроб.
+                Вводь
+                справжні українські слова — після кожної спроби плитки підкажуть, наскільки ти близько.</p>
+              <ul class="wleg">
+                <li><span class="mt c" aria-hidden="true"></span>літера на своєму місці</li>
+                <li><span class="mt p" aria-hidden="true"></span>є в слові, але на іншому місці</li>
+                <li><span class="mt a" aria-hidden="true"></span>такої літери немає</li>
+              </ul>
+              <button class="btn" id="wgo" type="button">Грати</button>
+            </div>
+          </div>
+          <div class="wov" id="wres" role="dialog" aria-label="Результат" hidden></div>
         </div>
-        <div class="wbody" id="wbody" hidden>
-          <div class="wgr" id="wgr" role="grid" aria-label="Спроби"></div>
-          <p class="gmsg" id="wdm" aria-live="polite"></p>
-          <div class="kb" id="wkb"></div>
-          <div class="wres" id="wres" hidden></div>
-        </div>
-        {% if word_dict %}
-        <script id="wdict" type="text/plain">{{ word_dict }}</script>{% endif %}
+        <script>
+          (function () {
+            var root = document.getElementById("wd");
+            if (!root) return;
+            var W = dec(root.dataset.d), ANS = W.word.toUpperCase(), L = ANS.length, TRIES = 6;
+            var KEY = "gazeta-wordle-" + root.dataset.id;
+            var st = store(KEY) || { guesses: [] };
+            if (!st.guesses) st = { guesses: [] };
+            var wid = (/^(\d{4})-(\d\d)-(\d\d)$/.exec(root.dataset.id || "") || []).slice(1).reverse().join(".") || root.dataset.id;
+            var $ = function (id) { return document.getElementById(id); };
+            var wst = $("wst"), wres = $("wres"), wbody = $("wbody"), go = $("wgo"), gr = $("wgr"), msg = $("wdm"),
+              kb = $("wkb"), see = $("wsee"), keyEls = {};
+            var curr = "", over = false, won = false, visible = false, overlay = null, timer = 0, DICT = null;
+
+            gr.style.setProperty("--l", L);
+            for (var r = 0; r < TRIES; r++) {
+              var row = document.createElement("div");
+              row.className = "wrow"; row.style.gridTemplateColumns = "repeat(" + L + ", auto)";
+              for (var c = 0; c < L; c++) { var t = document.createElement("div"); t.className = "tile"; row.appendChild(t); }
+              gr.appendChild(row);
+            }
+            [["Й", "Ц", "У", "К", "Е", "Н", "Г", "Ш", "Щ", "З", "Х", "Ї"], ["Ф", "І", "В", "А", "П", "Р", "О", "Л", "Д", "Ж", "Є"], ["⏎", "Я", "Ч", "С", "М", "И", "Т", "Ь", "Б", "Ю", "Ґ", "⌫"]]
+              .forEach(function (keys) {
+                var kr = document.createElement("div"); kr.className = "kr";
+                keys.forEach(function (k) {
+                  var b = document.createElement("button");
+                  b.type = "button"; b.className = "key" + (k === "⏎" || k === "⌫" ? " wide" : ""); b.textContent = k; b.dataset.k = k;
+                  b.setAttribute("aria-label", k === "⏎" ? "Ввести" : k === "⌫" ? "Стерти" : k);
+                  b.onclick = function () { press(k === "⏎" ? "ENTER" : k === "⌫" ? "BACK" : k); };
+                  kr.appendChild(b);
+                  keyEls[k] = b;
+                });
+                kb.appendChild(kr);
+              });
+
+            function dict() {
+              if (DICT) return DICT;
+              var dn = $("wdict");
+              if (dn && dn.textContent.trim()) {
+                DICT = new Set(dn.textContent.trim().toUpperCase().split(/\s+/));
+                (W.dictionary || []).forEach(function (x) { DICT.add(String(x).toUpperCase()); });
+              }
+              return DICT;
+            }
+
+            function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
+            function score(g) {
+              var res = Array(L).fill("a"), left = {};
+              for (var i = 0; i < L; i++) { if (g[i] === ANS[i]) res[i] = "c"; else left[ANS[i]] = (left[ANS[i]] || 0) + 1; }
+              for (i = 0; i < L; i++) if (res[i] !== "c" && left[g[i]]) { res[i] = "p"; left[g[i]]--; }
+              return res;
+            }
+            function paint() {
+              var rank = { a: 1, p: 2, c: 3 }, best = {};
+              for (var r = 0; r < TRIES; r++) {
+                var tiles = gr.children[r].children, g = st.guesses[r], s = g ? score(g) : null;
+                for (var c = 0; c < L; c++) {
+                  var ch = g ? g[c] : (r === st.guesses.length ? (curr[c] || "") : "");
+                  tiles[c].textContent = ch;
+                  tiles[c].className = "tile" + (s ? " " + s[c] : ch ? " fill" : "");
+                  if (s && (!best[ch] || rank[s[c]] > rank[best[ch]])) best[ch] = s[c];
+                }
+              }
+              Object.keys(keyEls).forEach(function (k) { keyEls[k].className = keyEls[k].className.replace(/ [cpa]$/, "") + (best[k] ? " " + best[k] : ""); });
+            }
+
+            function setOverlay(which, animate) {
+              overlay = which;
+              [wst, wres].forEach(function (o) { o.classList.remove("wanim"); });
+              if (animate && which) { var o = which === "start" ? wst : wres; void o.offsetWidth; o.classList.add("wanim"); }
+              wst.hidden = which !== "start";
+              wres.hidden = which !== "result";
+              if (which) {
+                wbody.setAttribute("inert", "");
+                wbody.style.visibility = "hidden";
+              } else {
+                wbody.removeAttribute("inert");
+                wbody.style.visibility = "visible";
+              }
+            }
+            function buildResult() {
+              wres.textContent = "";
+              var n = st.guesses.length;
+              var inner = el("div", "wstart");
+              var word = el("div", "wdemo wword"); word.setAttribute("aria-label", "Слово дня: " + ANS);
+              ANS.split("").forEach(function (ch) { word.appendChild(el("span", "tile " + (won ? "c" : "p"), ch)); });
+              inner.appendChild(word);
+              inner.appendChild(el("h3", "wst-h", won ? "🎉 Вгадано з " + n + "-ї спроби!" : "Цього разу не вийшло"));
+              if (W.why) {
+                var cnt = W.count, f = cnt % 10 === 1 && cnt % 100 !== 11 ? "раз" : (cnt % 10 >= 2 && cnt % 10 <= 4 && (cnt % 100 < 12 || cnt % 100 > 14) ? "рази" : "разів");
+                inner.appendChild(el("p", "wst-p", W.why + (cnt ? " (у чаті — " + cnt + " " + f + ")" : "")));
+              }
+              var pat = el("div", "wpat"); pat.setAttribute("aria-hidden", "true");
+              st.guesses.forEach(function (g) {
+                var pr = document.createElement("div");
+                score(g).forEach(function (x) { pr.appendChild(el("i", x)); });
+                pat.appendChild(pr);
+              });
+              inner.appendChild(pat);
+              var share = el("button", "btn", "Скопіювати результат");
+              share.type = "button";
+              share.onclick = function () {
+                var txt = "Wordle " + wid + " " + (won ? n : "X") + "/" + TRIES + "\n" +
+                  st.guesses.map(function (g) { return score(g).map(function (x) { return x === "c" ? "🟪" : x === "p" ? "🟨" : "⬛"; }).join(""); }).join("\n");
+                (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function () { }, function () { prompt("Скопіюй:", txt); });
+              };
+              inner.appendChild(share);
+              inner.appendChild(el("p", "wnext", "Нове слово — у наступному випуску"));
+              var x = el("button", "wclose", "×"); x.type = "button"; x.setAttribute("aria-label", "Закрити результат");
+              x.onclick = closeResult;
+              wres.appendChild(x); wres.appendChild(inner);
+              return x;
+            }
+            function showResult(focus, animate) {
+              clearTimeout(timer);
+              var x = buildResult();
+              setOverlay("result", animate);
+              if (focus) x.focus({ preventScroll: true });
+            }
+            function closeResult() {
+              setOverlay(null, false);
+              see.focus({ preventScroll: true });
+            }
+            function finish(win, delay) {
+              over = true; won = win; msg.textContent = "";
+              kb.hidden = true; see.hidden = false;
+              st.over = true; st.won = win;
+              store(KEY, st);
+              if (delay) timer = setTimeout(function () { showResult(false, true); }, 1200);
+              else showResult(false, false);
+            }
+            function shake() { var row = gr.children[st.guesses.length]; row.classList.remove("shake"); void row.offsetWidth; row.classList.add("shake"); }
+            function press(k) {
+              if (over || overlay) return;
+              if (k === "BACK") curr = curr.slice(0, -1);
+              else if (k === "ENTER") {
+                if (curr.length < L) { msg.textContent = "Потрібно " + L + " " + (L < 5 ? "літери" : "літер"); shake(); return; }
+                var D = dict();
+                if (D && !D.has(curr) && curr !== ANS) { msg.textContent = "Такого слова немає у словнику"; shake(); return; }
+                st.guesses.push(curr); curr = ""; msg.textContent = ""; store(KEY, st);
+                var last = st.guesses[st.guesses.length - 1];
+                paint();
+                if (last === ANS) return finish(true, true);
+                if (st.guesses.length >= TRIES) return finish(false, true);
+                return;
+              } else if (curr.length < L) { curr += k; msg.textContent = ""; }
+              paint();
+            }
+
+            if ("IntersectionObserver" in window) new IntersectionObserver(function (en) { visible = en[0].isIntersecting; }, { threshold: .3 }).observe(root);
+            else visible = true;
+            document.addEventListener("keydown", function (e) {
+              if (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+              var lb = document.getElementById("lb");
+              if (lb && lb.classList.contains("on")) return;
+              if (overlay === "result" && e.key === "Escape") { e.preventDefault(); closeResult(); return; }
+              if (overlay) return;
+              if (!visible) return;
+              if (e.key === "Enter" && e.target.closest && e.target.closest("button, a") && !root.contains(e.target)) return;
+              if (e.key === "Enter") { e.preventDefault(); press("ENTER"); }
+              else if (e.key === "Backspace") { e.preventDefault(); press("BACK"); }
+              else { var l = letterOf(e); if (l) { e.preventDefault(); press(l); } }
+            });
+
+            if (go) go.onclick = function () { setOverlay(null, true); };
+            if (see) see.onclick = function () { showResult(true, true); };
+
+            paint();
+            if (st.over || st.guesses.length >= TRIES || (st.guesses.length && st.guesses[st.guesses.length - 1] === ANS)) {
+              won = st.won || (st.guesses[st.guesses.length - 1] === ANS);
+              over = true;
+              finish(won, false);
+            } else if (st.guesses.length) {
+              setOverlay(null, false);
+            } else {
+              setOverlay("start", false);
+            }
+          })();
+        </script>
       </article>
       {% endif %}
 
+      {% if c.quotes %}
+      <article class="card quotes"><span class="label">Цитати дня</span>
+        {% for q in c.quotes %}
+        <div class="line"><b>{{ q.sender }} · {{ q.time }}</b>{{ q.text }}{% if q.comment %}<span class="note">{{
+            q.comment }}</span>{% endif %}</div>
+        {% endfor %}
+      </article>
+      {% endif %}
+
+      {% for a in c.articles %}
+      {% if loop.index0 % 2 == 0 %}
+      <article class="card">{{ show(a.media_id, a.title) }}
+        <span class="label">{{ a.rubric }}</span>
+        <h3>{{ a.title }}</h3>
+        <div class="text">{{ a.body | paragraphs }}</div>
+      </article>
+      {% endif %}
+      {% endfor %}
+
+      {% if c.short_news %}
+      {{ short_news_card() }}
+      {% endif %}
+
       <article class="card weather">
-        <div class="wh"><span class="label">Погода</span><button class="wgeo" id="wg" type="button">Моя
-            геолокація</button></div>
+        <div class="wh"><span class="label">Погода</span></div>
         <div id="wx" aria-live="polite">
-          <p class="wloc"><span class="sk" style="width: 96px; height: 14px"></span></p>
-          <div class="wnow"><span class="sk" style="width: 52px; height: 52px; border-radius: 50%"></span>
+          <p class="wloc"><span class="sk" style="width: 110px; height: 16px;"></span></p>
+          <div class="wnow"><span class="sk"
+              style="width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;"></span>
             <div>
-              <div class="sk" style="width: 88px; height: 44px"></div>
-              <div class="sk" style="width: 130px; height: 14px; margin-top: 8px"></div>
+              <div class="sk" style="width: 76px; height: 44px; border-radius: 10px;"></div>
+              <div class="sk" style="width: 120px; height: 16px; margin-top: 6px;"></div>
             </div>
           </div>
-          <div class="wmeta"><span class="sk sk-pill" style="width: 128px"></span><span class="sk sk-pill"
-              style="width: 82px"></span><span class="sk sk-pill" style="width: 100px"></span></div>
+          <div class="wmeta"><span class="sk sk-pill" style="width: 124px;"></span><span class="sk sk-pill"
+              style="width: 86px;"></span><span class="sk sk-pill" style="width: 98px;"></span></div>
           <div class="wdays">
-            <div class="wd sk-box"></div>
-            <div class="wd sk-box"></div>
-            <div class="wd sk-box"></div>
+            <div class="wd"><span class="sk" style="width: 44px; height: 13px; margin: 2px auto 6px;"></span><span
+                class="sk" style="width: 22px; height: 22px; border-radius: 50%; margin: 0 auto 6px;"></span><span
+                class="sk" style="width: 38px; height: 13px; margin: 0 auto 2px;"></span></div>
+            <div class="wd"><span class="sk" style="width: 44px; height: 13px; margin: 2px auto 6px;"></span><span
+                class="sk" style="width: 22px; height: 22px; border-radius: 50%; margin: 0 auto 6px;"></span><span
+                class="sk" style="width: 38px; height: 13px; margin: 0 auto 2px;"></span></div>
+            <div class="wd"><span class="sk" style="width: 44px; height: 13px; margin: 2px auto 6px;"></span><span
+                class="sk" style="width: 22px; height: 22px; border-radius: 50%; margin: 0 auto 6px;"></span><span
+                class="sk" style="width: 38px; height: 13px; margin: 0 auto 2px;"></span></div>
           </div>
         </div>
       </article>
@@ -1883,26 +2675,17 @@
       </article>
       {% endif %}
 
-
-      {% if c.quotes %}
-      <article class="card quotes"><span class="label">Цитати дня</span>
-        {% for q in c.quotes %}
-        <div class="line"><b>{{ q.sender }} · {{ q.time }}</b>{{ q.text }}{% if q.comment %}<span class="note">{{
-            q.comment }}</span>{% endif %}</div>
-        {% endfor %}
-      </article>
-      {% endif %}
-
       {% for a in c.articles %}
+      {% if loop.index0 % 2 == 1 %}
       <article class="card">{{ show(a.media_id, a.title) }}
         <span class="label">{{ a.rubric }}</span>
         <h3>{{ a.title }}</h3>
         <div class="text">{{ a.body | paragraphs }}</div>
       </article>
-      {% if loop.index == 3 and c.short_news %}{{ short_news_card() }}{% endif %}
+      {% endif %}
       {% endfor %}
-      {% if c.articles | length < 3 and c.short_news %}{{ short_news_card() }}{% endif %} <article class="card"><span
-          class="label">Цифри дня</span>
+
+      <article class="card"><span class="label">Цифри дня</span>
         <p class="big">{{ stats.total_messages }}</p>
         <p class="lede">{{ plural(stats.total_messages, 'повідомлення', 'повідомлення', 'повідомлень') }} від {{
           stats.participants }} {{ plural(stats.participants, 'учасника', 'учасників', 'учасників') }}{% if
@@ -1922,21 +2705,20 @@
         {% endfor %}
         {% if stats.first_message %}<p class="summary">Активність з {{ stats.first_message.time }} до {{
           stats.last_message.time }}{% if stats.busiest_hour %}, пік о {{ stats.busiest_hour }}{% endif %}</p>{% endif
-        %}</article>
+        %}
+      </article>
 
-        {% if stats.top_sticker and media.get(stats.top_sticker.media_id) %}
-        <article class="card"><span class="label">Стікер дня</span>
-          {{ sticker(media[stats.top_sticker.media_id]) }}
-          <div class="meta"><span class="pill">надіслано {{ stats.top_sticker.count }} {{
-              plural(stats.top_sticker.count, 'раз', 'рази', 'разів') }}</span></div>
-        </article>
-        {% endif %}
-    </div>
+      {% if stats.top_sticker and media.get(stats.top_sticker.media_id) %}
+      <article class="card"><span class="label">Стікер дня</span>
+        {{ sticker(media[stats.top_sticker.media_id]) }}
+        <div class="meta"><span class="pill">надіслано {{ stats.top_sticker.count }} {{
+            plural(stats.top_sticker.count, 'раз', 'рази', 'разів') }}</span></div>
+      </article>
+      {% endif %}
 
-    <div class="bottom">
       {% if weekly and weekly.content %}
       {%- set wc = weekly.content -%}
-      <article class="card week">
+      <article class="card week" data-span="2">
         <div class="gh">
           <div><span class="label">Головне за тиждень</span>
             <h2>{{ wc.title }}</h2>
@@ -1955,7 +2737,7 @@
             </li>
             {% endfor %}
           </ol>
-          <div>
+          <div class="wside">
             {% if wc.hero_of_week and wc.hero_of_week.sender %}
             <div class="whero"><span class="label">Герой тижня</span>
               <h3>{{ wc.hero_of_week.sender }}</h3>
@@ -1963,18 +2745,130 @@
               {% if wc.hero_of_week.reason %}<p>{{ wc.hero_of_week.reason }}</p>{% endif %}
             </div>
             {% endif %}
-            <p class="wsub">Повідомлення по днях</p>
+
+            {% if weekly_quotes %}
+            <div class="wside-quotes">
+              <span class="label">Цитати тижня</span>
+              {% for q in weekly_quotes %}
+              <div class="wq-item">
+                <div class="wq-meta">{{ q.sender }}<span>· {{ q.date_short }}</span></div>
+                <div class="wq-text">{{ q.text }}</div>
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </article>
+
+      {% if weekly_headlines %}
+      <article class="card week-chronicle" data-span="2">
+        <div class="gh">
+          <div><span class="label">Хроніка тижня</span>
+            <h2>Головні події кожного дня</h2>
+          </div>
+          <div class="chips"><span class="chip on">{{ weekly_headlines | length }} {{ plural(weekly_headlines |
+              length, 'випуск', 'випуски', 'випусків') }}</span></div>
+        </div>
+        <div class="wh-grid">
+          {% for h in weekly_headlines %}
+          <div class="wh-card{{ ' is-today' if loop.last else '' }}{{ ' is-weekend' if loop.index0 >= 5 else '' }}">
+            <div class="wh-cal-head">
+              <span class="wh-cal-wday">{{ h.label }}</span>
+              <span class="wh-cal-day">{{ h.date_short.split('.')[0] }}</span>
+              <span class="wh-cal-month">{{ h.date_short }}</span>
+            </div>
+            {% if h.media_id and media.get(h.media_id) %}
+            <div class="wh-media">
+              {{ show(h.media_id, h.title) }}
+            </div>
+            {% endif %}
+            <div class="wh-body">
+              <h3>{{ h.title }}</h3>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </article>
+      {% endif %}
+      {% endif %}
+
+      {% if quiz_data %}
+      <article class="card quiz-card" id="qz" data-span="2" data-d="{{ quiz_data }}" data-day="{{ day }}">
+        <div class="qh">
+          <span class="label">Хто це сказав?</span>
+          <div class="qprog" id="qprog" aria-label="Прогрес гри" hidden></div>
+        </div>
+        <div class="qstage">
+          <div class="qbody" id="qb" aria-live="polite"></div>
+          <div class="qov" id="qst">
+            <div class="wstart">
+              <div class="qq qdemo" aria-hidden="true">го в доту</div>
+              <h3 class="wst-h">Вгадай, хто це сказав</h3>
+              <p class="wst-p">Випробуй інтуїцію та памʼять! Ми обрали найяскравіші цитати тижня з чату. Твоє завдання —
+                згадати або вгадати, кому з учасників належить кожна фраза.</p>
+              <button class="btn" id="qgo" type="button">Грати</button>
+            </div>
+          </div>
+          <div class="qov" id="qres" role="dialog" aria-label="Результат вікторини" hidden></div>
+        </div>
+      </article>
+      {% endif %}
+
+      {% if weekly and weekly.stats %}
+      <article class="card week-stats" data-span="2">
+        <div class="gh">
+          <div><span class="label">Цифри тижня</span>
+            <h2>Підсумки та активність комʼюніті</h2>
+          </div>
+          <div class="chips"><span class="chip on">{{ weekly.range }}</span><span class="chip">{{
+              weekly.stats.total_messages }} {{ plural(weekly.stats.total_messages, 'повідомлення', 'повідомлення',
+              'повідомлень') }}</span></div>
+        </div>
+
+        <div class="wstat-grid">
+          <div class="wstat-card">
+            <p class="big">{{ weekly.stats.total_messages }}</p>
+            <p class="wstat-label">повідомлень за тиждень</p>
+            <p class="wstat-sub">у середньому ~{{ weekly.stats.avg_per_day }} на добу</p>
+          </div>
+          <div class="wstat-card">
+            <p class="big">{{ weekly.stats.busiest_day.count }}</p>
+            <p class="wstat-label">повідомлень у піковий день</p>
+            <p class="wstat-sub">{{ weekly.stats.busiest_day_name | capitalize }}, {{ weekly.stats.busiest_day.day }}
+              число</p>
+          </div>
+          <div class="wstat-card">
+            <p class="big">{{ weekly.stats.top_share }}%</p>
+            <p class="wstat-label">всіх слів від лідера тижня</p>
+            <p class="wstat-sub">{% if weekly.stats.top_senders %}{{ weekly.stats.top_senders[0].sender }} написав
+              майже чверть чату{% endif %}</p>
+          </div>
+          <div class="wstat-card">
+            <p class="big">{{ weekly.stats.msgs_per_hour }}</p>
+            <p class="wstat-label">повідомлень щогодини</p>
+            <p class="wstat-sub">цілодобово, без пауз на сон і тишу</p>
+          </div>
+        </div>
+
+        <div class="wstat-body">
+          <div class="wstat-chart-col">
+            <span class="label">Повідомлення по днях тижня</span>
             <div class="wbars" role="img" aria-label="Повідомлення по днях тижня">
               {% for p in weekly.stats.per_day %}<div
-                class="{{ 'peak' if p.count == weekly.stats.per_day_max and p.count > 0 else '' }}"
+                class="{{ 'peak' if p.count == weekly.stats.per_day_max and p.count > 0 else ('on' if p.count > 0 else '') }}"
                 title="{{ p.date }} — {{ p.count }}"><span
-                  style="height: {{ (p.count / (weekly.stats.per_day_max or 1) * 100) | round(1) }}%"></span>{{ p.label
-                }}</div>{% endfor %}
+                  style="height: {{ (p.count / (weekly.stats.per_day_max or 1) * 100) | round(1) }}%"></span>
+                <b>{{ p.count }}</b>
+                {{ p.label }}
+              </div>{% endfor %}
             </div>
+          </div>
+          <div>
             {% if weekly.stats.top_senders %}
-            <p class="wsub">Найбалакучіші за тиждень</p>
+            <span class="label">Найактивніші за 7 днів</span>
             {% for s in weekly.stats.top_senders %}<div class="line"><b>{{ loop.index }} місце</b>{{ s.sender }}: {{
-              s.count }}</div>{% endfor %}
+              s.count }} {{ plural(s.count, 'повідомлення', 'повідомлення', 'повідомлень') }}</div>{% endfor %}
             {% endif %}
           </div>
         </div>
@@ -1982,7 +2876,7 @@
       {% endif %}
 
       {% if c.jokes %}
-      <article class="card joke">
+      <article class="card joke" data-span="2">
         <span class="label">Анекдоти</span>
         <p id="jt"></p>
         <div class="jctl"><button class="jbtn" id="jb" type="button">Хочу ще</button></div>
@@ -1990,7 +2884,7 @@
       {% endif %}
 
       {% if gallery %}
-      <article class="card">
+      <article class="card" data-span="2">
         <div class="gh">
           <div>
             <span class="label">Галерея</span>
@@ -2017,7 +2911,7 @@
       {% endif %}
 
       {% if cw_data %}
-      <article class="card" id="cw" data-d="{{ cw_data }}" data-day="{{ day }}">
+      <article class="card" id="cw" data-span="2" data-d="{{ cw_data }}" data-day="{{ day }}">
         <div class="gh">
           <div><span class="label">Кросворд</span>
             <h2>Кросворд дня</h2>
@@ -2045,15 +2939,6 @@
         <p class="gmsg" id="cwm" aria-live="polite"></p>
       </article>
       {% endif %}
-
-      {% if quiz_data %}
-      <div class="duo">
-        <article class="card" id="qz" data-d="{{ quiz_data }}">
-          <div class="qh"><span class="label">Вгадай, хто це сказав</span><span class="chip" id="qp"></span></div>
-          <div id="qb" aria-live="polite"></div>
-        </article>
-      </div>
-      {% endif %}
     </div>
     {% else %}
     <div class="card empty">
@@ -2078,20 +2963,6 @@
   {% if has_lottie %}
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>{% endif %}
   <script>
-    /* Тема */
-    function label() {
-      document.getElementById("tb").textContent = document.documentElement.dataset.theme === "dark" ? "☀ Світла тема" : "☾ Темна тема";
-      var bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim(), tc = document.getElementById("tc");
-      if (bg && tc) tc.setAttribute("content", bg);
-    }
-    function toggleTheme() {
-      var r = document.documentElement, t = r.dataset.theme === "dark" ? "light" : "dark";
-      r.dataset.theme = t;
-      try { localStorage.setItem("gazeta-theme", t); } catch (e) { }
-      label();
-    }
-    label();
-
     /* Відео-гіфки та анімовані стікери */
     (function () {
       var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -2222,81 +3093,6 @@
       }, { passive: true });
     })();
 
-    /* Новина дня: підлаштування під горизонтальне / вертикальне / відсутнє медіа */
-    (function () {
-      document.querySelectorAll(".news").forEach(function (n) {
-        var box = n.querySelector(".nmedia"), el = box && box.querySelector(".pic");
-        if (!el) { n.classList.add("nomedia"); return; }
-        function apply() {
-          var w = el.videoWidth || el.naturalWidth, h = el.videoHeight || el.naturalHeight;
-          if (!w || !h) return;
-          var r = w / h;
-          if (r >= 1.1) { n.classList.add("h"); box.style.aspectRatio = String(Math.min(Math.max(r, 4 / 3), 16 / 9)); }
-          else { n.classList.remove("h"); box.style.aspectRatio = ""; }
-        }
-        el.addEventListener("loadedmetadata", apply);
-        el.addEventListener("load", apply);
-        apply();
-      });
-    })();
-
-    /* Сітка-«цеглинки» з підтримкою карток на 2 колонки */
-    (function () {
-      var m = document.getElementById("masonry");
-      if (!m) return;
-      var cards = [].slice.call(m.children), gap = 16, raf = 0;
-      m.classList.add("js");
-      function layout() {
-        raf = 0;
-        var W = m.clientWidth, n = Math.max(1, Math.min(2, Math.floor((W + gap) / (300 + gap))));
-        var cw = (W - gap * (n - 1)) / n, hs = [], k, c;
-        for (k = 0; k < n; k++) hs.push(0);
-        function spanOf(card) { return Math.min(+card.dataset.span || 1, n); }
-        function pos(span) {
-          var best = 0, by = Infinity, waste = 0;
-          for (c = 0; c <= n - span; c++) {
-            var y = 0; for (k = 0; k < span; k++) y = Math.max(y, hs[c + k]);
-            if (y < by - 0.5) { by = y; best = c; }
-          }
-          for (k = 0; k < span; k++) waste += by - hs[best + k];
-          return { c: best, y: by, waste: waste };
-        }
-        function place(card) {
-          var span = spanOf(card);
-          card.style.width = (cw * span + gap * (span - 1)) + "px";
-          var h = card.offsetHeight, p = pos(span);
-          card.style.left = p.c * (cw + gap) + "px";
-          card.style.top = p.y + "px";
-          for (k = 0; k < span; k++) hs[p.c + k] = p.y + h + gap;
-        }
-        var queue = cards.slice();
-        while (queue.length) {
-          var span = spanOf(queue[0]), cur = span > 1 ? pos(span).waste : 0;
-          if (cur > 60) {
-            /* широкий блок залишив би діру: добираємо з найближчих вузьких той, після якого діра найменша */
-            var j = -1, bw = cur, q, seen = 0;
-            for (q = 1; q < queue.length && seen < 3; q++) {
-              if (spanOf(queue[q]) !== 1) continue;
-              seen++;
-              var p1 = pos(1), old = hs[p1.c];
-              hs[p1.c] = p1.y + queue[q].offsetHeight + gap;
-              var w2 = pos(span).waste;
-              hs[p1.c] = old;
-              if (w2 < bw - 20) { bw = w2; j = q; }
-            }
-            if (j > 0) { place(queue.splice(j, 1)[0]); continue; }
-          }
-          place(queue.shift());
-        }
-        m.style.height = Math.max.apply(null, hs) - gap + "px";
-      }
-      function sched() { if (!raf) raf = requestAnimationFrame(layout); }
-      window.addEventListener("resize", sched);
-      window.addEventListener("load", sched);
-      if (document.fonts && document.fonts.ready) document.fonts.ready.then(sched);
-      if (window.ResizeObserver) { var ro = new ResizeObserver(sched); cards.forEach(function (c) { ro.observe(c); }); }
-      layout();
-    })();
 
     /* Анекдоти — генеруються моделлю за мотивами дня */
     (function () {
@@ -2388,24 +3184,11 @@
       /* погода живе: оновлюється кожні 10 хв і коли читач повертається на вкладку */
       setInterval(function () { if (!document.hidden) start(true); }, 10 * 60 * 1000);
       document.addEventListener("visibilitychange", function () { if (!document.hidden && Date.now() - lastOk > 5 * 60 * 1000) start(true); });
-      document.getElementById("wg").onclick = function () { stale = false; skel(); byGps(); };
+      var wg = document.getElementById("wg");
+      if (wg) wg.onclick = function () { stale = false; skel(); byGps(); };
       start();
     })();
 
-    /* ---------- Спільне для ігор ---------- */
-    function dec(s) { return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(s), function (c) { return c.charCodeAt(0); }))); }
-    function store(k, v) { try { if (v === undefined) return JSON.parse(localStorage.getItem(k)); localStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } }
-    var UA = "АБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯ";
-    var CODEMAP = {
-      KeyQ: "Й", KeyW: "Ц", KeyE: "У", KeyR: "К", KeyT: "Е", KeyY: "Н", KeyU: "Г", KeyI: "Ш", KeyO: "Щ", KeyP: "З", BracketLeft: "Х", BracketRight: "Ї",
-      KeyA: "Ф", KeyS: "І", KeyD: "В", KeyF: "А", KeyG: "П", KeyH: "Р", KeyJ: "О", KeyK: "Л", KeyL: "Д", Semicolon: "Ж", Quote: "Є",
-      KeyZ: "Я", KeyX: "Ч", KeyC: "С", KeyV: "М", KeyB: "И", KeyN: "Т", KeyM: "Ь", Comma: "Б", Period: "Ю", Backslash: "Ґ"
-    };
-    function letterOf(e) {
-      var k = (e.key || "").toUpperCase();
-      if (k.length === 1 && UA.indexOf(k) >= 0) return k;
-      return CODEMAP[e.code] || "";
-    }
 
     /* ---------- Кросворд ---------- */
     (function () {
@@ -2543,181 +3326,241 @@
       save();
     })();
 
-    /* ---------- Угадай, хто це сказав ---------- */
+    /* ---------- Угадай, хто це сказав (у стилі Wordle) ---------- */
     (function () {
       var root = document.getElementById("qz");
       if (!root) return;
-      var Q = dec(root.dataset.d), box = document.getElementById("qb"), prog = document.getElementById("qp"), i = 0, score = 0;
-      function el(tag, cls, text) { var x = document.createElement(tag); if (cls) x.className = cls; if (text !== undefined) x.textContent = text; return x; }
+      var Q = dec(root.dataset.d);
+      if (!Q || !Q.length) return;
+      var box = document.getElementById("qb");
+      var prog = document.getElementById("qprog");
+      var qst = document.getElementById("qst");
+      var qres = document.getElementById("qres");
+      var qgo = document.getElementById("qgo");
+      var qday = root.dataset.day || "default";
+      var KEY = "gazeta-quiz-" + qday;
+      var st = store(KEY) || { answers: [], score: 0, over: false };
+      if (!st.answers || !Array.isArray(st.answers)) st = { answers: [], score: 0, over: false };
+      var i = 0, score = st.score || 0, dots = [], overlay = null;
+
+      function el(tag, cls, text) {
+        var x = document.createElement(tag);
+        if (cls) x.className = cls;
+        if (text !== undefined) x.textContent = text;
+        return x;
+      }
+
+      function setOverlay(which, animate) {
+        overlay = which;
+        [qst, qres].forEach(function (o) { if (o) o.classList.remove("wanim"); });
+        if (animate && which) {
+          var o = which === "start" ? qst : qres;
+          if (o) { void o.offsetWidth; o.classList.add("wanim"); }
+        }
+        if (qst) qst.hidden = which !== "start";
+        if (qres) qres.hidden = which !== "result";
+        if (prog) prog.hidden = which === "start";
+        if (which) {
+          box.setAttribute("inert", "");
+          box.style.visibility = "hidden";
+        } else {
+          box.removeAttribute("inert");
+          box.style.visibility = "visible";
+        }
+      }
+
+      function initDots() {
+        if (!prog) return;
+        prog.innerHTML = "";
+        dots = [];
+        for (var d = 0; d < Q.length; d++) {
+          var cls = "qdot";
+          if (st.answers && st.answers[d]) {
+            cls += " " + (st.answers[d].correct ? "correct" : "wrong");
+          } else if (d === i && !st.over) {
+            cls += " active";
+          }
+          var dot = el("span", cls);
+          prog.appendChild(dot);
+          dots.push(dot);
+        }
+      }
+
       function ask() {
         box.innerHTML = "";
-        prog.textContent = (i + 1) + " / " + Q.length;
-        var q = Q[i];
-        box.appendChild(el("div", "qq", "«" + q.text + "»"));
-        box.appendChild(el("p", "qt", "написано о " + q.time));
+        dots.forEach(function (d, k) {
+          if (st.answers && st.answers[k]) d.className = "qdot " + (st.answers[k].correct ? "correct" : "wrong");
+          else if (k === i && !st.over) d.className = "qdot active";
+          else d.className = "qdot";
+        });
+
+        var qIdx = Math.min(i, Q.length - 1);
+        if (qIdx < 0 || !Q.length) return;
+        var q = Q[qIdx];
+        var qqWrap = el("div", "qq-wrap");
+        qqWrap.appendChild(el("div", "qq", q.text));
+        var timeStr = (q.date ? q.date + " · " : "") + (q.time ? "написано о " + q.time : "");
+        qqWrap.appendChild(el("p", "qt", timeStr || "з переписки тижня"));
+        box.appendChild(qqWrap);
+
         var opts = el("div", "opts"), btns = [];
+        var isAnswered = st.answers && st.answers[qIdx];
+
         q.options.forEach(function (o, k) {
           var b = el("button", "opt", o);
           b.type = "button";
-          b.onclick = function () {
-            btns.forEach(function (x) { x.disabled = true; });
-            btns[q.answer].classList.add("right");
-            if (k === q.answer) score++; else b.classList.add("wrong");
-            var nx = el("button", "btn", i + 1 < Q.length ? "Далі →" : "Результат");
-            nx.type = "button";
-            nx.onclick = function () { i++; i < Q.length ? ask() : finish(); };
-            var bar = el("div", "btns"); bar.appendChild(nx); box.appendChild(bar);
-            nx.focus();
-          };
-          btns.push(b); opts.appendChild(b);
+          if (isAnswered) {
+            b.disabled = true;
+            if (k === q.answer) b.classList.add("right");
+            if (k === isAnswered.picked && !isAnswered.correct) b.classList.add("wrong");
+          } else {
+            b.onclick = function () {
+              btns.forEach(function (x) { x.disabled = true; });
+              btns[q.answer].classList.add("right");
+              var isRight = (k === q.answer);
+              if (isRight) score++;
+              else b.classList.add("wrong");
+
+              if (dots[i]) dots[i].className = "qdot " + (isRight ? "correct" : "wrong");
+              st.answers[i] = { picked: k, correct: isRight };
+              st.score = score;
+              store(KEY, st);
+
+              nx.disabled = false;
+              nx.focus();
+            };
+          }
+          btns.push(b);
+          opts.appendChild(b);
         });
+
         box.appendChild(opts);
+
+        var bar = el("div", "qbar");
+        if (st.over) {
+          var see = el("button", "btn", "Подивитись результат");
+          see.type = "button";
+          see.onclick = function () { showResult(true, true); };
+          bar.appendChild(see);
+        } else {
+          var nx = el("button", "btn", i + 1 < Q.length ? "Наступне питання →" : "Завершити вікторину");
+          nx.type = "button";
+          nx.disabled = !isAnswered;
+          nx.onclick = function () {
+            if (nx.disabled) return;
+            i++;
+            if (i < Q.length) {
+              ask();
+            } else {
+              st.over = true;
+              st.score = score;
+              store(KEY, st);
+              ask();
+              showResult(true, true);
+            }
+          };
+          bar.appendChild(nx);
+        }
+        box.appendChild(bar);
       }
-      function finish() {
-        box.innerHTML = "";
-        prog.textContent = "готово";
+
+      function buildResult() {
+        qres.textContent = "";
+        var inner = el("div", "wstart");
         var r = score / Q.length;
-        box.appendChild(el("p", "score", score + " / " + Q.length));
-        box.appendChild(el("p", "lede", r === 1 ? "Ти знаєш цей чат краще за його учасників." :
-          r >= .6 ? "Непогано! Видно, що читаєш чат, а не тільки стікери." :
-            r >= .3 ? "Щось знайоме є, але варто гортати уважніше." : "Схоже, ти в чаті тільки заради мемів."));
+
+        inner.appendChild(el("div", "score", score + " / " + Q.length));
+        inner.appendChild(el("h3", "qres-h", r === 1 ? "🎉 Бездоганно!" : r >= .6 ? "Непогано!" : r >= .3 ? "Щось знайоме є" : "Тільки заради мемів 🙂"));
+        inner.appendChild(el("p", "lede", r === 1 ? "Ти знаєш цей чат краще за його учасників." :
+          r >= .6 ? "Видно, що читаєш чат, а не тільки стікери." :
+            r >= .3 ? "Щось знайоме є, але варто гортати уважніше." : "Схоже, ти в чаті тільки заради мемів і картинок."));
+
+        var pat = el("div", "qpat");
+        pat.setAttribute("aria-hidden", "true");
+        (st.answers || []).forEach(function (a) {
+          var s = el("span", a.correct ? "c" : "w");
+          pat.appendChild(s);
+        });
+        inner.appendChild(pat);
+
+        var share = el("button", "btn", "Скопіювати результат");
+        share.type = "button";
+        share.onclick = function () {
+          var emojis = (st.answers || []).map(function (a) { return a.correct ? "🟩" : "🟥"; }).join("");
+          var txt = "Вісник Чату · Вікторина цитат (" + qday + ")\nРахунок: " + score + "/" + Q.length + " 💬\n" + emojis;
+          (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function () { }, function () { prompt("Скопіюй:", txt); });
+        };
+        inner.appendChild(share);
+
         var again = el("button", "btn ghost", "Пройти ще раз");
         again.type = "button";
-        again.onclick = function () { i = 0; score = 0; ask(); };
-        var bar = el("div", "btns"); bar.appendChild(again); box.appendChild(bar);
+        again.onclick = function () {
+          st = { answers: [], score: 0, over: false };
+          store(KEY, st);
+          i = 0;
+          score = 0;
+          initDots();
+          ask();
+          setOverlay(null, true);
+        };
+        inner.appendChild(again);
+
+        var x = el("button", "qclose", "×");
+        x.type = "button";
+        x.setAttribute("aria-label", "Закрити результат");
+        x.onclick = closeResult;
+
+        qres.appendChild(x);
+        qres.appendChild(inner);
+        return x;
       }
-      ask();
+
+      function showResult(focus, animate) {
+        var x = buildResult();
+        setOverlay("result", animate);
+        if (focus) x.focus({ preventScroll: true });
+      }
+
+      function closeResult() {
+        setOverlay(null, false);
+        var seeBtn = box.querySelector(".qbar .btn");
+        if (seeBtn) seeBtn.focus({ preventScroll: true });
+      }
+
+      if (qgo) {
+        qgo.onclick = function () {
+          setOverlay(null, true);
+        };
+      }
+
+
+      document.addEventListener("keydown", function (e) {
+        if (overlay === "result" && e.key === "Escape") {
+          e.preventDefault();
+          closeResult();
+        }
+      });
+
+      if (st.over || (st.answers && st.answers.length >= Q.length)) {
+        score = st.score || 0;
+        i = Q.length;
+        initDots();
+        ask();
+        showResult(false, false);
+      } else if (st.answers && st.answers.length > 0) {
+        i = st.answers.length;
+        initDots();
+        ask();
+        setOverlay(null, false);
+      } else {
+        i = 0;
+        initDots();
+        ask();
+        setOverlay("start", false);
+      }
     })();
 
-    /* ---------- Wordle ---------- */
-    (function () {
-      var root = document.getElementById("wd");
-      if (!root) return;
-      var W = dec(root.dataset.d), ANS = W.word.toUpperCase(), L = ANS.length, TRIES = 6;
-      var KEY = "gazeta-wordle-" + root.dataset.id;
-      var st = store(KEY) || { guesses: [] };
-      if (!st.guesses) st = { guesses: [] };
-      var wid = (/^(\d{4})-(\d\d)-(\d\d)$/.exec(root.dataset.id || "") || []).slice(1).reverse().join(".") || root.dataset.id;
-      var wst = document.getElementById("wst"), wbody = document.getElementById("wbody"), go = document.getElementById("wgo"), booted = false;
 
-      /* Гра збирається лише після «Грати» (або одразу, якщо сьогодні вже грали): картка не стрибає,
-         а великий словник не розбирається, поки він не потрібен */
-      function boot() {
-        if (booted) return;
-        booted = true;
-        try { build(); } catch (e) {
-          booted = false;
-          var m = wst.querySelector(".wsmsg"); if (m) m.textContent = "Не вдалося запустити гру. Оновіть сторінку.";
-          return;
-        }
-        wst.hidden = true; wbody.hidden = false;
-        setTimeout(function () { window.dispatchEvent(new Event("resize")); }, 0);
-      }
-      function build() {
-        /* словник справжніх слів (+ слова з чату): вигадані набори літер не приймаються */
-        var DICT = null, dn = document.getElementById("wdict");
-        if (dn && dn.textContent.trim()) {
-          DICT = new Set(dn.textContent.trim().toUpperCase().split(/\s+/));
-          (W.dictionary || []).forEach(function (x) { DICT.add(String(x).toUpperCase()); });
-        }
-        var curr = "", over = false, visible = false;
-        var gr = document.getElementById("wgr"), msg = document.getElementById("wdm"), kb = document.getElementById("wkb"), res = document.getElementById("wres"), keyEls = {};
-
-        gr.style.setProperty("--l", L);
-        for (var r = 0; r < TRIES; r++) {
-          var row = document.createElement("div");
-          row.className = "wrow"; row.style.gridTemplateColumns = "repeat(" + L + ", auto)";
-          for (var c = 0; c < L; c++) { var t = document.createElement("div"); t.className = "tile"; row.appendChild(t); }
-          gr.appendChild(row);
-        }
-        [["Й", "Ц", "У", "К", "Е", "Н", "Г", "Ш", "Щ", "З", "Х", "Ї"], ["Ф", "І", "В", "А", "П", "Р", "О", "Л", "Д", "Ж", "Є"], ["⏎", "Я", "Ч", "С", "М", "И", "Т", "Ь", "Б", "Ю", "Ґ", "⌫"]]
-          .forEach(function (keys) {
-            var kr = document.createElement("div"); kr.className = "kr";
-            keys.forEach(function (k) {
-              var b = document.createElement("button");
-              b.type = "button"; b.className = "key" + (k.length > 1 || k === "⏎" || k === "⌫" ? " wide" : ""); b.textContent = k;
-              b.setAttribute("aria-label", k === "⏎" ? "Ввести" : k === "⌫" ? "Стерти" : k);
-              b.onclick = function () { press(k === "⏎" ? "ENTER" : k === "⌫" ? "BACK" : k); };
-              keyEls[k] = b; kr.appendChild(b);
-            });
-            kb.appendChild(kr);
-          });
-
-        function score(g) {
-          var res = Array(L).fill("a"), left = {};
-          for (var i = 0; i < L; i++) { if (g[i] === ANS[i]) res[i] = "c"; else left[ANS[i]] = (left[ANS[i]] || 0) + 1; }
-          for (i = 0; i < L; i++) if (res[i] !== "c" && left[g[i]]) { res[i] = "p"; left[g[i]]--; }
-          return res;
-        }
-        function paint() {
-          var rank = { a: 1, p: 2, c: 3 }, best = {};
-          for (var r = 0; r < TRIES; r++) {
-            var tiles = gr.children[r].children, g = st.guesses[r], s = g ? score(g) : null;
-            for (var c = 0; c < L; c++) {
-              var ch = g ? g[c] : (r === st.guesses.length ? (curr[c] || "") : "");
-              tiles[c].textContent = ch;
-              tiles[c].className = "tile" + (s ? " " + s[c] : ch ? " fill" : "");
-              if (s && (!best[ch] || rank[s[c]] > rank[best[ch]])) best[ch] = s[c];
-            }
-          }
-          Object.keys(keyEls).forEach(function (k) { keyEls[k].className = keyEls[k].className.replace(/ [cpa]$/, "") + (best[k] ? " " + best[k] : ""); });
-        }
-        function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
-        function finish(win) {
-          over = true; msg.textContent = ""; kb.hidden = true;
-          res.hidden = false; res.className = "wres " + (win ? "win" : "lose"); res.textContent = "";
-          res.appendChild(el("div", "wres-h", win ? "🎉 Вгадано з " + st.guesses.length + "-ї спроби!" : "Цього разу не вийшло"));
-          var word = el("div", "wres-w"); word.setAttribute("aria-label", "Слово дня: " + ANS);
-          ANS.split("").forEach(function (ch) { word.appendChild(el("span", "mt", ch)); });
-          res.appendChild(word);
-          if (W.why) {
-            var n = W.count, f = n % 10 === 1 && n % 100 !== 11 ? "раз" : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "рази" : "разів");
-            res.appendChild(el("p", "wwhy", W.why + (n ? " (у чаті — " + n + " " + f + ")" : "")));
-          }
-          var share = el("button", "btn ghost", "Скопіювати результат");
-          share.type = "button";
-          share.onclick = function () {
-            var txt = "Wordle " + wid + " " + (win ? st.guesses.length : "X") + "/" + TRIES + "\n" +
-              st.guesses.map(function (g) { return score(g).map(function (x) { return x === "c" ? "🟪" : x === "p" ? "🟨" : "⬛"; }).join(""); }).join("\n");
-            (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function () { share.textContent = "Скопійовано ✓"; }, function () { prompt("Скопіюй:", txt); });
-          };
-          var bar = el("div", "btns"); bar.appendChild(share); res.appendChild(bar);
-          res.appendChild(el("p", "wnext", "Нове слово — у наступному випуску"));
-        }
-        function shake() { var row = gr.children[st.guesses.length]; row.classList.remove("shake"); void row.offsetWidth; row.classList.add("shake"); }
-        function press(k) {
-          if (over) return;
-          if (k === "BACK") curr = curr.slice(0, -1);
-          else if (k === "ENTER") {
-            if (curr.length < L) { msg.textContent = "Потрібно " + L + " " + (L < 5 ? "літери" : "літер"); shake(); return; }
-            if (DICT && !DICT.has(curr) && curr !== ANS) { msg.textContent = "Такого слова немає у словнику"; shake(); return; }
-            st.guesses.push(curr); curr = ""; msg.textContent = ""; store(KEY, st);
-            var last = st.guesses[st.guesses.length - 1];
-            paint();
-            if (last === ANS) return finish(true);
-            if (st.guesses.length >= TRIES) return finish(false);
-            return;
-          } else if (curr.length < L) { curr += k; msg.textContent = ""; }
-          paint();
-        }
-        if ("IntersectionObserver" in window) new IntersectionObserver(function (en) { visible = en[0].isIntersecting; }, { threshold: .3 }).observe(root);
-        else visible = true;
-        document.addEventListener("keydown", function (e) {
-          if (!visible || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
-          if (document.getElementById("lb").classList.contains("on")) return;
-          if (e.key === "Enter" && e.target.closest && e.target.closest("button, a") && !root.contains(e.target)) return;
-          if (e.key === "Enter") { e.preventDefault(); press("ENTER"); }
-          else if (e.key === "Backspace") { e.preventDefault(); press("BACK"); }
-          else { var l = letterOf(e); if (l) { e.preventDefault(); press(l); } }
-        });
-        paint();
-        var lastG = st.guesses[st.guesses.length - 1];
-        if (lastG === ANS) finish(true); else if (st.guesses.length >= TRIES) finish(false);
-      }
-
-      if (st.guesses.length) { wst.hidden = true; wbody.hidden = false; boot(); if (!booted) { wst.hidden = false; wbody.hidden = true; } }
-      if (go) go.onclick = boot;
-    })();
   </script>
 </body>
 

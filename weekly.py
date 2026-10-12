@@ -1,4 +1,4 @@
-"""«Головне за тиждень» і Wordle зі словом дня.
+"""«Головне за тиждень».
 
 Використовує вже згенеровані випуски (data/*.newspaper.json) і сирі вивантаження (data/*.json),
 тому окремо нічого запускати не треба — generate.py викликає це сам.
@@ -6,40 +6,16 @@
 
 import json
 import os
-import re
 from collections import Counter
 from datetime import date as Date, timedelta
-from functools import lru_cache
 from pathlib import Path
 
 DATA_DIR = Path(__file__).parent / "data"
-WORDS_DIR = DATA_DIR / "words"
 
 # У які дні тижня додавати «Головне за тиждень»: 1=пн ... 7=нд, через кому, або "all"
-WEEKLY_DAYS = os.getenv("WEEKLY_DAYS", "6").strip().lower()
-WORDLE_LEN = int(os.getenv("WORDLE_LEN", "5"))
-WORDLE_STRICT = (
-    os.getenv("WORDLE_STRICT", "0").strip() == "1"
-)  # 1 = приймати лише слова з чату (без загального словника)
-UK_WORDS_FILE = (
-    WORDS_DIR / "uk_words.txt"
-)  # словник справжніх слів: усі форми, по одному слову в рядку
-
-UA_LOWER = "абвгґдеєжзиіїйклмнопрстуфхцчшщьюя"
-TOKEN_RE = re.compile(r"[а-яіїєґёыэъ'ʼ’]+", re.I)
+WEEKLY_DAYS = os.getenv("WEEKLY_DAYS", "7").strip().lower()
 DAY_SHORT = ["пн", "вт", "ср", "чт", "пт", "сб", "нд"]
-
-# Службові слова, які не годяться у «слово тижня»
-STOP = set(
-    """
-тобто треба також можна зараз тільки взагалі просто якщо коли поки потім після через перед
-навіть щось хтось ніхто нічого чомусь завжди тепер досить більше менше дуже трохи багато
-який яка яке які якого якої якій своїх свого своєї мене тебе нього неї нами вами ними
-цього цієї цьому цими цієї того тому таке такий така такі тоді звідти звідки куди туди
-нехай мабуть ніби наче майже також зовсім звісно дякую добре гарно погано знаєш думаю
-знову вдома чесно хочеш можеш давай буде були була було могли хіба
-""".split()
-)
+WEEKDAYS = ["понеділок", "вівторок", "середа", "четвер", "пʼятниця", "субота", "неділя"]
 
 
 def is_weekly_day(day: str) -> bool:
@@ -184,6 +160,7 @@ def build_weekly(day: str, today_paper: dict, ask_json, name: str) -> dict | Non
     return {
         "range": rng,
         "content": content,
+        "headlines": get_weekly_headlines(day, today_paper),
         "stats": {
             "total_messages": total,
             "per_day": per_day,
@@ -196,147 +173,72 @@ def build_weekly(day: str, today_paper: dict, ask_json, name: str) -> dict | Non
     }
 
 
-# ====================== WORDLE: СЛОВО ДНЯ ======================
-
-WORD_SCHEMA = {
-    "type": "object",
-    "properties": {"word": {"type": "string"}, "why": {"type": "string"}},
-    "required": ["word", "why"],
-}
-
-WORD_PROMPT = """Обери слово дня для гри Wordle з переліку найчастіших слів дружнього чату за сьогодні.
-Правила вибору:
-- Слово має бути саме з переліку, українською, звичайне повнозначне слово (краще іменник), характерне саме для цього дня.
-- Не обирай нецензурні слова, імена, службові слова.
-- why — 1–2 речення, чому це слово дня, з контекстом із чату (показується після гри; саме слово не приховуй).
-Відповідай ЛИШЕ JSON: {"word": "...", "why": "..."}"""
-
-
-def _tokens(msgs: list[dict]) -> Counter:
-    cnt = Counter()
-    for m in msgs:
-        for t in TOKEN_RE.findall(m.get("text", "").lower()):
-            t = t.replace("ʼ", "'").replace("’", "'")
-            if (
-                len(t) == WORDLE_LEN
-                and len(set(t)) >= 3
-                and all(ch in UA_LOWER for ch in t)
-                and t not in STOP
-            ):  # ≥3 різних літер: відсіює «ахаха»
-                cnt[t] += 1
-    return cnt
-
-
-@lru_cache(maxsize=1)
-def _all_words() -> tuple[str, ...]:
-    try:
-        return tuple(UK_WORDS_FILE.read_text(encoding="utf-8").split())
-    except OSError:
-        return ()
-
-
-def load_wordlist(length: int) -> list[str]:
-    """Справжні українські слова потрібної довжини зі словника data/words/uk_words.txt
-    (усі словоформи, без власних назв). Порожній список, якщо файлу немає."""
-    return sorted({x for x in _all_words() if len(x) == length})
-
-
-def _used_words() -> set[str]:
-    """Слова, що вже були «словом дня» (щоб не повторювалися)."""
-    used = set()
-    for f in WORDS_DIR.glob("????-??-??.json"):
-        w = (_load(f) or {}).get("word")
-        if w:
-            used.add(w)
-    return used
-
-
-def cached_word(day: str) -> dict | None:
-    """Слово цього дня з кешу, без звернень до моделі."""
-    cache = WORDS_DIR / f"{day}.json"
-    return _load(cache) if cache.exists() else None
-
-
-def word_of_day(day: str, ask_json, save: bool = True) -> dict | None:
-    """Одне слово на день, обране з переписки цього дня (якщо повідомлень мало — з попередніх двох).
-    Зберігається в data/words/РРРР-ММ-ДД.json, тож повторний запуск дає ту саму гру.
-    Слова, що вже були, не повторюються."""
-    d = Date.fromisoformat(day)
-    cache = WORDS_DIR / f"{day}.json"
-    if cache.exists():
-        return _load(cache)
-
-    real = set(
-        load_wordlist(WORDLE_LEN)
-    )  # справжні слова: відсіюємо сленг, «ахаха» й набори літер
-    used = _used_words()
-
-    def count(days: int) -> Counter:
-        cnt = _tokens([m for x in _days(d, days) for m in _messages(x)])
-        if real:
-            cnt = Counter({w: n for w, n in cnt.items() if w in real})
-        return cnt
-
-    counts, candidates = Counter(), []
-    for span in (1, 3, 7):  # спершу лише цей день, потім ширше
-        counts = count(span)
-        fresh = {w: n for w, n in counts.items() if w not in used}
-        candidates = [
-            w for w, n in sorted(fresh.items(), key=lambda x: (-x[1], x[0])) if n >= 2
-        ][:40]
-        if len(candidates) < 5:
-            candidates = [
-                w for w, n in sorted(fresh.items(), key=lambda x: (-x[1], x[0]))
-            ][:40]
-        if len(candidates) >= 5:
-            break
-    if (
-        not candidates and counts
-    ):  # всі слова вже були — беремо найчастіше, хай і повтор
-        candidates = [w for w, _ in counts.most_common(40)]
-    if not candidates:
-        print(f"  Wordle: немає {WORDLE_LEN}-літерних українських слів, пропускаю")
-        return None
-
-    listing = ", ".join(f"{w} ({counts[w]})" for w in candidates)
-
-    def post(c):
-        w = str((c or {}).get("word", "")).strip().lower()
-        if w not in candidates:
-            raise ValueError(f"слово «{w}» не з переліку")
-        return {"word": w, "why": str(c.get("why", "")).strip()}
-
-    try:
-        if ask_json is None:  # без моделі: беремо найчастіше слово
-            raise RuntimeError("модель не передано")
-        pick = ask_json(
-            WORD_PROMPT,
-            "Перелік (слово і кількість згадок):\n" + listing,
-            WORD_SCHEMA,
-            post,
+def get_weekly_headlines(day: str, today_paper: dict | None = None) -> list[dict]:
+    """Збирає головні новини («Новина дня») за кожен день тижня."""
+    end = Date.fromisoformat(day)
+    days = _days(end)
+    headlines = []
+    for d in days:
+        iso = d.isoformat()
+        paper = (
+            today_paper
+            if (today_paper and iso == day)
+            else _load(DATA_DIR / f"{iso}.newspaper.json")
         )
-    except Exception as e:
-        print(f"  Wordle: модель не впоралась ({e}), беру найчастіше слово")
-        pick = {"word": candidates[0], "why": ""}
-
-    result = {
-        "id": day,
-        "week": day,  # застаріла назва поля, лишена для сумісності зі старим кодом
-        "len": WORDLE_LEN,
-        "word": pick["word"],
-        "hint": "",  # підказок більше немає, поле лишене для сумісності
-        "why": pick["why"],
-        "count": counts[pick["word"]],
-        "dictionary": sorted(
-            counts
-        ),  # слова з чату (приймаються як правильні, навіть якщо їх немає у словнику)
-    }
-    if save:
-        WORDS_DIR.mkdir(parents=True, exist_ok=True)
-        cache.write_text(
-            json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+        if not paper:
+            continue
+        c = paper.get("content")
+        if not c or not c.get("headline"):
+            continue
+        h = c["headline"]
+        headlines.append(
+            {
+                "date": iso,
+                "date_short": f"{d.day:02d}.{d.month:02d}",
+                "label": DAY_SHORT[d.weekday()],
+                "weekday": WEEKDAYS[d.weekday()],
+                "title": str(h.get("title", "")).strip(),
+                "subtitle": str(h.get("subtitle", "")).strip(),
+                "body": str(h.get("body", "")).strip(),
+                "media_id": h.get("media_id"),
+            }
         )
-    return result
+    return headlines
 
 
-word_of_week = word_of_day  # стара назва: generate.py міг імпортувати її
+def collect_weekly_quotes(
+    day: str, today_paper: dict | None = None
+) -> tuple[list[dict], list[str]]:
+    """Збирає цитати дня та найактивніших авторів за останні 7 днів для гри «Угадай цитату»."""
+    end = Date.fromisoformat(day)
+    days = _days(end)
+    quotes = []
+    senders = Counter()
+    for d in days:
+        iso = d.isoformat()
+        paper = (
+            today_paper
+            if (today_paper and iso == day)
+            else _load(DATA_DIR / f"{iso}.newspaper.json")
+        )
+        msgs = _messages(d)
+        senders.update(m["sender"] for m in msgs)
+        if paper and paper.get("content"):
+            c_quotes = paper["content"].get("quotes", [])
+            for q in c_quotes:
+                s = q.get("sender")
+                if s:
+                    senders[s] += 1
+                quotes.append(
+                    {
+                        "date": iso,
+                        "date_short": f"{d.day:02d}.{d.month:02d}",
+                        "sender": q.get("sender", ""),
+                        "text": q.get("text", ""),
+                        "time": q.get("time", ""),
+                        "comment": q.get("comment", ""),
+                        "message_id": q.get("message_id", 0),
+                    }
+                )
+    top_senders = [s for s, _ in senders.most_common(20)]
+    return quotes, top_senders

@@ -1,7 +1,7 @@
-"""Ігри газети: кросворд і «Угадай цитату».
+"""Ігри газети: кросворд, «Угадай цитату» та Wordle (слово дня).
 
-Модель лише пропонує матеріал (слова з підказками, id смішних повідомлень),
-а все, що має бути точним — розкладка кросворду, варіанти відповідей — рахується тут.
+Модель лише пропонує матеріал (слова з підказками, id смішних повідомлень, вибір слова дня),
+а все, що має бути точним — розкладка кросворду, варіанти відповідей, перевірка словника Wordle — рахується тут.
 """
 
 import base64
@@ -9,7 +9,10 @@ import json
 import os
 import random
 import re
-from datetime import date as Date
+from collections import Counter
+from datetime import date as Date, timedelta
+from functools import lru_cache
+from pathlib import Path
 
 # У які дні виходять кросворд і «Вгадай, хто це сказав»: 1=пн ... 7=нд, через кому, або "all"
 GAMES_DAYS = os.getenv("GAMES_DAYS", "7").strip().lower()
@@ -20,7 +23,7 @@ WORD_RE = re.compile(f"^[{UA_LETTERS}]+$")
 
 def is_games_day(day: str) -> bool:
     """Кросворд і вікторина — лише у вказані дні (за замовчуванням неділя).
-    «Слово тижня» не залежить від цього: воно у кожному випуску."""
+    Wordle («слово дня») не залежить від цього: воно у кожному випуску."""
     if GAMES_DAYS == "all":
         return True
     wd = Date.fromisoformat(day).isoweekday()
@@ -239,3 +242,276 @@ def build_quiz(
             }
         )
     return quiz
+
+
+def build_quiz_from_quotes(
+    quotes: list[dict],
+    senders_pool: list[str] | set[str] | None,
+    seed: str,
+    size: int = 6,
+    options: int = 4,
+) -> list[dict]:
+    """Будує вікторину «хто це сказав» із блоків «Цитати дня» за тиждень.
+
+    quotes: список цитат {text, sender, time, date/date_short, ...}
+    senders_pool: список/множина учасників чату для варіантів відповідей
+    """
+    if not quotes:
+        return []
+
+    rnd = random.Random(seed + "quiz")
+    active_senders = [s for s in (senders_pool or []) if s]
+    if len(set(active_senders)) < options:
+        for q in quotes:
+            s = q.get("sender")
+            if s and s not in active_senders:
+                active_senders.append(s)
+
+    unique_active = list(dict.fromkeys(active_senders))
+    if len(unique_active) < 2:
+        return []
+
+    valid = []
+    seen_texts = set()
+    for q in quotes:
+        text = (q.get("text") or "").strip()
+        sender = (q.get("sender") or "").strip()
+        if not text or not sender:
+            continue
+        if text in seen_texts:
+            continue
+        first_name = sender.split()[0].lower()
+        if len(first_name) >= 3 and first_name in text.lower():
+            continue
+        if len(text) < 15 or len(text) > 350:
+            continue
+        if LINK_RE.search(text):
+            continue
+        seen_texts.add(text)
+        valid.append(q)
+
+    if not valid:
+        return []
+
+    rnd.shuffle(valid)
+
+    chosen = []
+    sender_counts = Counter()
+    for q in valid:
+        s = q["sender"]
+        if sender_counts[s] >= 2:
+            continue
+        chosen.append(q)
+        sender_counts[s] += 1
+        if len(chosen) >= size:
+            break
+
+    if len(chosen) < size:
+        for q in valid:
+            if q not in chosen:
+                chosen.append(q)
+                if len(chosen) >= size:
+                    break
+
+    quiz = []
+    for q in chosen:
+        sender = q["sender"]
+        others = [s for s in unique_active if s != sender]
+        rnd.shuffle(others)
+        opts = others[: options - 1] + [sender]
+        rnd.shuffle(opts)
+        quiz.append(
+            {
+                "text": q["text"],
+                "time": q.get("time", ""),
+                "date": q.get("date_short") or q.get("date", ""),
+                "options": opts,
+                "answer": opts.index(sender),
+            }
+        )
+    return quiz
+
+
+# ====================== WORDLE: СЛОВО ДНЯ ======================
+
+DATA_DIR = Path(__file__).parent / "data"
+WORDS_DIR = DATA_DIR / "words"
+UK_WORDS_FILE = WORDS_DIR / "uk_words.txt"
+
+WORDLE_LEN = int(os.getenv("WORDLE_LEN", "5"))
+WORDLE_STRICT = (
+    os.getenv("WORDLE_STRICT", "0").strip() == "1"
+)  # 1 = приймати лише слова з чату (без загального словника)
+
+UA_LOWER = UA_LETTERS.lower()
+TOKEN_RE = re.compile(r"[а-яіїєґёыэъ'ʼ’]+", re.I)
+
+# Службові слова, які не годяться у «слово дня»
+STOP = set(
+    """
+тобто треба також можна зараз тільки взагалі просто якщо коли поки потім після через перед
+навіть щось хтось ніхто нічого чомусь завжди тепер досить більше менше дуже трохи багато
+який яка яке які якого якої якій своїх свого своєї мене тебе нього неї нами вами ними
+цього цієї цьому цими цієї того тому таке такий така такі тоді звідти звідки куди туди
+нехай мабуть ніби наче майже також зовсім звісно дякую добре гарно погано знаєш думаю
+знову вдома чесно хочеш можеш давай буде були була було могли хіба
+""".split()
+)
+
+WORD_SCHEMA = {
+    "type": "object",
+    "properties": {"word": {"type": "string"}, "why": {"type": "string"}},
+    "required": ["word", "why"],
+}
+
+WORD_PROMPT = """Обери слово дня для гри Wordle з переліку найчастіших слів дружнього чату за сьогодні.
+Правила вибору:
+- Слово має бути саме з переліку, українською, звичайне повнозначне слово (краще іменник), характерне саме для цього дня.
+- Не обирай нецензурні слова, імена, службові слова.
+- why — 1–2 речення, чому це слово дня, з контекстом із чату (показується після гри; саме слово не приховуй).
+Відповідай ЛИШЕ JSON: {"word": "...", "why": "..."}"""
+
+
+def _load_json(path: Path):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _days(end: Date, n=7) -> list[Date]:
+    return [end - timedelta(days=i) for i in range(n - 1, -1, -1)]
+
+
+def _messages(d: Date) -> list[dict]:
+    raw = _load_json(DATA_DIR / f"{d.isoformat()}.json")
+    if not raw:
+        return []
+    return [m for m in raw.get("messages", []) if not m.get("forwarded")]
+
+
+def _tokens(msgs: list[dict]) -> Counter:
+    cnt = Counter()
+    for m in msgs:
+        for t in TOKEN_RE.findall(m.get("text", "").lower()):
+            t = t.replace("ʼ", "'").replace("’", "'")
+            if (
+                len(t) == WORDLE_LEN
+                and len(set(t)) >= 3
+                and all(ch in UA_LOWER for ch in t)
+                and t not in STOP
+            ):  # ≥3 різних літер: відсіює «ахаха»
+                cnt[t] += 1
+    return cnt
+
+
+@lru_cache(maxsize=1)
+def _all_words() -> tuple[str, ...]:
+    try:
+        return tuple(UK_WORDS_FILE.read_text(encoding="utf-8").split())
+    except OSError:
+        return ()
+
+
+def load_wordlist(length: int) -> list[str]:
+    """Справжні українські слова потрібної довжини зі словника data/words/uk_words.txt
+    (усі словоформи, без власних назв). Порожній список, якщо файлу немає."""
+    return sorted({x for x in _all_words() if len(x) == length})
+
+
+def _used_words() -> set[str]:
+    """Слова, що вже були «словом дня» (щоб не повторювалися)."""
+    used = set()
+    for f in WORDS_DIR.glob("????-??-??.json"):
+        w = (_load_json(f) or {}).get("word")
+        if w:
+            used.add(w)
+    return used
+
+
+def cached_word(day: str) -> dict | None:
+    """Слово цього дня з кешу, без звернень до моделі."""
+    cache = WORDS_DIR / f"{day}.json"
+    return _load_json(cache) if cache.exists() else None
+
+
+def word_of_day(day: str, ask_json, save: bool = True) -> dict | None:
+    """Одне слово на день, обране з переписки цього дня (якщо повідомлень мало — з попередніх двох).
+    Зберігається в data/words/РРРР-ММ-ДД.json, тож повторний запуск дає ту саму гру.
+    Слова, що вже були, не повторюються."""
+    d = Date.fromisoformat(day)
+    cache = WORDS_DIR / f"{day}.json"
+    if cache.exists():
+        return _load_json(cache)
+
+    real = set(
+        load_wordlist(WORDLE_LEN)
+    )  # справжні слова: відсіюємо сленг, «ахаха» й набори літер
+    used = _used_words()
+
+    def count(days: int) -> Counter:
+        cnt = _tokens([m for x in _days(d, days) for m in _messages(x)])
+        if real:
+            cnt = Counter({w: n for w, n in cnt.items() if w in real})
+        return cnt
+
+    counts, candidates = Counter(), []
+    for span in (1, 3, 7):  # спершу лише цей день, потім ширше
+        counts = count(span)
+        fresh = {w: n for w, n in counts.items() if w not in used}
+        candidates = [
+            w for w, n in sorted(fresh.items(), key=lambda x: (-x[1], x[0])) if n >= 2
+        ][:40]
+        if len(candidates) < 5:
+            candidates = [
+                w for w, n in sorted(fresh.items(), key=lambda x: (-x[1], x[0]))
+            ][:40]
+        if len(candidates) >= 5:
+            break
+    if (
+        not candidates and counts
+    ):  # всі слова вже були — беремо найчастіше, хай і повтор
+        candidates = [w for w, _ in counts.most_common(40)]
+    if not candidates:
+        print(f"  Wordle: немає {WORDLE_LEN}-літерних українських слів, пропускаю")
+        return None
+
+    listing = ", ".join(f"{w} ({counts[w]})" for w in candidates)
+
+    def post(c):
+        w = str((c or {}).get("word", "")).strip().lower()
+        if w not in candidates:
+            raise ValueError(f"слово «{w}» не з переліку")
+        return {"word": w, "why": str(c.get("why", "")).strip()}
+
+    try:
+        if ask_json is None:  # без моделі: беремо найчастіше слово
+            raise RuntimeError("модель не передано")
+        pick = ask_json(
+            WORD_PROMPT,
+            "Перелік (слово і кількість згадок):\n" + listing,
+            WORD_SCHEMA,
+            post,
+        )
+    except Exception as e:
+        print(f"  Wordle: модель не впоралась ({e}), беру найчастіше слово")
+        pick = {"word": candidates[0], "why": ""}
+
+    result = {
+        "id": day,
+        "week": day,  # застаріла назва поля, лишена для сумісності зі старим кодом
+        "len": WORDLE_LEN,
+        "word": pick["word"],
+        "hint": "",  # підказок більше немає, поле лишене для сумісності
+        "why": pick["why"],
+        "count": counts[pick["word"]],
+        "dictionary": sorted(
+            counts
+        ),  # слова з чату (приймаються як правильні, навіть якщо їх немає у словнику)
+    }
+    if save:
+        WORDS_DIR.mkdir(parents=True, exist_ok=True)
+        cache.write_text(
+            json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+    return result
