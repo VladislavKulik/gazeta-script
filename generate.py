@@ -7,6 +7,7 @@
     python generate.py              -> сьогоднішня доба
     python generate.py 2026-10-03   -> конкретна дата
 """
+
 import json
 import os
 import sys
@@ -29,12 +30,18 @@ OLLAMA_HOST = os.getenv("OLLAMA_HOST", "https://ollama.com").rstrip("/")
 MODEL = os.getenv("OLLAMA_MODEL", "gemma4:31b")  # у режимі API — без суфікса -cloud
 NEWSPAPER_NAME = os.getenv("NEWSPAPER_NAME", "Вісник Чату")
 CHUNK_CHARS = int(os.getenv("CHUNK_CHARS", "150000"))  # довші дні діляться на шматки
-TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "900"))      # секунд на один запит
+TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "900"))  # секунд на один запит
 
 # Переслані пости з пабліків: показуємо моделі лише початок як контекст для обговорення
-FWD_PREVIEW_CHARS = int(os.getenv("FWD_PREVIEW_CHARS", "200"))  # скільки символів посту показати
-FWD_WINDOW_MIN = int(os.getenv("FWD_WINDOW_MIN", "15"))         # хвилин після посту, що вважаються реакцією
-FWD_MIN_DISCUSSION = int(os.getenv("FWD_MIN_DISCUSSION", "4"))  # мінімум реплік, щоб тема йшла в газету
+FWD_PREVIEW_CHARS = int(
+    os.getenv("FWD_PREVIEW_CHARS", "200")
+)  # скільки символів посту показати
+FWD_WINDOW_MIN = int(
+    os.getenv("FWD_WINDOW_MIN", "15")
+)  # хвилин після посту, що вважаються реакцією
+FWD_MIN_DISCUSSION = int(
+    os.getenv("FWD_MIN_DISCUSSION", "4")
+)  # мінімум реплік, щоб тема йшла в газету
 
 
 # ---------- схема відповіді моделі ----------
@@ -69,7 +76,10 @@ SCHEMA = {
             "type": "array",
             "items": {
                 "type": "object",
-                "properties": {"message_id": {"type": "integer"}, "comment": {"type": "string"}},
+                "properties": {
+                    "message_id": {"type": "integer"},
+                    "comment": {"type": "string"},
+                },
                 "required": ["message_id", "comment"],
             },
         },
@@ -85,7 +95,15 @@ SCHEMA = {
         },
         "jokes": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["tagline", "headline", "articles", "quotes", "short_news", "hero_of_day", "jokes"],
+    "required": [
+        "tagline",
+        "headline",
+        "articles",
+        "quotes",
+        "short_news",
+        "hero_of_day",
+        "jokes",
+    ],
 }
 
 
@@ -139,6 +157,7 @@ CHUNK_PROMPT = """Це фрагмент переписки дружнього ч
 
 # ---------- допоміжне ----------
 
+
 def minutes(hhmm: str) -> int:
     h, m = hhmm.split(":")
     return int(h) * 60 + int(m)
@@ -146,7 +165,8 @@ def minutes(hhmm: str) -> int:
 
 def discussions(msgs: list[dict]) -> dict[int, dict]:
     """Для кожного пересланого посту рахує реакцію чату: відповіді на нього (усім ланцюжком)
-    плюс повідомлення інших учасників протягом FWD_WINDOW_MIN хвилин, до наступного пересланого посту."""
+    плюс повідомлення інших учасників протягом FWD_WINDOW_MIN хвилин, до наступного пересланого посту.
+    """
     children: dict[int, list[int]] = {}
     for m in msgs:
         if m.get("reply_to"):
@@ -163,13 +183,20 @@ def discussions(msgs: list[dict]) -> dict[int, dict]:
                 ids.add(x)
                 stack.extend(children.get(x, []))
         t0 = minutes(f["time"])
-        for m in msgs[i + 1:]:
+        for m in msgs[i + 1 :]:
             if m.get("forwarded") or minutes(m["time"]) - t0 > FWD_WINDOW_MIN:
                 break
-            if not m.get("reply_to") or m["reply_to"] in ids or m["reply_to"] == f["id"]:
+            if (
+                not m.get("reply_to")
+                or m["reply_to"] in ids
+                or m["reply_to"] == f["id"]
+            ):
                 ids.add(m["id"])
         ids = {x for x in ids if x in by_id and not by_id[x].get("forwarded")}
-        result[f["id"]] = {"messages": len(ids), "participants": len({by_id[x]["sender"] for x in ids})}
+        result[f["id"]] = {
+            "messages": len(ids),
+            "participants": len({by_id[x]["sender"] for x in ids}),
+        }
     return result
 
 
@@ -180,8 +207,10 @@ def fmt_line(m: dict, disc: dict | None = None) -> str:
         if len(text) > FWD_PREVIEW_CHARS:
             text = text[:FWD_PREVIEW_CHARS].rstrip() + "…"
         d = (disc or {}).get(m["id"], {"messages": 0, "participants": 0})
-        return (f"[{m['id']}] {m['time']} {m['sender']} ⤷ ПЕРЕСЛАНО з «{m.get('fwd_source') or 'паблику'}»: {text} "
-                f"(обговорення: {d['messages']} реплік, {d['participants']} учасників)")
+        return (
+            f"[{m['id']}] {m['time']} {m['sender']} ⤷ ПЕРЕСЛАНО з «{m.get('fwd_source') or 'паблику'}»: {text} "
+            f"(обговорення: {d['messages']} реплік, {d['participants']} учасників)"
+        )
     return f"[{m['id']}] {m['time']} {m['sender']}{reply}: {text}"
 
 
@@ -194,7 +223,9 @@ def compute_stats(data: dict) -> dict:
     by_hour = Counter(int(m["time"][:2]) for m in msgs)
     with_media = [m for m in msgs if m.get("media_id") in media]
     kinds = Counter(media[m["media_id"]]["kind"] for m in with_media)
-    stickers = Counter(m["media_id"] for m in with_media if "sticker" in media[m["media_id"]]["kind"])
+    stickers = Counter(
+        m["media_id"] for m in with_media if "sticker" in media[m["media_id"]]["kind"]
+    )
     replied = Counter(m["reply_to"] for m in msgs if m.get("reply_to") in by_id)
 
     return {
@@ -206,15 +237,28 @@ def compute_stats(data: dict) -> dict:
         "busiest_hour": f"{by_hour.most_common(1)[0][0]:02d}:00" if by_hour else None,
         "media_counts": dict(kinds),
         "top_sticker": (
-            {"media_id": stickers.most_common(1)[0][0], "count": stickers.most_common(1)[0][1]}
-            if stickers else None
+            {
+                "media_id": stickers.most_common(1)[0][0],
+                "count": stickers.most_common(1)[0][1],
+            }
+            if stickers
+            else None
         ),
         "most_replied": [
-            {"message_id": i, "replies": n, "sender": by_id[i]["sender"], "text": by_id[i]["text"]}
+            {
+                "message_id": i,
+                "replies": n,
+                "sender": by_id[i]["sender"],
+                "text": by_id[i]["text"],
+            }
             for i, n in replied.most_common(3)
         ],
-        "first_message": {"time": msgs[0]["time"], "sender": msgs[0]["sender"]} if msgs else None,
-        "last_message": {"time": msgs[-1]["time"], "sender": msgs[-1]["sender"]} if msgs else None,
+        "first_message": (
+            {"time": msgs[0]["time"], "sender": msgs[0]["sender"]} if msgs else None
+        ),
+        "last_message": (
+            {"time": msgs[-1]["time"], "sender": msgs[-1]["sender"]} if msgs else None
+        ),
     }
 
 
@@ -233,12 +277,16 @@ def chunk_lines(lines: list[str], limit: int) -> list[str]:
 
 # ---------- робота з Ollama ----------
 
+
 def ollama_chat(system: str, user: str, schema: dict | None = None) -> str:
     headers = {"Authorization": f"Bearer {OLLAMA_API_KEY}"}
     payload = {
         "model": MODEL,
         "stream": False,
-        "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
         "options": {"temperature": 0.7},
     }
     if schema:
@@ -246,7 +294,12 @@ def ollama_chat(system: str, user: str, schema: dict | None = None) -> str:
 
     for attempt in range(1, 4):
         try:
-            r = requests.post(f"{OLLAMA_HOST}/api/chat", json=payload, headers=headers, timeout=TIMEOUT)
+            r = requests.post(
+                f"{OLLAMA_HOST}/api/chat",
+                json=payload,
+                headers=headers,
+                timeout=TIMEOUT,
+            )
             if r.status_code == 401:
                 sys.exit("Помилка 401: невірний OLLAMA_API_KEY. Перевір ключ у .env")
             if r.status_code != 200:
@@ -265,12 +318,16 @@ def ollama_json(system: str, user: str, schema: dict) -> dict:
         # Сира відповідь зберігається завжди — зручно для діагностики
         DATA_DIR.mkdir(exist_ok=True)
         (DATA_DIR / "last_model_response.txt").write_text(raw, encoding="utf-8")
-        raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        raw = (
+            raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        )
         try:
             return normalize(json.loads(raw))
         except (json.JSONDecodeError, ValueError) as e:
             print(f"  ! модель повернула некоректну відповідь, спроба {attempt}/3: {e}")
-    raise RuntimeError("Модель тричі повернула некоректну відповідь — див. data/last_model_response.txt")
+    raise RuntimeError(
+        "Модель тричі повернула некоректну відповідь — див. data/last_model_response.txt"
+    )
 
 
 def as_int(v) -> int:
@@ -300,8 +357,12 @@ def normalize(c) -> dict:
 
     h = c.get("headline")
     if not isinstance(h, dict):  # модель повернула заголовок рядком
-        h = {"title": as_text(h), "subtitle": c.get("subtitle", ""), "body": c.get("body", ""),
-             "illustration_message_id": c.get("illustration_message_id", 0)}
+        h = {
+            "title": as_text(h),
+            "subtitle": c.get("subtitle", ""),
+            "body": c.get("body", ""),
+            "illustration_message_id": c.get("illustration_message_id", 0),
+        }
     headline = {
         "title": as_text(h.get("title")),
         "subtitle": as_text(h.get("subtitle")),
@@ -329,7 +390,12 @@ def normalize(c) -> dict:
     quotes = []
     for q in c.get("quotes") or []:
         if isinstance(q, dict):
-            quotes.append({"message_id": as_int(q.get("message_id")), "comment": as_text(q.get("comment"))})
+            quotes.append(
+                {
+                    "message_id": as_int(q.get("message_id")),
+                    "comment": as_text(q.get("comment")),
+                }
+            )
         else:
             quotes.append({"message_id": as_int(q), "comment": ""})
 
@@ -361,6 +427,7 @@ def normalize(c) -> dict:
 
 # ---------- перевірка відповіді ----------
 
+
 def resolve(content: dict, data: dict) -> dict:
     """Перетворює id повідомлень на media_id і справжні цитати, відкидає вигадані id."""
     by_id = {m["id"]: m for m in data["messages"]}
@@ -384,16 +451,21 @@ def resolve(content: dict, data: dict) -> dict:
     for q in content["quotes"]:
         m = by_id.get(q["message_id"])
         if m and not m.get("forwarded") and m["text"] and not m["text"].startswith("["):
-            quotes.append({**q, "sender": m["sender"], "time": m["time"], "text": m["text"]})
+            quotes.append(
+                {**q, "sender": m["sender"], "time": m["time"], "text": m["text"]}
+            )
     content["quotes"] = quotes
     return content
 
 
 # ---------- основне ----------
 
+
 def main():
     if not OLLAMA_API_KEY:
-        sys.exit("Не задано OLLAMA_API_KEY у файлі .env — див. інструкцію з підключення API")
+        sys.exit(
+            "Не задано OLLAMA_API_KEY у файлі .env — див. інструкцію з підключення API"
+        )
     date = sys.argv[1] if len(sys.argv) > 1 else datetime.now(TZ).strftime("%Y-%m-%d")
     src = DATA_DIR / f"{date}.json"
     if not src.exists():
@@ -415,7 +487,9 @@ def main():
 
     if not msgs:
         print("За цю добу в чаті не було повідомлень — газета буде порожньою.")
-        out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+        out.write_text(
+            json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
         return
 
     disc = discussions(msgs)
@@ -424,7 +498,9 @@ def main():
     if disc:
         print(f"Пересланих постів: {len(disc)}, з помітним обговоренням: {hot}")
     transcript = "\n".join(lines)
-    print(f"Повідомлень: {len(msgs)}, символів: {len(transcript)}, модель: {MODEL} @ {OLLAMA_HOST}")
+    print(
+        f"Повідомлень: {len(msgs)}, символів: {len(transcript)}, модель: {MODEL} @ {OLLAMA_HOST}"
+    )
 
     # Довгий день: спершу підсумки по шматках, потім газета з підсумків
     if len(transcript) > CHUNK_CHARS:
@@ -433,8 +509,13 @@ def main():
         summaries = []
         for i, chunk in enumerate(chunks, 1):
             print(f"  підсумок частини {i}/{len(chunks)}...")
-            summaries.append(f"--- Частина {i} ---\n" + ollama_chat(CHUNK_PROMPT, chunk))
-        material = "Підсумки переписки по частинах (id повідомлень у квадратних дужках):\n\n" + "\n\n".join(summaries)
+            summaries.append(
+                f"--- Частина {i} ---\n" + ollama_chat(CHUNK_PROMPT, chunk)
+            )
+        material = (
+            "Підсумки переписки по частинах (id повідомлень у квадратних дужках):\n\n"
+            + "\n\n".join(summaries)
+        )
     else:
         material = transcript
 
@@ -443,8 +524,11 @@ def main():
         f"Статистика дня: {stats['total_messages']} повідомлень, найактивніші: {top}, "
         f"пікова година: {stats['busiest_hour']}.\n\nПереписка:\n{material}"
     )
-    system = (SYSTEM_PROMPT.replace("{name}", NEWSPAPER_NAME).replace("{date}", date)
-              .replace("{fwd_min}", str(FWD_MIN_DISCUSSION)))
+    system = (
+        SYSTEM_PROMPT.replace("{name}", NEWSPAPER_NAME)
+        .replace("{date}", date)
+        .replace("{fwd_min}", str(FWD_MIN_DISCUSSION))
+    )
 
     print("Генерую газету...")
     t0 = time.time()
@@ -457,8 +541,10 @@ def main():
     print(f"Головна: {c['headline']['title']}")
     for a in c["articles"]:
         print(f"  [{a['rubric']}] {a['title']}{'  🖼' if a['media_id'] else ''}")
-    print(f"Цитат: {len(c['quotes'])}, коротких новин: {len(c['short_news'])}, "
-          f"герой дня: {c['hero_of_day']['sender']}, анекдотів: {len(c['jokes'])}")
+    print(
+        f"Цитат: {len(c['quotes'])}, коротких новин: {len(c['short_news'])}, "
+        f"герой дня: {c['hero_of_day']['sender']}, анекдотів: {len(c['jokes'])}"
+    )
 
 
 if __name__ == "__main__":

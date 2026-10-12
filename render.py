@@ -14,12 +14,10 @@ import json
 import os
 import re
 import sys
-import io, base64
-from PIL import Image
 from datetime import date as Date, datetime
 from pathlib import Path
 
-from optimize_media import optimize_media
+from optimize_media import optimize_media, make_posters
 from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
@@ -73,6 +71,11 @@ def plural(n: int, one: str, few: str, many: str) -> str:
 
 def strip_tag(text: str) -> str:
     return re.sub(r"^\[[^\]]+\]\s*", "", text or "").strip()
+
+
+def safe_filename(text: str) -> str:
+    """Прибирає символи, недопустимі в іменах файлів (Windows/macOS/Linux)."""
+    return re.sub(r'[\\/:*?"<>|]+', "", text or "").strip() or "Газета"
 
 
 def pick_gallery(data: dict, used: set) -> list[dict]:
@@ -133,6 +136,8 @@ def main():
     issue = None
     if NEWSPAPER_START:
         issue = (d - Date.fromisoformat(NEWSPAPER_START)).days + 1
+        if issue < 1:  # дата раніше за NEWSPAPER_START — номера немає
+            issue = None
 
     used = set()
     if content:
@@ -164,6 +169,14 @@ def main():
         opt_media = result["media"]
         opt_report = result["report"]
 
+    # ── Постери для гіфок у галереї ───────────────────────────────────────
+    posters = make_posters(opt_media, [g["media_id"] for g in gallery])
+    if posters:
+        opt_media = dict(opt_media)
+        for mid, uri in posters.items():
+            opt_media[mid] = {**opt_media[mid], "poster": uri}
+        print(f"Постерів для гіфок: {len(posters)}")
+
     env = Environment(
         loader=FileSystemLoader(BASE), autoescape=select_autoescape(["html"])
     )
@@ -187,10 +200,11 @@ def main():
         has_lottie=has_lottie,
         model=paper.get("model", ""),
         generated_at=paper.get("generated_at", ""),
+        day=day,
     )
 
     OUT_DIR.mkdir(exist_ok=True)
-    name_part = paper.get("newspaper_name", "Вісник Чату")
+    name_part = safe_filename(paper.get("newspaper_name", "Вісник Чату"))
     date_part = d.strftime("%d-%m-%Y")
     if issue is not None:
         out_name = f"Газета {name_part} Випуск №{issue} {date_part}.html"
