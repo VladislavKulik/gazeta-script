@@ -57,9 +57,8 @@ ARTICLE = {
     "required": ["rubric", "title", "body", "illustration_message_id"],
 }
 
-SCHEMA = {
-    "type": "object",
-    "properties": {
+def make_schema(is_games: bool = True) -> dict:
+    properties = {
         "tagline": {"type": "string"},
         "headline": {
             "type": "object",
@@ -91,24 +90,58 @@ SCHEMA = {
             "required": ["sender", "title", "reason"],
         },
         "jokes": {"type": "array", "items": {"type": "string"}},
-        "crossword": {
+    }
+    required = ["tagline", "headline", "articles", "quotes", "short_news", "hero_of_day", "jokes"]
+    if is_games:
+        properties["crossword"] = {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {"answer": {"type": "string"}, "clue": {"type": "string"}},
                 "required": ["answer", "clue"],
             },
-        },
-        "quiz_message_ids": {"type": "array", "items": {"type": "integer"}},
-    },
-    "required": ["tagline", "headline", "articles", "quotes", "short_news", "hero_of_day", "jokes",
-                 "crossword", "quiz_message_ids"],
-}
+        }
+        properties["quiz_message_ids"] = {"type": "array", "items": {"type": "integer"}}
+        required.extend(["crossword", "quiz_message_ids"])
+
+    return {"type": "object", "properties": properties, "required": required}
 
 
 # ---------- промпти ----------
 
-SYSTEM_PROMPT = """Ти — головний редактор щоденної жартівливої газети «{name}» для дружнього групового чату.
+def make_system_prompt(name: str, date: str, is_games: bool = True) -> str:
+    rules = [
+        "- Пиши українською, живо, з гумором, у стилі газети чи таблоїда. Дружні підколки — так; образи, насмішки над зовнішністю, здоров'ям чи особистими бідами — ні.",
+        "- Не вигадуй подій і реплік, яких не було в чаті. Художньо перебільшувати можна, але факти беруться тільки з переписки.",
+        "- headline — головна новина дня: найобговорюваніша або найсмішніша тема. body 150–300 слів.",
+        "- articles — 3–6 статей на інші теми дня, кожна 80–200 слів, з рубрикою за змістом (наприклад: «Скандали», «Культура», «Спорт», «Кулінарія», «Техно», «Плітки»).",
+        "- illustration_message_id — id повідомлення з [фото], [gif] або [стікер], яке пасує до статті; 0, якщо нічого не пасує. Бери лише id з переписки, у яких справді є медіа, і не повторюй одну ілюстрацію двічі.",
+        "- quotes — 3–5 найяскравіших реплік дня: вкажи лише message_id (текст підставиться автоматично) і короткий редакторський коментар.",
+        "- short_news — 3–6 коротких новин, кожна одним реченням.",
+        "- hero_of_day — учасник дня: ім'я точно як у переписці, жартівливе звання і пояснення за що.",
+    ]
+    if is_games:
+        rules.extend([
+            f"- crossword — {CROSSWORD_WORDS} слів для кросворду за подіями дня: answer — ОДНЕ слово українськими літерами, 3–12 літер,\n"
+            "  без пробілів, дефісів і апострофів (можна імена учасників, назви ігор, предмети, явища з чату);\n"
+            "  clue — дотепна підказка, що відсилає до подій дня і НЕ містить саме слово. Чим більше спільних літер між словами, тим краще.",
+            f"- quiz_message_ids — {QUIZ_SIZE + 2} id повідомлень для гри «Угадай, хто це сказав»: смішні або дуже характерні репліки\n"
+            "  (довжиною від 20 символів), за якими можна вгадати автора. Не беріть репліки з quotes, переслані пости,\n"
+            "  медіа та повідомлення, де автор називає себе. Бажано від різних людей.",
+        ])
+    rules.extend([
+        "- jokes — 5–8 коротких оригінальних анекдотів (1–3 речення кожен) за мотивами тем і подій дня. Без образ учасників, грубих слів і переказу реальних реплік.",
+        "- tagline — підзаголовок випуску, одне речення.",
+    ])
+
+    rules_str = "\n".join(rules)
+    games_json = ""
+    if is_games:
+        games_json = """,
+  "crossword": [{"answer": "ДЕДЛОК", "clue": "Гра, через яку чат сварився весь вечір"}],
+  "quiz_message_ids": [123, 456]"""
+
+    return f"""Ти — головний редактор щоденної жартівливої газети «{name}» для дружнього групового чату.
 Ти отримуєш переписку за {date} у форматі:
 [id] ГГ:ХХ Ім'я ↪id_повідомлення_на_яке_відповідь: текст
 Мітки [фото], [стікер 😂], [gif], [відео], [голосове] позначають медіа: ти їх не бачиш, лише знаєш, що вони були.
@@ -118,41 +151,28 @@ SYSTEM_PROMPT = """Ти — головний редактор щоденної �
 Переслані пости:
 - Сам пост НЕ є новиною газети: не переказуй його і не пиши статтю про саму новину.
 - Пиши лише про те, як чат ОБГОВОРЮВАВ цей пост: реакції, суперечки, жарти, хто що сказав. Новину згадуй одним реченням як привід.
-- Якщо обговорення менше {fwd_min} реплік або воно нецікаве, повністю ігноруй цей пост.
+- Якщо обговорення менше {FWD_MIN_DISCUSSION} реплік або воно нецікаве, повністю ігноруй цей пост.
 - Ніколи не бери переслані пости в quotes та illustration_message_id.
 
 Правила:
-- Пиши українською, живо, з гумором, у стилі газети чи таблоїда. Дружні підколки — так; образи, насмішки над зовнішністю, здоров'ям чи особистими бідами — ні.
-- Не вигадуй подій і реплік, яких не було в чаті. Художньо перебільшувати можна, але факти беруться тільки з переписки.
-- headline — головна новина дня: найобговорюваніша або найсмішніша тема. body 150–300 слів.
-- articles — 3–6 статей на інші теми дня, кожна 80–200 слів, з рубрикою за змістом (наприклад: «Скандали», «Культура», «Спорт», «Кулінарія», «Техно», «Плітки»).
-- illustration_message_id — id повідомлення з [фото], [gif] або [стікер], яке пасує до статті; 0, якщо нічого не пасує. Бери лише id з переписки, у яких справді є медіа, і не повторюй одну ілюстрацію двічі.
-- quotes — 3–5 найяскравіших реплік дня: вкажи лише message_id (текст підставиться автоматично) і короткий редакторський коментар.
-- short_news — 3–6 коротких новин, кожна одним реченням.
-- hero_of_day — учасник дня: ім'я точно як у переписці, жартівливе звання і пояснення за що.
-- crossword — {cw} слів для кросворду за подіями дня: answer — ОДНЕ слово українськими літерами, 3–12 літер,
-  без пробілів, дефісів і апострофів (можна імена учасників, назви ігор, предмети, явища з чату);
-  clue — дотепна підказка, що відсилає до подій дня і НЕ містить саме слово. Чим більше спільних літер між словами, тим краще.
-- quiz_message_ids — {quiz} id повідомлень для гри «Угадай, хто це сказав»: смішні або дуже характерні репліки
-  (довжиною від 20 символів), за якими можна вгадати автора. Не беріть репліки з quotes, переслані пости,
-  медіа та повідомлення, де автор називає себе. Бажано від різних людей.
-- jokes — 5–8 коротких оригінальних анекдотів (1–3 речення кожен) за мотивами тем і подій дня. Без образ учасників, грубих слів і переказу реальних реплік.
-- tagline — підзаголовок випуску, одне речення.
+{rules_str}
 Відповідай ЛИШЕ одним JSON-об'єктом, без пояснень і без ```. Структура СУВОРО така
 (headline, hero_of_day — об'єкти; articles, quotes, short_news — масиви):
-{
+{{
   "tagline": "підзаголовок випуску",
-  "headline": {"title": "заголовок", "subtitle": "підзаголовок", "body": "текст", "illustration_message_id": 0},
+  "headline": {{"title": "заголовок", "subtitle": "підзаголовок", "body": "текст", "illustration_message_id": 0}},
   "articles": [
-    {"rubric": "Скандали", "title": "заголовок", "body": "текст", "illustration_message_id": 0}
+    {{"rubric": "Скандали", "title": "заголовок", "body": "текст", "illustration_message_id": 0}}
   ],
-  "quotes": [{"message_id": 123, "comment": "коментар редакції"}],
+  "quotes": [{{"message_id": 123, "comment": "коментар редакції"}}],
   "short_news": ["коротка новина"],
-  "hero_of_day": {"sender": "Ім'я", "title": "звання", "reason": "за що"},
-  "jokes": ["анекдот 1", "анекдот 2"],
-  "crossword": [{"answer": "ДЕДЛОК", "clue": "Гра, через яку чат сварився весь вечір"}],
-  "quiz_message_ids": [123, 456]
-}"""
+  "hero_of_day": {{"sender": "Ім'я", "title": "звання", "reason": "за що"}},
+  "jokes": ["анекдот 1", "анекдот 2"]{games_json}
+}}"""
+
+
+SCHEMA = make_schema(True)
+SYSTEM_PROMPT = make_system_prompt("{name}", "{date}", True)
 
 CHUNK_PROMPT = """Це фрагмент переписки дружнього чату. Стисло (до 400 слів) опиши українською:
 теми розмов, ключові події, суперечки, смішні моменти і хто що казав.
@@ -475,30 +495,33 @@ def main():
         f"Статистика дня: {stats['total_messages']} повідомлень, найактивніші: {top}, "
         f"пікова година: {stats['busiest_hour']}.\n\nПереписка:\n{material}"
     )
-    system = (SYSTEM_PROMPT.replace("{name}", NEWSPAPER_NAME).replace("{date}", date)
-              .replace("{fwd_min}", str(FWD_MIN_DISCUSSION))
-              .replace("{cw}", str(CROSSWORD_WORDS)).replace("{quiz}", str(QUIZ_SIZE + 2)))
+    games_day = games.is_games_day(date)
+    system = make_system_prompt(NEWSPAPER_NAME, date, games_day)
+    schema = make_schema(games_day)
 
     print("Генерую газету...")
     t0 = time.time()
-    content = ollama_json(system, user_msg, SCHEMA)
+    content = ollama_json(system, user_msg, schema)
     result["content"] = resolve(content, data)
     c = result["content"]
 
-    # ---------- ігри ----------
-    words = games.clean_crossword_words(c.pop("crossword_raw", []))
-    c["crossword"] = games.build_crossword(words, seed=date)
-    quiz_ids = c.pop("quiz_message_ids", [])
-    quoted = {q["message_id"] for q in c["quotes"]}
-    if weekly.is_weekly_day(date) or games.is_games_day(date):
+    # ---------- ігри (лише у неділю) ----------
+    if games_day:
+        words = games.clean_crossword_words(c.pop("crossword_raw", []))
+        c["crossword"] = games.build_crossword(words, seed=date)
+        quiz_ids = c.pop("quiz_message_ids", [])
+        quoted = {q["message_id"] for q in c["quotes"]}
         w_quotes, w_senders = weekly.collect_weekly_quotes(date, result)
         c["quiz"] = games.build_quiz_from_quotes(w_quotes, w_senders, seed=date, size=QUIZ_SIZE)
         if not c["quiz"]:
             c["quiz"] = games.build_quiz(quiz_ids, data, quoted, seed=date, size=QUIZ_SIZE)
+        print(f"Кросворд: {len(c['crossword']['entries']) if c['crossword'] else 0} слів із {len(words)}, "
+              f"«Угадай цитату»: {len(c['quiz'])} питань")
     else:
-        c["quiz"] = games.build_quiz(quiz_ids, data, quoted, seed=date, size=QUIZ_SIZE)
-    print(f"Кросворд: {len(c['crossword']['entries']) if c['crossword'] else 0} слів із {len(words)}, "
-          f"«Угадай цитату»: {len(c['quiz'])} питань")
+        c.pop("crossword_raw", None)
+        c.pop("quiz_message_ids", None)
+        c.pop("crossword", None)
+        c.pop("quiz", None)
 
     # ---------- тиждень ----------
     try:
