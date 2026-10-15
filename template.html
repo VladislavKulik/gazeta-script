@@ -2433,6 +2433,8 @@
           </div>
           <div class="wov" id="wres" role="dialog" aria-label="Результат" hidden></div>
         </div>
+        {% if word_dict %}
+        <script id="wdict" type="text/plain">{{ word_dict }}</script>{% endif %}
         <script>
           (function () {
             var root = document.getElementById("wd");
@@ -2473,7 +2475,10 @@
               var dn = $("wdict");
               if (dn && dn.textContent.trim()) {
                 DICT = new Set(dn.textContent.trim().toUpperCase().split(/\s+/));
-                (W.dictionary || []).forEach(function (x) { DICT.add(String(x).toUpperCase()); });
+              }
+              if (W.dictionary && W.dictionary.length) {
+                if (!DICT) DICT = new Set();
+                W.dictionary.forEach(function (x) { DICT.add(String(x).toUpperCase()); });
               }
               return DICT;
             }
