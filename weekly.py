@@ -103,7 +103,7 @@ def _weekly_validate(c, valid_dates: set) -> dict:
                 }
             )
     hero = c.get("hero_of_week") if isinstance(c.get("hero_of_week"), dict) else {}
-    return {
+    res = {
         "title": str(c["title"]).strip(),
         "intro": str(c.get("intro", "")).strip(),
         "stories": stories[:5],
@@ -111,6 +111,11 @@ def _weekly_validate(c, valid_dates: set) -> dict:
             k: str(hero.get(k, "")).strip() for k in ("sender", "title", "reason")
         },
     }
+    if isinstance(c.get("meme"), dict):
+        res["meme"] = c["meme"]
+    if isinstance(c.get("dialogue"), dict):
+        res["dialogue"] = c["dialogue"]
+    return res
 
 
 def build_weekly(day: str, today_paper: dict, ask_json, name: str) -> dict | None:

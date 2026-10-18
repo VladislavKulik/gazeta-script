@@ -15,7 +15,7 @@ import json
 import os
 import re
 import sys
-from datetime import date as Date, datetime
+from datetime import date as Date, datetime, timedelta
 from pathlib import Path
 
 from optimize_media import optimize_media, make_posters, ensure_media_dimensions
@@ -133,6 +133,179 @@ def fonts_css() -> str:
 
 def ua_date(d: Date) -> str:
     return f"{WEEKDAYS[d.weekday()]}, {d.day} {MONTHS[d.month - 1]} {d.year}"
+
+
+def format_period(range_str: str) -> str:
+    """Форматує рядок діапазону тижня (наприклад '05.10 – 11.10.2026') у вигляд '5–11 жовтня'."""
+    m = re.search(
+        r"(\d{1,2})\.(\d{1,2})\s*[–-]\s*(\d{1,2})\.(\d{1,2})\.?(\d{4})?",
+        range_str or "",
+    )
+    if m:
+        d1, m1 = int(m.group(1)), int(m.group(2))
+        d2, m2 = int(m.group(3)), int(m.group(4))
+        if 1 <= m1 <= 12 and 1 <= m2 <= 12:
+            if m1 == m2:
+                return f"{d1}–{d2} {MONTHS[m2 - 1]}"
+            return f"{d1} {MONTHS[m1 - 1]} – {d2} {MONTHS[m2 - 1]}"
+    return range_str or ""
+
+
+def format_headline_date(h: dict) -> str:
+    """Форматує дату для 'День за днем': 'Понеділок, 5 жовтня'."""
+    d_str = h.get("date")
+    if d_str:
+        try:
+            d = Date.fromisoformat(d_str)
+            wday = h.get("weekday") or WEEKDAYS[d.weekday()]
+            return f"{wday.capitalize()}, {d.day} {MONTHS[d.month - 1]}"
+        except Exception:
+            pass
+    return h.get("label", "")
+
+
+def get_weekly_dialogue(day: str, paper: dict) -> dict | None:
+    """Повертає 'Діалог тижня': з paper.weekly.dialogue або paper.weekly.content.dialogue, або видобуває найяскравіший діалог тижня."""
+    weekly = paper.get("weekly") or {}
+    wc = weekly.get("content") or {}
+    dlg = weekly.get("dialogue") or wc.get("dialogue")
+    if dlg and isinstance(dlg, dict):
+        return dlg
+
+    try:
+        end = Date.fromisoformat(day)
+        days = [end - timedelta(days=i) for i in range(6, -1, -1)]
+        for d in days:
+            raw = _load(DATA_DIR / f"{d.isoformat()}.json")
+            if not raw:
+                continue
+            msgs = [
+                m
+                for m in raw.get("messages", [])
+                if m.get("text")
+                and not m.get("forwarded")
+                and not m["text"].startswith("[")
+                and 5 <= len(m["text"]) <= 120
+            ]
+            for i in range(len(msgs) - 3):
+                chunk = msgs[i : i + 4]
+                senders = [m.get("sender") for m in chunk]
+                distinct = list(dict.fromkeys(senders))
+                if (
+                    len(distinct) == 2
+                    and senders[0] != senders[1]
+                    and senders[0] == senders[2]
+                ):
+                    t0, tk = chunk[0].get("time", ""), chunk[-1].get("time", "")
+                    if t0 and tk and t0[:2] == tk[:2]:
+                        return {
+                            "title": "Суперечка тижня",
+                            "topic": f"Діалог між {distinct[0]} та {distinct[1]}",
+                            "day_label": f"{WEEKDAYS[d.weekday()].capitalize()}, {d.day} {MONTHS[d.month - 1]}",
+                            "messages": [
+                                {
+                                    "sender": m["sender"],
+                                    "time": m.get("time", ""),
+                                    "text": m["text"],
+                                }
+                                for m in chunk
+                            ],
+                            "moral": "Класичний чатовий діалог тижня.",
+                        }
+    except Exception:
+        pass
+    return None
+
+
+def get_weekly_meme(day: str, paper: dict) -> dict | None:
+    """Повертає 'Мем тижня': з paper.weekly.meme або paper.weekly.content.meme, або дефолтний зі слова дня."""
+    weekly = paper.get("weekly") or {}
+    wc = weekly.get("content") or {}
+    meme = weekly.get("meme") or wc.get("meme")
+    if meme and isinstance(meme, dict):
+        return meme
+
+    word_info = paper.get("word")
+    if word_info and word_info.get("why"):
+        return {
+            "word": str(word_info.get("word", "")).upper(),
+            "pos": "іменник · тренд тижня",
+            "count_chip": f"У чаті — {word_info.get('count', 1)} разів",
+            "author": "Комʼюніті",
+            "definition": word_info.get("why", ""),
+            "example": "",
+            "context": "Найчастіше вживане ключове слово тижневого циклу.",
+        }
+    return None
+
+
+def get_daily_dialogue(day: str, paper: dict) -> dict | None:
+    """Повертає 'Діалог дня': з paper.dialogue або paper.content.dialogue, або видобуває найяскравіший діалог дня."""
+    content = paper.get("content") or {}
+    dlg = paper.get("dialogue") or content.get("dialogue")
+    if dlg and isinstance(dlg, dict):
+        msgs = dlg.get("messages") or []
+        first_s = msgs[0].get("sender") if msgs else ""
+        return {
+            "title": dlg.get("title") or "Суперечка дня",
+            "topic": dlg.get("topic") or "",
+            "time_range": dlg.get("time_range") or "",
+            "moral": dlg.get("moral") or "",
+            "messages": [
+                {
+                    "sender": m.get("sender", ""),
+                    "time": m.get("time", ""),
+                    "text": m.get("text", ""),
+                    "is_alt": m.get("is_alt", (m.get("sender") != first_s)),
+                }
+                for m in msgs
+            ],
+        }
+
+    try:
+        raw = _load(DATA_DIR / f"{day}.json") or paper
+        msgs = [
+            m
+            for m in raw.get("messages", [])
+            if m.get("text")
+            and not m.get("forwarded")
+            and not m["text"].startswith("[")
+            and 4 <= len(m["text"]) <= 140
+        ]
+        for i in range(len(msgs) - 2):
+            for k in (4, 3):
+                if i + k > len(msgs):
+                    continue
+                chunk = msgs[i : i + k]
+                senders = [m.get("sender") for m in chunk]
+                distinct = list(dict.fromkeys(senders))
+                if (
+                    len(distinct) == 2
+                    and senders[0] != senders[1]
+                    and senders[0] == senders[2]
+                ):
+                    t0 = chunk[0].get("time", "")
+                    tk = chunk[-1].get("time", "")
+                    if t0 and tk and t0[:2] == tk[:2]:
+                        first_s = chunk[0].get("sender")
+                        return {
+                            "title": "Суперечка дня",
+                            "topic": f"{distinct[0]} та {distinct[1]}",
+                            "time_range": f"{t0} – {tk}",
+                            "messages": [
+                                {
+                                    "sender": m["sender"],
+                                    "time": m.get("time", ""),
+                                    "text": m["text"],
+                                    "is_alt": (m["sender"] != first_s),
+                                }
+                                for m in chunk
+                            ],
+                            "moral": "Живий діалог із чату.",
+                        }
+    except Exception:
+        pass
+    return None
 
 
 def paragraphs(text: str) -> Markup:
@@ -343,6 +516,15 @@ def main():
             if q not in weekly_quotes:
                 weekly_quotes.append(q)
 
+    weekly_dialogue = None
+    weekly_meme = None
+    if is_weekly_day(day) or paper.get("weekly"):
+        weekly_meme = get_weekly_meme(day, paper)
+        if not weekly_meme:
+            weekly_dialogue = get_weekly_dialogue(day, paper)
+
+    daily_dialogue = get_daily_dialogue(day, paper)
+
     # Wordle — у кожному випуску, нове слово щодня. Беремо зі спарсеного випуску, інакше з кешу дня,
     # інакше (без моделі, без запису в кеш) найчастіше слово дня.
     word = paper.get("word") or cached_word(day)
@@ -390,6 +572,8 @@ def main():
     )
     env.filters["paragraphs"] = paragraphs
     env.globals["plural"] = plural
+    env.globals["format_period"] = format_period
+    env.globals["format_headline_date"] = format_headline_date
     html = env.get_template("template.html").render(
         name=paper.get("newspaper_name", "Вісник Чату"),
         date_text=ua_date(d),
@@ -412,6 +596,9 @@ def main():
         weekly=weekly,
         weekly_headlines=weekly_headlines,
         weekly_quotes=weekly_quotes,
+        weekly_dialogue=weekly_dialogue,
+        weekly_meme=weekly_meme,
+        daily_dialogue=daily_dialogue,
         cw_data=obf(cw) if cw else None,
         quiz_data=obf(quiz) if len(quiz) >= 3 else None,
         word_data=word_data,
