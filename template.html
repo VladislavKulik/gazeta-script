@@ -222,7 +222,8 @@
       position: static;
     }
 
-    .masonry>.card.weather {
+    .masonry>.card.hero,
+    .masonry>.col-break {
       break-before: column;
     }
 
@@ -237,7 +238,8 @@
         column-count: 1 !important;
       }
 
-      .masonry>.card.weather {
+      .masonry>.card.hero,
+      .masonry>.col-break {
         break-before: auto !important;
       }
     }
@@ -499,107 +501,170 @@
       opacity: .8;
     }
 
-    /* Погода */
-    .wh {
+    /* Шапка газети з блоком погоди (стиль назви v5 + м'яка картка погоди v4) */
+    .header {
       display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
       justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
+      gap: 32px 48px;
+      margin-bottom: 48px;
     }
 
-    .wh .label {
+    .htext {
+      flex: 1 1 540px;
+      min-width: 0;
+    }
+
+    .htext h1 {
+      font-family: var(--display);
+      font-weight: 800;
+      font-size: clamp(52px, 6.8vw, 98px);
+      line-height: .96;
+      letter-spacing: -.055em;
+      margin: 0 0 20px;
+    }
+
+    .htext h1 .hacc {
+      color: var(--accent);
+      display: inline-block;
+    }
+
+    .htext .sub {
+      font-size: clamp(17px, 1.8vw, 21px);
+      line-height: 1.5;
+      color: var(--text2);
+      max-width: 44ch;
       margin: 0;
     }
 
-    .wloc {
-      font-size: 13.5px;
-      color: var(--muted);
-      margin: 0 0 8px;
-      overflow-wrap: anywhere;
+    /* Блок погоди (v4 М'які картки) */
+    .card.weather {
+      flex: 0 1 350px;
+      min-width: 280px;
+      padding: 20px 22px;
+      border-radius: 28px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      min-height: 160px;
+      box-sizing: border-box;
     }
 
-    .wgeo {
+    .card.weather .wlabel {
+      margin: 0 0 8px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 19px;
+      line-height: 1.25;
+    }
+
+    .card.weather .wlabel::before {
+      content: "";
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex: none;
+    }
+
+    .card.weather .wdot {
+      color: var(--muted);
+      opacity: .6;
+    }
+
+    .card.weather .wloc-inline {
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .card.weather .wnow {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      height: 50px;
+    }
+
+    .card.weather .wtemp {
+      font-family: var(--display);
+      font-weight: 800;
+      font-size: 50px;
+      line-height: 1;
+      letter-spacing: -.05em;
+      color: var(--accent);
+      flex: none;
+      height: 50px;
+      display: flex;
+      align-items: center;
+    }
+
+    .card.weather .winfo {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
+    }
+
+    .card.weather .wloc-mobile {
+      display: none;
+    }
+
+    .card.weather .wdesc {
+      font-size: 14px;
+      line-height: 1.35;
+      color: var(--text2);
+      font-weight: 400;
+    }
+
+    .card.weather .wdays {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+      height: 27px;
+    }
+
+    .card.weather .pill {
+      background: var(--pill);
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 5px 14px;
+      font-size: 14px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      line-height: 1.2;
+      height: 27px;
+      box-sizing: border-box;
+    }
+
+    .card.weather .wmsg {
+      color: var(--muted);
+      font-size: 14px;
+      margin: 6px 0 10px;
+    }
+
+    .card.weather .wgeo {
       border: 1px solid var(--line);
       background: var(--pill);
       color: var(--text2);
       border-radius: 999px;
-      padding: 4px 11px;
+      padding: 5px 14px;
       font-size: 12.5px;
       cursor: pointer;
-      white-space: nowrap;
+      font-weight: 500;
     }
 
-    .wgeo:hover {
+    .card.weather .wgeo:hover {
       color: var(--text);
     }
 
-    .wnow {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .wicon {
-      font-size: 52px;
-      line-height: 1;
-    }
-
-    .wtemp {
-      font-family: var(--display);
-      font-size: 44px;
-      font-weight: 800;
-      letter-spacing: -.05em;
-      line-height: 1;
-    }
-
-    .wdesc {
-      color: var(--text2);
-      font-size: 15px;
-      margin-top: 4px;
-    }
-
-    .wmeta {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      margin: 12px 0;
-    }
-
-    .wdays {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
-    }
-
-    .wd {
-      background: var(--pill);
-      border-radius: 12px;
-      padding: 7px 4px;
-      text-align: center;
-      font-size: 12.5px;
-      color: var(--muted);
-    }
-
-    .wd span {
-      display: block;
-      font-size: 20px;
-    }
-
-    .wd b {
-      color: var(--text);
-      font-weight: 600;
-    }
-
-    .wmsg {
-      color: var(--muted);
-      font-size: 14.5px;
-      margin: 6px 0 10px;
-    }
-
-    /* висота блоку не залежить від стану завантаження, тому верстка не стрибає */
+    /* плавний скелетон без зайвого роздування висоти */
     .weather #wx {
-      min-height: 254px;
+      min-width: 0;
     }
 
     .sk {
@@ -629,6 +694,89 @@
     @media (prefers-reduced-motion: reduce) {
       .sk {
         animation: none;
+      }
+    }
+
+    @media (max-width: 660px) {
+      .header {
+        display: block;
+        margin-bottom: 28px;
+      }
+
+      .htext h1 {
+        margin: 0 0 16px;
+        font-size: 54px;
+        line-height: .98;
+        letter-spacing: -.055em;
+      }
+
+      .htext .sub {
+        margin: 0 0 22px;
+        font-size: 18px;
+        line-height: 1.5;
+      }
+
+      .card.weather {
+        flex: 1 1 100%;
+        width: 100%;
+        max-width: none;
+        padding: 20px 22px;
+        border-radius: 24px;
+        box-sizing: border-box;
+        min-height: 82px;
+      }
+
+      .card.weather .label,
+      .card.weather .wlabel {
+        display: none !important;
+      }
+
+      .card.weather .wdays,
+      .card.weather .pill {
+        display: none !important;
+      }
+
+      .card.weather .wnow {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        height: 41px;
+      }
+
+      .card.weather .wtemp {
+        font-size: 40px;
+        line-height: 1;
+        height: 40px;
+      }
+
+      .card.weather .wtemp .sk {
+        width: 52px !important;
+        height: 32px !important;
+      }
+
+      .card.weather .winfo {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-width: 0;
+      }
+
+      .card.weather .wloc-mobile {
+        display: block;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text);
+        line-height: 1.25;
+        margin-bottom: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .card.weather .wdesc {
+        font-size: 14.5px;
+        line-height: 1.35;
+        color: var(--text2);
       }
     }
 
@@ -873,374 +1021,597 @@
       margin: 0;
     }
 
-    /* Головне за тиждень */
-    .week {
+    /* ===== Недільний спецвипуск (v4 М'які картки) ===== */
+    .card.dark {
       background: var(--ink);
       border-color: var(--ink);
-      color: var(--ink-text);
+      color: #ffffff;
     }
 
-    .week .label {
+    .card.dark .label {
       color: var(--hi);
     }
 
-    .week .label::before {
+    .card.dark .label::before {
       background: var(--hi);
     }
 
-    .week h2 {
-      color: #fff;
-    }
-
-    .week .lede {
-      color: var(--ink-soft);
-      max-width: 72ch;
-    }
-
-    .week .chip {
-      background: rgba(255, 255, 255, .08);
-      border-color: rgba(255, 255, 255, .18);
+    .card.dark .p {
       color: var(--ink-soft);
     }
 
-    .week .chip.on {
+    /* 1. Заголовок */
+    .weekly-header {
+      padding: 80px 0 24px;
+    }
+
+    .weekly-header .weekly-title {
+      margin: 22px 0 16px;
+      font-family: var(--display);
+      font-weight: 800;
+      font-size: 64px;
+      line-height: 1.04;
+      letter-spacing: -.045em;
+      color: var(--text);
+    }
+
+    .weekly-header .sub {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.55;
+      color: var(--text2);
+      max-width: 52ch;
+    }
+
+    /* 2. Головне за тиждень */
+    .weekly-main {
+      padding: 48px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 40px 56px;
+      align-items: center;
+      border-radius: 28px;
+    }
+
+    .weekly-main-text {
+      flex: 1 1 520px;
+      min-width: 0;
+    }
+
+    .weekly-main-media {
+      flex: 1 1 320px;
+      min-width: 0;
+      border-radius: 22px;
+      overflow: hidden;
+    }
+
+    .weekly-main-media .mf,
+    .weekly-main-media img,
+    .weekly-main-media video {
+      width: 100%;
+      height: auto;
+      border-radius: 22px;
+      display: block;
+      object-fit: cover;
+    }
+
+    .weekly-main h2.hd {
+      color: #ffffff;
+      font-family: var(--display);
+      font-weight: 600;
+      font-size: 40px;
+      line-height: 1.16;
+      letter-spacing: -.035em;
+      margin: 0 0 22px;
+    }
+
+    .weekly-main .p {
+      font-size: 19px;
+      line-height: 1.7;
+      color: var(--ink-soft);
+      margin: 0;
+    }
+
+    /* 3. День за днем */
+    .weekly-days {
+      padding: 44px;
+      border-radius: 28px;
+    }
+
+    .weekly-days .label {
+      margin: 0 0 32px;
+    }
+
+    .weekly-days-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 44px 64px;
+    }
+
+    .weekly-day-item {
+      min-width: 0;
+    }
+
+    .weekly-day-item .chip.on,
+    .weekly-day-item .pill,
+    .dialogue-header .chip.on,
+    .meme-header .chip.on {
+      display: inline-block;
+      background: var(--hi);
+      border: 1px solid var(--hi);
+      color: var(--hi-text);
+      border-radius: 999px;
+      padding: 5px 14px;
+      font-size: 13.5px;
+      font-weight: 600;
+      line-height: 1.25;
+      white-space: nowrap;
+    }
+
+    .weekly-day-item h4.hd {
+      margin: 16px 0 10px;
+      font-family: var(--display);
+      font-weight: 600;
+      font-size: 23px;
+      line-height: 1.2;
+      letter-spacing: -.035em;
+      color: var(--text);
+    }
+
+    .weekly-day-item .p {
+      margin: 0;
+      font-size: 17.5px;
+      line-height: 1.7;
+      color: var(--text2);
+    }
+
+    /* 4. Герой тижня */
+    .weekly-hero.hero {
       background: var(--hi);
       border-color: var(--hi);
       color: var(--hi-text);
-    }
-
-    .wk {
-      display: grid;
-      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-      gap: 24px;
-      margin-top: 14px;
-      align-items: start;
-    }
-
-    .stories {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      counter-reset: st;
-    }
-
-    .stories li {
-      padding: 14px 0 14px 42px;
-      border-top: 1px solid rgba(255, 255, 255, .12);
-      position: relative;
-      counter-increment: st;
-    }
-
-    .stories li:first-child {
-      border-top: 0;
-      padding-top: 0;
-    }
-
-    .stories li::before {
-      content: counter(st);
-      position: absolute;
-      left: 0;
-      top: 12px;
-      font-family: var(--display);
-      font-weight: 800;
-      font-size: 24px;
-      color: var(--hi);
-      line-height: 1;
-    }
-
-    .stories li:first-child::before {
-      top: 0;
-    }
-
-    .stories h3 {
-      color: #fff;
-      margin: 6px 0 4px;
-      font-size: 19px;
-      font-weight: 700;
-      line-height: 1.25;
-    }
-
-    .stories p {
-      margin: 0;
-      color: var(--ink-soft);
-      font-size: 15px;
-      line-height: 1.5;
-    }
-
-    .stories .pill {
-      background: rgba(255, 255, 255, .12);
-      color: var(--ink-soft);
-      font-size: 12px;
-    }
-
-    .whero {
-      background: var(--hi);
-      color: var(--hi-text);
-      border-radius: 18px;
-      padding: 20px;
-    }
-
-    .whero .label {
-      color: var(--hi-text);
-      margin-bottom: 8px;
-    }
-
-    .whero .label::before {
-      background: var(--hi-text);
-    }
-
-    .whero h3 {
-      margin: 0 0 4px;
-      color: var(--hi-text);
-      font-size: 21px;
-      font-weight: 700;
-      line-height: 1.2;
-    }
-
-    .whero .rank {
-      font-weight: 600;
-      font-size: 14px;
-      opacity: .85;
-      margin: 0 0 8px;
-    }
-
-    .whero p {
-      margin: 0;
-      font-size: 14.5px;
-      line-height: 1.45;
-      color: var(--hi-text);
-    }
-
-    .wside {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .wside-quotes {
-      background: rgba(255, 255, 255, .05);
-      border: 1px solid rgba(255, 255, 255, .12);
-      border-radius: 18px;
-      padding: 16px 18px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .wside-quotes .label {
-      color: var(--hi);
-      margin-bottom: 2px;
-    }
-
-    .wside-quotes .label::before {
-      background: var(--hi);
-    }
-
-    .wq-item {
-      background: rgba(255, 255, 255, .05);
-      border: 1px solid rgba(255, 255, 255, .08);
-      border-radius: 14px 14px 14px 4px;
-      padding: 9px 13px;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-    }
-
-    .wq-meta {
-      font-size: 11.5px;
-      font-weight: 700;
-      color: var(--hi);
-      line-height: 1.2;
-    }
-
-    .wq-meta span {
-      color: var(--ink-soft);
-      font-weight: 400;
-      font-size: 11px;
-      margin-left: 4px;
-    }
-
-    .wq-text {
-      font-size: 13.5px;
-      line-height: 1.35;
-      color: #fff;
-    }
-
-    @media (max-width: 660px) {
-      .wk {
-        grid-template-columns: 1fr;
-        gap: 20px;
-      }
-    }
-
-    /* Хроніка тижня (Календарний огляд за 7 днів) */
-    .week-chronicle .gh {
+      break-before: auto !important;
+      break-inside: avoid;
       margin-bottom: 16px;
     }
 
-    .wh-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 10px;
+    .weekly-hero.hero .label,
+    .weekly-hero.hero .lede,
+    .weekly-hero.hero .text p {
+      color: var(--hi-text);
     }
 
-    .wh-card {
-      background: var(--pill);
+    .weekly-hero.hero .label::before {
+      background: var(--hi-text);
+    }
+
+    .weekly-hero.hero h3 {
+      font-family: var(--display);
+      font-size: 26px;
+      line-height: 1.15;
+      letter-spacing: -.03em;
+      margin: 0 0 8px;
+      color: var(--hi-text);
+    }
+
+    .weekly-hero.hero .lede {
+      font-size: 15.5px;
+      font-weight: 600;
+      opacity: .85;
+      margin: 0 0 12px;
+    }
+
+    .weekly-hero.hero .text p {
+      font-size: 15.5px;
+      line-height: 1.55;
+      margin: 0;
+    }
+
+    .weekly-quotes {
+      background: var(--card);
       border: 1px solid var(--line);
-      border-radius: 18px;
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-      overflow: hidden;
     }
 
-    .wh-cal-head {
-      padding: 10px 8px 8px;
-      text-align: center;
-      background: rgba(255, 255, 255, .03);
-      border-bottom: 1px solid var(--line);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1px;
+    .weekly-quotes .label {
+      margin: 0 0 24px;
     }
 
-    .wh-cal-wday {
-      font-size: 11px;
+    .weekly-quotes-list {
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .weekly-quotes-list .q {
+      margin: 0;
+    }
+
+    .weekly-quotes-list .q-head {
+      margin: 0 0 4px;
+      font-size: 15px;
+      line-height: 1.3;
+    }
+
+    .weekly-quotes-list .q-head b {
+      color: var(--accent);
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .08em;
+      margin-right: 6px;
+    }
+
+    .weekly-quotes-list .q-head .q-meta {
+      font-size: 13.5px;
+      font-weight: 400;
+      color: var(--muted);
+      display: inline;
+    }
+
+    .weekly-quotes-list .q-text {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.55;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .weekly-quotes-list .q-sub {
+      display: block;
+      margin-top: 6px;
+      font-size: 13.5px;
       color: var(--muted);
     }
 
-    .wh-cal-day {
-      font-family: var(--display);
-      font-size: 20px;
-      font-weight: 800;
-      color: var(--text);
-      line-height: 1.1;
+    /* Діалог тижня та дня */
+    .weekly-dialogue,
+    .daily-dialogue {
+      background: var(--card);
+      border: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
     }
 
-    .wh-cal-month {
-      font-size: 11px;
+    .weekly-dialogue .label,
+    .daily-dialogue .label {
+      margin: 0 0 14px;
+    }
+
+    .dialogue-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 0 0 6px;
+    }
+
+    .dialogue-title {
+      font-family: var(--display);
+      font-size: 24px;
+      line-height: 1.2;
+      letter-spacing: -.03em;
+      margin: 0;
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .dialogue-topic {
+      margin: 0 0 20px;
+      font-size: 14.5px;
+      line-height: 1.45;
       color: var(--muted);
       font-weight: 500;
-      opacity: .8;
     }
 
-    .wh-card.is-weekend .wh-cal-wday {
-      color: #b85000;
-    }
-
-    :root[data-theme=dark] .wh-card.is-weekend .wh-cal-wday {
-      color: #ff9f43;
-    }
-
-    /* День поточного випуску (Сьогодні / Нд) */
-    .wh-card.is-today {
-      border-color: rgba(212, 175, 55, .55);
-      background: #fffdf5;
-    }
-
-    .wh-card.is-today .wh-cal-head {
-      background: #fcf1be;
-      border-bottom-color: rgba(212, 175, 55, .35);
-    }
-
-    .wh-card.is-today .wh-cal-wday {
-      color: #7a5f00;
-    }
-
-    .wh-card.is-today .wh-cal-day {
-      color: #1a162b;
-    }
-
-    .wh-card.is-today .wh-cal-month {
-      color: #61531c;
-    }
-
-    :root[data-theme=dark] .wh-card.is-today {
-      border-color: rgba(255, 222, 89, .35);
-      background: rgba(255, 222, 89, .03);
-    }
-
-    :root[data-theme=dark] .wh-card.is-today .wh-cal-head {
-      background: rgba(255, 222, 89, .1);
-      border-bottom-color: rgba(255, 222, 89, .25);
-    }
-
-    :root[data-theme=dark] .wh-card.is-today .wh-cal-wday {
-      color: var(--hi);
-    }
-
-    :root[data-theme=dark] .wh-card.is-today .wh-cal-day {
-      color: var(--hi);
-    }
-
-    :root[data-theme=dark] .wh-card.is-today .wh-cal-month {
-      color: var(--muted);
-    }
-
-    .wh-media {
-      position: relative;
-      aspect-ratio: 16 / 10;
-      background: rgba(0, 0, 0, .18);
-      overflow: hidden;
-    }
-
-    .wh-media .mf,
-    .wh-media img,
-    .wh-media video,
-    .wh-media .stk,
-    .wh-media .pic {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    .wh-media .mf img,
-    .wh-media .mf video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    .wh-body {
-      padding: 13px 11px 15px;
+    .dialogue-thread {
       display: flex;
       flex-direction: column;
+      gap: 12px;
+      margin: 0 0 22px;
       flex: 1;
     }
 
-    .wh-body h3 {
-      font-size: 14px;
-      font-weight: 700;
-      line-height: 1.3;
-      margin: 0;
-      color: var(--text);
-      display: -webkit-box;
-      -webkit-line-clamp: 5;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+    .d-msg {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      max-width: 86%;
     }
 
-    @media (max-width: 960px) {
-      .wh-grid {
-        display: flex;
-        overflow-x: auto;
-        scroll-snap-type: x mandatory;
-        gap: 12px;
-        padding-bottom: 12px;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: thin;
-        scrollbar-color: rgba(255, 255, 255, .2) transparent;
+    .d-msg.d-alt {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+
+    .d-meta {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      margin-bottom: 4px;
+      padding: 0 4px;
+    }
+
+    .d-sender {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .d-msg.d-alt .d-sender {
+      color: var(--text2);
+    }
+
+    .d-time {
+      font-size: 11.5px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .d-bubble {
+      padding: 10px 15px;
+      border-radius: 18px;
+      border-top-left-radius: 4px;
+      background: var(--pill);
+      border: 1px solid var(--line);
+      box-sizing: border-box;
+    }
+
+    .d-msg.d-alt .d-bubble {
+      border-top-left-radius: 18px;
+      border-top-right-radius: 4px;
+      background: color-mix(in srgb, var(--accent) 12%, var(--card));
+      border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+    }
+
+    .d-bubble p {
+      margin: 0;
+      font-size: 15.5px;
+      line-height: 1.45;
+      color: var(--text);
+      font-weight: 500;
+      word-break: break-word;
+    }
+
+    .dialogue-moral {
+      margin: 0 0 16px;
+      font-size: 14px;
+      line-height: 1.45;
+      color: var(--muted);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dialogue-moral .moral-icon {
+      font-size: 14px;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+
+    .dialogue-moral .moral-text {
+      color: var(--text2);
+    }
+
+    /* Мем тижня */
+    .weekly-meme {
+      background: var(--card);
+      border: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .weekly-meme .label {
+      margin: 0 0 14px;
+    }
+
+    .meme-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 0 0 6px;
+    }
+
+    .meme-word {
+      font-family: var(--display);
+      font-size: 30px;
+      line-height: 1.15;
+      letter-spacing: -.035em;
+      margin: 0;
+      color: var(--text);
+      font-weight: 800;
+    }
+
+    .meme-sub {
+      margin: 0 0 18px;
+      font-size: 14px;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+
+    .meme-sub em {
+      font-style: italic;
+      opacity: .9;
+    }
+
+    .meme-author b {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .meme-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .meme-def {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--text2);
+      font-weight: 450;
+    }
+
+    .meme-def b {
+      color: var(--accent);
+      font-weight: 700;
+      margin-right: 4px;
+    }
+
+    .meme-example {
+      margin: 0;
+      padding: 14px 18px;
+      border-radius: 16px;
+      background: var(--pill);
+      border: 1px solid var(--line);
+      font-size: 14.5px;
+      line-height: 1.5;
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .meme-footer {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border-radius: 16px;
+      background: var(--pill);
+      border: 1px dashed var(--line);
+      font-size: 13.5px;
+      line-height: 1.45;
+    }
+
+    .meme-footer .meme-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+
+    .meme-footer .meme-context {
+      color: var(--text2);
+      font-weight: 500;
+    }
+
+    @media (max-width: 660px) {
+      .weekly-header {
+        padding: 48px 0 8px;
       }
 
-      .wh-card {
-        flex: 0 0 220px;
-        scroll-snap-align: start;
+      .weekly-header .weekly-title {
+        margin: 18px 0 12px;
+        font-size: 38px;
+        line-height: 1.04;
+        letter-spacing: -.045em;
+      }
+
+      .weekly-header .sub {
+        font-size: 17px;
+        line-height: 1.55;
+      }
+
+      .weekly-main {
+        padding: 28px 24px;
+        gap: 24px;
+      }
+
+      .weekly-main h2.hd {
+        font-size: 26px;
+        line-height: 1.18;
+        margin-bottom: 16px;
+      }
+
+      .weekly-main .p {
+        font-size: 17px;
+        line-height: 1.6;
+        margin-bottom: 0;
+      }
+
+      .weekly-days {
+        padding: 28px 24px;
+      }
+
+      .weekly-days .label {
+        margin-bottom: 22px;
+      }
+
+      .weekly-days-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+      }
+
+      .weekly-day-item h4.hd {
+        margin: 14px 0 8px;
+        font-size: 21px;
+        line-height: 1.2;
+      }
+
+      .weekly-day-item .p {
+        font-size: 16.5px;
+        line-height: 1.6;
+      }
+
+      .weekly-hero.hero {
+        margin-bottom: 14px;
+      }
+
+      .weekly-hero.hero h3 {
+        font-size: 22px;
+      }
+
+      .weekly-quotes-list {
+        gap: 18px;
+      }
+
+      .weekly-quotes-list .q-text {
+        font-size: 16px;
+      }
+
+      .dialogue-title {
+        font-size: 21px;
+      }
+
+      .dialogue-topic {
+        font-size: 14px;
+        margin-bottom: 16px;
+      }
+
+      .d-msg {
+        max-width: 92%;
+      }
+
+      .d-bubble {
+        padding: 9px 13px;
+      }
+
+      .d-bubble p {
+        font-size: 15px;
+      }
+
+      .dialogue-moral {
+        padding: 10px 14px;
+        font-size: 13px;
+      }
+
+      .meme-word {
+        font-size: 26px;
+      }
+
+      .meme-def {
+        font-size: 15.5px;
+      }
+
+      .meme-example {
+        padding: 10px 14px;
+        font-size: 14.5px;
+      }
+
+      .meme-footer {
+        padding: 10px 14px;
+        font-size: 13px;
       }
     }
 
@@ -2369,8 +2740,36 @@
         updateTheme();
       </script>
     </div>
-    <h1>{{ name }}</h1>
-    <p class="sub">{{ c.tagline if c and c.tagline else 'Головне за добу' }}</p>
+    <header class="header">
+      <div class="htext">
+        <h1>{% if name.startswith('Вісник ') %}Вісник<br><span class="hacc">{{ name[7:] }}</span>{% elif ' ' in name
+          %}{% set p = name.split(' ', 1) %}{{ p[0] }}<br><span class="hacc">{{ p[1] }}</span>{% else %}{{ name }}{%
+          endif %}</h1>
+        <p class="sub">{{ c.tagline if c and c.tagline else 'Головне за добу' }}</p>
+      </div>
+      <div class="card weather" id="wxc">
+        <div id="wx" aria-live="polite">
+          <div class="label wlabel">Погода <span class="wdot">·</span> <span class="wloc-inline"><span class="sk"
+                style="width: 74px; height: 13px; border-radius: 4px; display: inline-block; vertical-align: middle;"></span></span>
+          </div>
+          <div class="wnow">
+            <span class="wtemp"><span class="sk"
+                style="width: 62px; height: 38px; border-radius: 10px; display: block;"></span></span>
+            <div class="winfo">
+              <div class="wloc-mobile"><span class="sk"
+                  style="width: 70px; height: 13px; border-radius: 5px; display: block; margin-top: 3px; margin-bottom: 4px;"></span>
+              </div>
+              <div class="wdesc"><span class="sk"
+                  style="width: 140px; height: 14px; border-radius: 5px; display: block;"></span></div>
+            </div>
+          </div>
+          <div class="wdays">
+            <span class="sk" style="width: 84px; height: 27px; border-radius: 999px; display: inline-block;"></span>
+            <span class="sk" style="width: 84px; height: 27px; border-radius: 999px; display: inline-block;"></span>
+          </div>
+        </div>
+      </div>
+    </header>
 
     <script>
       /* ---------- Спільне для ігор (декодування, збереження, клавіатура) ---------- */
@@ -2620,7 +3019,36 @@
       </article>
       {% endif %}
 
-      {% if c.quotes %}
+      {% if daily_dialogue %}
+      <article class="card daily-dialogue">
+        <span class="label">Діалог дня</span>
+        <div class="dialogue-header">
+          <h3 class="dialogue-title">{{ daily_dialogue.title }}</h3>
+          {% if daily_dialogue.time_range %}<span class="chip on">{{ daily_dialogue.time_range }}</span>{% endif %}
+        </div>
+        {% if daily_dialogue.moral %}
+        <p class="dialogue-moral">
+          <span class="moral-text">{{ daily_dialogue.moral }}</span>
+        </p>
+        {% elif daily_dialogue.topic %}
+        <p class="dialogue-topic">{{ daily_dialogue.topic }}</p>
+        {% endif %}
+        <div class="dialogue-thread">
+          {% set first_sender = daily_dialogue.messages[0].sender if daily_dialogue.messages else '' %}
+          {% for m in daily_dialogue.messages %}
+          <div class="d-msg{{ ' d-alt' if (m.sender != first_sender) else '' }}">
+            <div class="d-meta">
+              <b class="d-sender">{{ m.sender }}</b>
+              {% if m.time %}<span class="d-time">{{ m.time }}</span>{% endif %}
+            </div>
+            <div class="d-bubble">
+              <p>{{ m.text }}</p>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </article>
+      {% elif c.quotes %}
       <article class="card quotes"><span class="label">Цитати дня</span>
         {% for q in c.quotes %}
         <div class="line"><b>{{ q.sender }} · {{ q.time }}</b>{{ q.text }}{% if q.comment %}<span class="note">{{
@@ -2643,35 +3071,8 @@
       {{ short_news_card() }}
       {% endif %}
 
-      <article class="card weather">
-        <div class="wh"><span class="label">Погода</span></div>
-        <div id="wx" aria-live="polite">
-          <p class="wloc"><span class="sk" style="width: 110px; height: 16px;"></span></p>
-          <div class="wnow"><span class="sk"
-              style="width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;"></span>
-            <div>
-              <div class="sk" style="width: 76px; height: 44px; border-radius: 10px;"></div>
-              <div class="sk" style="width: 120px; height: 16px; margin-top: 6px;"></div>
-            </div>
-          </div>
-          <div class="wmeta"><span class="sk sk-pill" style="width: 124px;"></span><span class="sk sk-pill"
-              style="width: 86px;"></span><span class="sk sk-pill" style="width: 98px;"></span></div>
-          <div class="wdays">
-            <div class="wd"><span class="sk" style="width: 44px; height: 13px; margin: 2px auto 6px;"></span><span
-                class="sk" style="width: 22px; height: 22px; border-radius: 50%; margin: 0 auto 6px;"></span><span
-                class="sk" style="width: 38px; height: 13px; margin: 0 auto 2px;"></span></div>
-            <div class="wd"><span class="sk" style="width: 44px; height: 13px; margin: 2px auto 6px;"></span><span
-                class="sk" style="width: 22px; height: 22px; border-radius: 50%; margin: 0 auto 6px;"></span><span
-                class="sk" style="width: 38px; height: 13px; margin: 0 auto 2px;"></span></div>
-            <div class="wd"><span class="sk" style="width: 44px; height: 13px; margin: 2px auto 6px;"></span><span
-                class="sk" style="width: 22px; height: 22px; border-radius: 50%; margin: 0 auto 6px;"></span><span
-                class="sk" style="width: 38px; height: 13px; margin: 0 auto 2px;"></span></div>
-          </div>
-        </div>
-      </article>
-
       {% if c.hero_of_day.title or c.hero_of_day.sender %}
-      <article class="card hero"><span class="label">Герой дня</span>
+      <article class="card hero col-break"><span class="label">Герой дня</span>
         <h3>{{ c.hero_of_day.sender }}</h3>
         {% if c.hero_of_day.title %}<p class="lede">{{ c.hero_of_day.title }}</p>{% endif %}
         {% if c.hero_of_day.reason %}<div class="text">
@@ -2682,7 +3083,9 @@
 
       {% for a in c.articles %}
       {% if loop.index0 % 2 == 1 %}
-      <article class="card">{{ show(a.media_id, a.title) }}
+      <article
+        class="card{% if loop.first and not (c.hero_of_day.title or c.hero_of_day.sender) %} col-break{% endif %}">{{
+        show(a.media_id, a.title) }}
         <span class="label">{{ a.rubric }}</span>
         <h3>{{ a.title }}</h3>
         <div class="text">{{ a.body | paragraphs }}</div>
@@ -2723,83 +3126,62 @@
 
       {% if weekly and weekly.content %}
       {%- set wc = weekly.content -%}
-      <article class="card week" data-span="2">
-        <div class="gh">
-          <div><span class="label">Головне за тиждень</span>
-            <h2>{{ wc.title }}</h2>
-          </div>
-          <div class="chips"><span class="chip on">{{ weekly.range }}</span><span class="chip">{{
-              weekly.stats.total_messages }} {{ plural(weekly.stats.total_messages, 'повідомлення', 'повідомлення',
-              'повідомлень') }}</span></div>
-        </div>
-        {% if wc.intro %}<p class="lede">{{ wc.intro }}</p>{% endif %}
-        <div class="wk">
-          <ol class="stories">
-            {% for s in wc.stories %}
-            <li>{% if s.date %}<span class="pill">{{ s.date[8:10] }}.{{ s.date[5:7] }}</span>{% endif %}
-              <h3>{{ s.title }}</h3>
-              <p>{{ s.text }}</p>
-            </li>
-            {% endfor %}
-          </ol>
-          <div class="wside">
-            {% if wc.hero_of_week and wc.hero_of_week.sender %}
-            <div class="whero"><span class="label">Герой тижня</span>
-              <h3>{{ wc.hero_of_week.sender }}</h3>
-              {% if wc.hero_of_week.title %}<p class="rank">{{ wc.hero_of_week.title }}</p>{% endif %}
-              {% if wc.hero_of_week.reason %}<p>{{ wc.hero_of_week.reason }}</p>{% endif %}
-            </div>
-            {% endif %}
+      <!-- 1. Заголовок -->
+      <section class="weekly-header" data-span="2">
+        <span class="chip sp">Підсумки тижня</span>
+        <h2 class="weekly-title">{{ format_period(weekly.range) if format_period else weekly.range }}</h2>
+        <p class="sub">У неділю до денних новин додаються підсумки тижня: головне, герой, цифри та ігри.</p>
+      </section>
 
-            {% if weekly_quotes %}
-            <div class="wside-quotes">
-              <span class="label">Цитати тижня</span>
-              {% for q in weekly_quotes %}
-              <div class="wq-item">
-                <div class="wq-meta">{{ q.sender }}<span>· {{ q.date_short }}</span></div>
-                <div class="wq-text">{{ q.text }}</div>
-              </div>
-              {% endfor %}
-            </div>
-            {% endif %}
-          </div>
+      <!-- 2. Головне за тиждень -->
+      <article class="card dark weekly-main" data-span="2">
+        <div class="weekly-main-text">
+          <div class="label">Головне за тиждень</div>
+          <h2 class="hd">{{ wc.title }}</h2>
+          <p class="p">{{ wc.intro }}</p>
         </div>
+        {%- if wc.media_id and media.get(wc.media_id) -%}
+        <div class="weekly-main-media">
+          {{ show(wc.media_id, wc.title) }}
+        </div>
+        {%- endif -%}
       </article>
 
+      <!-- 3. День за днем -->
       {% if weekly_headlines %}
-      <article class="card week-chronicle" data-span="2">
-        <div class="gh">
-          <div><span class="label">Хроніка тижня</span>
-            <h2>Головні події кожного дня</h2>
-          </div>
-          <div class="chips"><span class="chip on">{{ weekly_headlines | length }} {{ plural(weekly_headlines |
-              length, 'випуск', 'випуски', 'випусків') }}</span></div>
-        </div>
-        <div class="wh-grid">
+      <article class="card weekly-days" data-span="2">
+        <div class="label">День за днем</div>
+        <div class="weekly-days-grid">
           {% for h in weekly_headlines %}
-          <div class="wh-card{{ ' is-today' if loop.last else '' }}{{ ' is-weekend' if loop.index0 >= 5 else '' }}">
-            <div class="wh-cal-head">
-              <span class="wh-cal-wday">{{ h.label }}</span>
-              <span class="wh-cal-day">{{ h.date_short.split('.')[0] }}</span>
-              <span class="wh-cal-month">{{ h.date_short }}</span>
-            </div>
-            {% if h.media_id and media.get(h.media_id) %}
-            <div class="wh-media">
-              {{ show(h.media_id, h.title) }}
-            </div>
-            {% endif %}
-            <div class="wh-body">
-              <h3>{{ h.title }}</h3>
-            </div>
+          <div class="weekly-day-item">
+            <span class="chip on">{{ format_headline_date(h) if format_headline_date else (h.weekday | capitalize ~ ', '
+              ~
+              h.date_short) }}</span>
+            <h4 class="hd">{{ h.title }}</h4>
+            <p class="p">{{ h.subtitle if h.subtitle else (h.body | paragraphs | striptags | truncate(180)) }}</p>
           </div>
           {% endfor %}
         </div>
       </article>
       {% endif %}
+
+      <!-- 4. Герой тижня -->
+      {% if wc.hero_of_week and (wc.hero_of_week.sender or wc.hero_of_week.title) %}
+      <article class="card hero weekly-hero">
+        <span class="label">Герой тижня</span>
+        <h3>{{ wc.hero_of_week.sender }}</h3>
+        {% if wc.hero_of_week.title %}<p class="lede">{{ wc.hero_of_week.title }}</p>{% endif %}
+        {% if wc.hero_of_week.reason %}
+        <div class="text">
+          <p>{{ wc.hero_of_week.reason }}</p>
+        </div>
+        {% endif %}
+      </article>
       {% endif %}
 
+      <!-- 5. Хто це сказав? (в одну колонку) -->
       {% if quiz_data %}
-      <article class="card quiz-card" id="qz" data-span="2" data-d="{{ quiz_data }}" data-day="{{ day }}">
+      <article class="card quiz-card" id="qz" data-d="{{ quiz_data }}" data-day="{{ day }}">
         <div class="qh">
           <span class="label">Хто це сказав?</span>
           <div class="qprog" id="qprog" aria-label="Прогрес гри" hidden></div>
@@ -2820,15 +3202,80 @@
       </article>
       {% endif %}
 
+      <!-- 6. Мем тижня (у другій колонці) -->
+      {% if weekly_meme %}
+      <article class="card weekly-meme col-break">
+        <span class="label">Мем тижня</span>
+        <div class="meme-header">
+          <h3 class="meme-word">{{ weekly_meme.word }}</h3>
+          {% if weekly_meme.count_chip %}<span class="chip on">{{ weekly_meme.count_chip }}</span>{% endif %}
+        </div>
+        {% if weekly_meme.pos or weekly_meme.author %}
+        <p class="meme-sub">
+          {% if weekly_meme.pos %}<em>{{ weekly_meme.pos }}</em>{% endif %}
+          {% if weekly_meme.author %}<span class="meme-author">· автор: <b>{{ weekly_meme.author }}</b></span>{% endif
+          %}
+        </p>
+        {% endif %}
+        <div class="meme-body">
+          <p class="meme-def">{{ weekly_meme.definition }}</p>
+          {% if weekly_meme.example %}
+          <div class="meme-example">{{ weekly_meme.example }}</div>
+          {% endif %}
+        </div>
+      </article>
+      {% elif weekly_dialogue %}
+      <article class="card weekly-dialogue col-break">
+        <span class="label">Діалог тижня</span>
+        <div class="dialogue-header">
+          <h3 class="dialogue-title">{{ weekly_dialogue.title }}</h3>
+          {% if weekly_dialogue.day_label %}<span class="chip on">{{ weekly_dialogue.day_label }}</span>{% endif %}
+        </div>
+        {% if weekly_dialogue.moral %}
+        <p class="dialogue-moral">
+          <span class="moral-icon">💡</span> <span class="moral-text">{{ weekly_dialogue.moral }}</span>
+        </p>
+        {% elif weekly_dialogue.topic %}
+        <p class="dialogue-topic">{{ weekly_dialogue.topic }}</p>
+        {% endif %}
+        <div class="dialogue-thread">
+          {% set first_ws = weekly_dialogue.messages[0].sender if weekly_dialogue.messages else '' %}
+          {% for m in weekly_dialogue.messages %}
+          <div class="d-msg{{ ' d-alt' if (m.sender != first_ws) else '' }}">
+            <div class="d-meta">
+              <b class="d-sender">{{ m.sender }}</b>
+              {% if m.time %}<span class="d-time">{{ m.time }}</span>{% endif %}
+            </div>
+            <div class="d-bubble">
+              <p>{{ m.text }}</p>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </article>
+      {% elif weekly_quotes %}
+      <article class="card weekly-quotes col-break">
+        <span class="label">Цитати тижня</span>
+        <div class="weekly-quotes-list">
+          {% for q in weekly_quotes %}
+          <div class="q">
+            <p class="q-head"><b>{{ q.sender }}</b> <span class="q-meta">{{ q.label if q.label else q.date_short }}{% if
+                q.time %}, {{ q.time }}{% endif %}</span></p>
+            <p class="q-text">{{ q.text }}</p>
+            {% if q.comment %}<span class="q-sub">{{ q.comment }}</span>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </article>
+      {% endif %}
+      {% endif %}
+
       {% if weekly and weekly.stats %}
       <article class="card week-stats" data-span="2">
         <div class="gh">
           <div><span class="label">Цифри тижня</span>
             <h2>Підсумки та активність комʼюніті</h2>
           </div>
-          <div class="chips"><span class="chip on">{{ weekly.range }}</span><span class="chip">{{
-              weekly.stats.total_messages }} {{ plural(weekly.stats.total_messages, 'повідомлення', 'повідомлення',
-              'повідомлень') }}</span></div>
         </div>
 
         <div class="wstat-grid">
@@ -3111,7 +3558,7 @@
     show();
   }) ();
 
-    /* Погода: у кожного читача своя, за місцезнаходженням */
+    /* Погода (v4 М'які картки): у кожного читача своя, за місцезнаходженням */
     (function () {
       var box = document.getElementById("wx");
       if (!box) return;
@@ -3125,32 +3572,49 @@
       var SK = box.innerHTML;  /* скелетон з розмітки */
       var stale = false;  /* показано минулу погоду, поки вантажиться свіжа */
       function skel() { if (!stale) box.innerHTML = SK; }
+      function escapeHtml(s) {
+        var d = document.createElement("div");
+        d.textContent = s || "";
+        return d.innerHTML;
+      }
       function msg(text, retry) {
         if (stale) return;  /* краще лишити стару погоду, ніж показати помилку */
-        box.innerHTML = '<p class="wmsg"></p>' + (retry ? '<button class="wgeo" type="button" id="wr">Спробувати знову</button>' : "");
-        box.firstChild.textContent = text;
-        if (retry) document.getElementById("wr").onclick = start;
+        box.innerHTML = '<div class="label wlabel">Погода</div><p class="wmsg">' + escapeHtml(text) + '</p>' + (retry ? '<button class="wgeo" type="button" id="wr">Спробувати знову</button>' : "");
+        if (retry) {
+          var wr = document.getElementById("wr");
+          if (wr) wr.onclick = function () { start(true); };
+        }
       }
       function named(la, lo, fb) {
         jf("https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=" + la + "&longitude=" + lo + "&localityLanguage=uk")
-          .then(function (g) { render(la, lo, g.city || g.locality || fb); })
+          .then(function (g) { render(la, lo, g.city || g.town || g.village || g.locality || fb); })
           .catch(function () { render(la, lo, fb); });
       }
       function render(lat, lon, name) {
         jf("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon +
           "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=3&wind_speed_unit=ms")
           .then(function (d) {
-            var c = d.current, w = wc(c.weather_code), days = "", icon = w[1];
-            if (c.is_day === 0) { if (c.weather_code <= 1) icon = "🌙"; else if (c.weather_code === 2) icon = "☁️"; }
-            d.daily.time.forEach(function (day, k) {
-              var x = wc(d.daily.weather_code[k]);
-              days += '<div class="wd">' + (k ? new Date(day + "T12:00:00").toLocaleDateString("uk", { weekday: "short" }) : "Сьогодні") + "<span>" + x[1] + "</span><b>" +
-                Math.round(d.daily.temperature_2m_max[k]) + "°</b> " + Math.round(d.daily.temperature_2m_min[k]) + "°</div>";
-            });
-            box.innerHTML = '<p class="wloc"></p><div class="wnow"><span class="wicon">' + icon + '</span><div><div class="wtemp">' + Math.round(c.temperature_2m) +
-              '°</div><div class="wdesc">' + w[2] + '</div></div></div><div class="wmeta"><span class="pill">відчувається як ' + Math.round(c.apparent_temperature) +
-              '°</span><span class="pill">вітер ' + Math.round(c.wind_speed_10m) + ' м/с</span><span class="pill">вологість ' + c.relative_humidity_2m + '%</span></div><div class="wdays">' + days + "</div>";
-            box.querySelector(".wloc").textContent = "📍 " + name;
+            var c = d.current, w = wc(c.weather_code);
+            var temp = Math.round(c.temperature_2m);
+            var wind = Math.round(c.wind_speed_10m);
+            var desc = w[2].toLowerCase() + ", вітер " + wind + " м/с";
+            var daysHtml = "";
+            for (var k = 1; k < Math.min(3, d.daily.time.length); k++) {
+              var dayName = new Date(d.daily.time[k] + "T12:00:00").toLocaleDateString("uk", { weekday: "short" });
+              var maxT = Math.round(d.daily.temperature_2m_max[k]);
+              var minT = Math.round(d.daily.temperature_2m_min[k]);
+              daysHtml += '<span class="pill">' + dayName + ' ' + maxT + '° / ' + minT + '°</span>';
+            }
+            var safeName = escapeHtml(name);
+            box.innerHTML = '<div class="label wlabel">Погода <span class="wdot">·</span> <span class="wloc-inline">' + safeName + '</span></div>' +
+              '<div class="wnow">' +
+              '<span class="wtemp">' + temp + '°</span>' +
+              '<div class="winfo">' +
+              '<div class="wloc-mobile">' + safeName + '</div>' +
+              '<div class="wdesc">' + escapeHtml(desc) + '</div>' +
+              '</div>' +
+              '</div>' +
+              (daysHtml ? '<div class="wdays">' + daysHtml + '</div>' : '');
             stale = false; lastOk = Date.now();
             var pack = JSON.stringify({ t: Date.now(), h: box.innerHTML });
             try { sessionStorage.setItem("gazeta-wx", pack); } catch (e) { }
@@ -3162,7 +3626,7 @@
         jf("https://ipwho.is/").then(function (j) {
           if (!j.success) throw 0;
           named(j.latitude, j.longitude, j.city || "Ваше місто");
-        }).catch(function () { msg("Не вдалося визначити місце. Натисніть «Моя геолокація».", true); });
+        }).catch(function () { msg("Не вдалося визначити місце.", true); });
       }
       function byGps() {
         if (!navigator.geolocation) return byIp();
@@ -3170,7 +3634,7 @@
         navigator.geolocation.getCurrentPosition(function (p) {
           var la = p.coords.latitude, lo = p.coords.longitude;
           try { localStorage.setItem("gazeta-geo", JSON.stringify([la, lo])); } catch (e) { }
-          named(la, lo, "Ваше місце");
+          named(la, lo, "Ваше місто");
         }, function () { byIp(); }, { timeout: 8000, maximumAge: 3600000 });
       }
       var lastOk = 0;
@@ -3178,22 +3642,20 @@
         var cache = null;
         try { cache = JSON.parse(sessionStorage.getItem("gazeta-wx") || localStorage.getItem("gazeta-wx-last") || "null"); } catch (e) { }
         if (cache && cache.h) {
-          box.innerHTML = cache.h; stale = true; lastOk = cache.t;
-          if (!force && Date.now() - cache.t < 2 * 60 * 1000) { stale = false; return; }  /* зовсім свіже — не смикаємо API */
+          if (cache.h.indexOf("wtemp") >= 0 && cache.h.indexOf("wloc-mobile") >= 0) {
+            box.innerHTML = cache.h; stale = true; lastOk = cache.t;
+            if (!force && Date.now() - cache.t < 2 * 60 * 1000) { stale = false; return; }
+          }
         }
         var s = null;
         try { s = JSON.parse(localStorage.getItem("gazeta-geo")); } catch (e) { }
         skel();
         if (s && s.length === 2) byGps(); else byIp();
       }
-      /* погода живе: оновлюється кожні 10 хв і коли читач повертається на вкладку */
       setInterval(function () { if (!document.hidden) start(true); }, 10 * 60 * 1000);
       document.addEventListener("visibilitychange", function () { if (!document.hidden && Date.now() - lastOk > 5 * 60 * 1000) start(true); });
-      var wg = document.getElementById("wg");
-      if (wg) wg.onclick = function () { stale = false; skel(); byGps(); };
       start();
     })();
-
 
     /* ---------- Кросворд ---------- */
     (function () {
