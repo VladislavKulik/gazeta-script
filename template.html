@@ -17,10 +17,42 @@
   loading="lazy" decoding="async" {% if m.w %} width="{{ m.w }}" height="{{ m.h }}" {% endif %}>
 {%- endif -%}
 {%- endmacro -%}
-{%- macro show(mid, caption="") -%}
-{%- set m = media.get(mid) if mid else None -%}
-{%- if m -%}
-{%- if 'sticker' in m.kind -%}{{ sticker(m) }}{%- else -%}<div class="mf">{{ pic(m, caption) }}</div>{%- endif -%}
+{%- macro show(item_ids, caption="") -%}
+{%- if item_ids is iterable and item_ids is not string -%}
+  {%- set ids = item_ids -%}
+{%- elif item_ids -%}
+  {%- set ids = [item_ids] -%}
+{%- else -%}
+  {%- set ids = [] -%}
+{%- endif -%}
+{%- set ns = namespace(items=[]) -%}
+{%- for mid in ids -%}
+  {%- if mid and media.get(mid) -%}
+    {%- set ns.items = ns.items + [media.get(mid)] -%}
+  {%- endif -%}
+{%- endfor -%}
+{%- set count = ns.items | length -%}
+{%- if count == 1 -%}
+  {%- set m = ns.items[0] -%}
+  {%- if 'sticker' in m.kind -%}{{ sticker(m) }}{%- else -%}<div class="mf">{{ pic(m, caption) }}</div>{%- endif -%}
+{%- elif count == 2 -%}
+  <div class="mf-grid mf-grid-2">
+    {%- for m in ns.items -%}
+    <div class="mf">{{ pic(m, caption) }}</div>
+    {%- endfor -%}
+  </div>
+{%- elif count == 3 -%}
+  <div class="mf-grid mf-grid-3">
+    {%- for m in ns.items -%}
+    <div class="mf">{{ pic(m, caption) }}</div>
+    {%- endfor -%}
+  </div>
+{%- elif count >= 4 -%}
+  <div class="mf-grid mf-grid-4">
+    {%- for m in ns.items -%}
+    <div class="mf">{{ pic(m, caption) }}</div>
+    {%- endfor -%}
+  </div>
 {%- endif -%}
 {%- endmacro -%}
 {%- macro short_news_card() -%}
@@ -422,6 +454,60 @@
       }
     }
 
+    /* Сітка для кількох медіа в новині */
+    .mf-grid {
+      display: grid;
+      gap: 8px;
+      margin: 0 0 14px;
+    }
+
+    .mf-grid .mf {
+      margin: 0;
+      border-radius: 12px;
+      height: 100%;
+    }
+
+    .mf-grid .pic {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* 2 фото: 2 колонки поруч */
+    .mf-grid-2 {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .mf-grid-2 .pic {
+      aspect-ratio: 1 / 1;
+    }
+
+    /* 3 фото: перше широке зверху, два нижче */
+    .mf-grid-3 {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .mf-grid-3 .mf:first-child {
+      grid-column: 1 / -1;
+    }
+
+    .mf-grid-3 .mf:first-child .pic {
+      aspect-ratio: 16 / 9;
+    }
+
+    .mf-grid-3 .mf:not(:first-child) .pic {
+      aspect-ratio: 4 / 3;
+    }
+
+    /* 4+ фото: сітка 2х2 */
+    .mf-grid-4 {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .mf-grid-4 .pic {
+      aspect-ratio: 1 / 1;
+    }
+
     /* Новина дня */
     .news {
       background: var(--ink);
@@ -444,6 +530,35 @@
       aspect-ratio: 16 / 9;
       object-fit: cover;
       display: block;
+    }
+
+    .news .mf-grid {
+      gap: 12px;
+      margin: 0 0 20px;
+    }
+
+    .news .mf-grid .mf {
+      border-radius: 14px;
+    }
+
+    .news .mf-grid-2 .pic {
+      aspect-ratio: 4 / 3;
+      max-height: 380px;
+    }
+
+    .news .mf-grid-3 .mf:first-child .pic {
+      aspect-ratio: 16 / 9;
+      max-height: 420px;
+    }
+
+    .news .mf-grid-3 .mf:not(:first-child) .pic {
+      aspect-ratio: 16 / 9;
+      max-height: 220px;
+    }
+
+    .news .mf-grid-4 .pic {
+      aspect-ratio: 4 / 3;
+      max-height: 240px;
     }
 
     .news .label {
@@ -2789,10 +2904,10 @@
     </script>
 
     {% if c %}
-    {%- set hm = c.headline.media_id -%}
+    {%- set hm = c.headline.media_ids or c.headline.cover_media_id or c.headline.media_id -%}
     <div id="masonry" class="masonry">
       <article class="card news" data-span="2">
-        {%- if hm and media.get(hm) -%}
+        {%- if hm -%}
         {{ show(hm, c.headline.title) }}
         {%- endif -%}
         <span class="label">Новина дня</span>
@@ -3059,7 +3174,7 @@
 
       {% for a in c.articles %}
       {% if loop.index0 % 2 == 0 %}
-      <article class="card">{{ show(a.media_id, a.title) }}
+      <article class="card">{{ show(a.media_ids or a.cover_media_id or a.media_id, a.title) }}
         <span class="label">{{ a.rubric }}</span>
         <h3>{{ a.title }}</h3>
         <div class="text">{{ a.body | paragraphs }}</div>
@@ -3085,7 +3200,7 @@
       {% if loop.index0 % 2 == 1 %}
       <article
         class="card{% if loop.first and not (c.hero_of_day.title or c.hero_of_day.sender) %} col-break{% endif %}">{{
-        show(a.media_id, a.title) }}
+        show(a.media_ids or a.cover_media_id or a.media_id, a.title) }}
         <span class="label">{{ a.rubric }}</span>
         <h3>{{ a.title }}</h3>
         <div class="text">{{ a.body | paragraphs }}</div>
