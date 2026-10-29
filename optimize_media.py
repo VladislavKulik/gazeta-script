@@ -44,8 +44,8 @@ def _encode_data_uri(mime: str, raw: bytes) -> str:
 
 def _optimize_image(
     raw: bytes, mime: str, max_width: int = 1000, quality: int = 78
-) -> tuple[str, bytes]:
-    """JPEG/PNG → WebP з обмеженням ширини. Повертає (new_mime, new_bytes).
+) -> tuple[str, bytes, int, int]:
+    """JPEG/PNG → WebP з обмеженням ширини. Повертає (new_mime, new_bytes, w, h).
     Якщо WebP більший за оригінал — повертає оригінал без змін."""
     from PIL import Image, ImageOps
 

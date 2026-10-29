@@ -205,7 +205,11 @@ def get_weekly_headlines(day: str, today_paper: dict | None = None) -> list[dict
                 "title": str(h.get("title", "")).strip(),
                 "subtitle": str(h.get("subtitle", "")).strip(),
                 "body": str(h.get("body", "")).strip(),
-                "media_id": h.get("media_id"),
+                "media_id": (
+                    (h.get("media_ids") or [h.get("cover_media_id") or h.get("media_id")])[0]
+                    if (h.get("media_ids") or h.get("cover_media_id") or h.get("media_id"))
+                    else None
+                ),
             }
         )
     return headlines

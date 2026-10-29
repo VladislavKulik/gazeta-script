@@ -68,7 +68,7 @@ WEEKDAYS = ["понеділок", "вівторок", "середа", "четв�
 
 
 FONTS_DIR = BASE / "fonts"
-# (файл, family, діапазон символів, діапазон ваг) — змінні шрифти, лише кирилиця й латиниця
+# (файл, family, діапазон символів, діапазон ваг[, стиль]) — лише кирилиця й латиниця
 FONT_FACES = [
     (
         "onest-cyr.woff2",
@@ -112,14 +112,16 @@ def fonts_css() -> str:
     тоді шаблон підключить їх з Google Fonts."""
     dirs = _font_dirs()
     out, missing = [], []
-    for fname, family, rng, weights in FONT_FACES:
+    for face in FONT_FACES:
+        fname, family, rng, weights = face[:4]
+        style = face[4] if len(face) > 4 else "normal"
         f = next((d / fname for d in dirs if (d / fname).exists()), None)
         if not f:
             missing.append(fname)
             continue
         b64 = base64.b64encode(f.read_bytes()).decode("ascii")
         out.append(
-            f"@font-face{{font-family:'{family}';font-style:normal;font-weight:{weights};font-display:block;"
+            f"@font-face{{font-family:'{family}';font-style:{style};font-weight:{weights};font-display:block;"
             f"src:url(data:font/woff2;base64,{b64}) format('woff2');unicode-range:{rng}}}"
         )
     if missing:
@@ -394,9 +396,20 @@ def main():
 
     used = set()
     if content:
-        used |= {content["headline"].get("media_id")} | {
-            a.get("media_id") for a in content["articles"]
-        }
+        # Підтримка як нового формату (media_ids / cover_media_id), так і старого архівного (media_id)
+        h_ids = content["headline"].get("media_ids") or []
+        if not h_ids and content["headline"].get("cover_media_id"):
+            h_ids = [content["headline"]["cover_media_id"]]
+        elif not h_ids and content["headline"].get("media_id"):
+            h_ids = [content["headline"]["media_id"]]
+        used |= set(h_ids)
+        for a in content["articles"]:
+            a_ids = a.get("media_ids") or []
+            if not a_ids and a.get("cover_media_id"):
+                a_ids = [a["cover_media_id"]]
+            elif not a_ids and a.get("media_id"):
+                a_ids = [a["media_id"]]
+            used |= set(a_ids)
     if stats.get("top_sticker"):
         used.add(stats["top_sticker"]["media_id"])
     used.discard(None)
@@ -557,7 +570,14 @@ def main():
                 "  УВАГА: немає словника data/words/uk_words.txt — Wordle прийматиме будь-які літери"
             )
 
-    hm_mid = content["headline"].get("media_id") if content else None
+    hm_mids = content["headline"].get("media_ids") if content else None
+    hm_mid = (
+        (hm_mids[0] if hm_mids else None)
+        or content["headline"].get("cover_media_id")
+        or content["headline"].get("media_id")
+        if content
+        else None
+    )
     hm_media = opt_media.get(hm_mid) if hm_mid else None
     hm_is_h = False
     hm_aspect = ""
