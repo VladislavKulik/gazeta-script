@@ -5,27 +5,16 @@
 """
 
 import base64
+import fractions
 import hashlib
 import io
-import os
-import shutil
-import subprocess
-import tempfile
-from pathlib import Path
 
+try:
+    import av
 
-def _find_bin(name: str) -> str | None:
-    """Спершу шукає ffmpeg/<name>(.exe) поруч зі скриптом, потім у PATH."""
-    local = (
-        Path(__file__).parent / "ffmpeg" / (name + (".exe" if os.name == "nt" else ""))
-    )
-    if local.exists():
-        return str(local)
-    return shutil.which(name)
-
-
-FFMPEG = _find_bin("ffmpeg")
-FFPROBE = _find_bin("ffprobe")
+    HAS_AV = True
+except ImportError:
+    HAS_AV = False
 
 
 def _decode_data_uri(data_uri: str) -> tuple[str, bytes]:
@@ -80,82 +69,99 @@ def _optimize_image(
     return mime, raw, w, h  # оригінал менший
 
 
-# ── Відео: перекодування ffmpeg ───────────────────────────────────────────────
+# ── Відео: перекодування через PyAV ───────────────────────────────────────────
 
 
-def _get_video_fps(path: str) -> float:
-    """Отримує FPS відео через ffprobe."""
-    if not FFPROBE:
+def _get_video_fps(raw: bytes) -> float:
+    """Отримує FPS відео через PyAV."""
+    if not HAS_AV:
         return 24.0
     try:
-        r = subprocess.run(
-            [
-                FFPROBE,
-                "-v",
-                "error",
-                "-select_streams",
-                "v:0",
-                "-show_entries",
-                "stream=r_frame_rate",
-                "-of",
-                "csv=p=0",
-                path,
-            ],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        parts = r.stdout.strip().split("/")
-        if len(parts) == 2 and int(parts[1]) > 0:
-            return int(parts[0]) / int(parts[1])
-        return float(parts[0]) if parts[0] else 24.0
+        container = av.open(io.BytesIO(raw))
+        stream = container.streams.video[0]
+        fps = float(stream.average_rate or stream.guessed_rate or 24)
+        container.close()
+        return fps
     except Exception:
         return 24.0
 
 
 def _optimize_video(raw: bytes) -> bytes:
-    """Перекодовує mp4: -an, scale ≤ 640, fps ≤ 24, crf 30, slow.
-    Якщо результат більший за оригінал (або ffmpeg недоступний) — повертає оригінал."""
-    if not FFMPEG:
+    """Перекодовує mp4: без аудіо, scale ≤ 640, fps ≤ 24, crf 30.
+    Якщо результат більший за оригінал (або PyAV недоступний) — повертає оригінал."""
+    if not HAS_AV:
         return raw
-    with tempfile.TemporaryDirectory() as tmp:
-        inp = os.path.join(tmp, "in.mp4")
-        out = os.path.join(tmp, "out.mp4")
-        with open(inp, "wb") as f:
-            f.write(raw)
 
-        fps = _get_video_fps(inp)
-        target_fps = min(24, fps)
-
-        cmd = [
-            FFMPEG,
-            "-y",
-            "-i",
-            inp,
-            "-an",
-            "-vf",
-            f"scale='min(640,iw)':-2,fps={target_fps}",
-            "-c:v",
-            "libx264",
-            "-crf",
-            "30",
-            "-preset",
-            "slow",
-            "-pix_fmt",
-            "yuv420p",
-            "-movflags",
-            "+faststart",
-            out,
-        ]
-        try:
-            subprocess.run(cmd, capture_output=True, timeout=120, check=True)
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+    try:
+        in_container = av.open(io.BytesIO(raw))
+        if not in_container.streams.video:
+            in_container.close()
             return raw
+        in_stream = in_container.streams.video[0]
 
-        with open(out, "rb") as f:
-            out_bytes = f.read()
+        src_fps = float(in_stream.average_rate or in_stream.guessed_rate or 24)
+        target_fps = min(24, max(1, int(round(src_fps))))
+
+        # Визначаємо парні розміри (scale ≤ 640)
+        src_w = in_stream.codec_context.width
+        src_h = in_stream.codec_context.height
+        if src_w > 640:
+            scale = 640 / src_w
+            dst_w = 640
+            dst_h = int(src_h * scale)
+        else:
+            dst_w = src_w
+            dst_h = src_h
+        dst_w -= dst_w % 2
+        dst_h -= dst_h % 2
+
+        out_buf = io.BytesIO()
+        out_container = av.open(out_buf, mode="w", format="mp4")
+        out_stream = out_container.add_stream("libx264", rate=target_fps)
+        out_stream.width = dst_w
+        out_stream.height = dst_h
+        out_stream.pix_fmt = "yuv420p"
+        out_stream.options = {
+            "crf": "30",
+            "preset": "slow",
+            "movflags": "+faststart",
+        }
+
+        out_pts = 0
+        next_time = 0.0
+        frame_interval = 1.0 / target_fps
+        out_tb = fractions.Fraction(1, target_fps)
+
+        for frame in in_container.decode(video=0):
+            t = (
+                float(frame.time)
+                if frame.time is not None
+                else (out_pts * frame_interval)
+            )
+            if t < next_time - 0.0001:
+                continue
+            next_time += frame_interval
+
+            f = frame.reformat(width=dst_w, height=dst_h, format="yuv420p")
+            f.pts = out_pts
+            f.time_base = out_tb
+            out_pts += 1
+
+            for packet in out_stream.encode(f):
+                out_container.mux(packet)
+
+        for packet in out_stream.encode():
+            out_container.mux(packet)
+
+        out_container.close()
+        in_container.close()
+
+        out_bytes = out_buf.getvalue()
         if len(out_bytes) < len(raw):
             return out_bytes
+        return raw
+
+    except Exception:
         return raw
 
 
@@ -165,11 +171,11 @@ def _optimize_video(raw: bytes) -> bytes:
 def make_posters(media: dict, ids, width: int = 360, quality: int = 60) -> dict:
     """Постер (перший кадр у WebP, ширина ≤ width) для кожної гіфки-відео з ids.
 
-    Повертає {media_id: data-URI}. Якщо ffmpeg недоступний або кадр не вдалося
+    Повертає {media_id: data-URI}. Якщо PyAV недоступний або кадр не вдалося
     витягти — для цієї гіфки постера не буде (шаблон покаже перший кадр сам).
     """
-    if not FFMPEG:
-        print("  ffmpeg не знайдено — постери для гіфок пропущено")
+    if not HAS_AV:
+        print("  PyAV не знайдено — постери для гіфок пропущено")
         return {}
     from PIL import Image
 
@@ -181,33 +187,18 @@ def make_posters(media: dict, ids, width: int = 360, quality: int = 60) -> dict:
             continue
         try:
             _, raw = _decode_data_uri(data)
-            with tempfile.TemporaryDirectory() as tmp:
-                src = os.path.join(tmp, "in.mp4")
-                png = os.path.join(tmp, "poster.png")
-                with open(src, "wb") as f:
-                    f.write(raw)
-                subprocess.run(
-                    [
-                        FFMPEG,
-                        "-v",
-                        "error",
-                        "-y",
-                        "-i",
-                        src,
-                        "-frames:v",
-                        "1",
-                        "-vf",
-                        f"scale='min({width},iw)':-2",
-                        png,
-                    ],
-                    capture_output=True,
-                    timeout=30,
-                    check=True,
-                )
+            container = av.open(io.BytesIO(raw))
+            for frame in container.decode(video=0):
+                img = frame.to_image()  # PIL Image
+                # Масштабування
+                if img.width > width:
+                    ratio = width / img.width
+                    img = img.resize((width, int(img.height * ratio)), Image.LANCZOS)
                 buf = io.BytesIO()
-                with Image.open(png) as im:
-                    im.convert("RGB").save(buf, "WEBP", quality=quality, method=6)
-            posters[mid] = _encode_data_uri("image/webp", buf.getvalue())
+                img.convert("RGB").save(buf, "WEBP", quality=quality, method=6)
+                posters[mid] = _encode_data_uri("image/webp", buf.getvalue())
+                break  # тільки перший кадр
+            container.close()
         except Exception as e:  # noqa: BLE001 — постер не критичний
             print(f"  постер для {mid} не створено: {e}")
     return posters
@@ -333,7 +324,6 @@ def optimize_media(media: dict, used_ids: set[str]) -> dict:
 def ensure_media_dimensions(media: dict, ids: set[str] | list[str]) -> None:
     """Визначає ширину та висоту (w, h) для фото/відео/стікерів, якщо вони ще не задані."""
     from PIL import Image, ImageOps
-    import io
 
     for mid in ids:
         if mid not in media:
@@ -351,36 +341,11 @@ def ensure_media_dimensions(media: dict, ids: set[str] | list[str]) -> None:
                 img = Image.open(io.BytesIO(raw))
                 img = ImageOps.exif_transpose(img)
                 m["w"], m["h"] = img.width, img.height
-            elif kind == "gif" and FFPROBE:
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as f:
-                    f.write(raw)
-                    tmp_name = f.name
-                try:
-                    r = subprocess.run(
-                        [
-                            FFPROBE,
-                            "-v",
-                            "error",
-                            "-select_streams",
-                            "v:0",
-                            "-show_entries",
-                            "stream=width,height",
-                            "-of",
-                            "csv=p=0",
-                            tmp_name,
-                        ],
-                        capture_output=True,
-                        text=True,
-                        timeout=5,
-                    )
-                    parts = r.stdout.strip().split(",")
-                    if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
-                        m["w"], m["h"] = int(parts[0]), int(parts[1])
-                finally:
-                    try:
-                        os.unlink(tmp_name)
-                    except OSError:
-                        pass
+            elif kind in ("gif", "video_sticker") and HAS_AV:
+                container = av.open(io.BytesIO(raw))
+                stream = container.streams.video[0]
+                m["w"] = stream.codec_context.width
+                m["h"] = stream.codec_context.height
+                container.close()
         except Exception:
             pass
-

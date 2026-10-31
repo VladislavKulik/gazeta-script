@@ -11,48 +11,50 @@
 {%- endif -%}
 {%- endmacro -%}
 {%- macro pic(m, caption) -%}
-{%- if m.kind in ["gif"] -%}<video class="pic" data-lightbox data-caption="{{ caption }}" preload="metadata"
-  src="{{ m.data }}#t=0.001" muted loop playsinline></video>
+{%- if m.kind in ["gif", "video_sticker", "video"] -%}<video class="pic" data-lightbox data-caption="{{ caption }}"
+  preload="metadata" src="{{ m.data }}#t=0.001" muted loop playsinline></video>
+{%- elif m.kind == "animated_sticker" -%}<div class="pic lottie" data-src="{{ m.data }}"
+  data-emoji="{{ m.emoji or '🙂' }}" role="img" aria-label="{{ m.emoji or 'стікер' }}"></div>
 {%- else -%}<img class="pic" data-lightbox data-caption="{{ caption }}" src="{{ m.data }}" alt="{{ caption }}"
   loading="lazy" decoding="async" {% if m.w %} width="{{ m.w }}" height="{{ m.h }}" {% endif %}>
 {%- endif -%}
 {%- endmacro -%}
 {%- macro show(item_ids, caption="") -%}
 {%- if item_ids is iterable and item_ids is not string -%}
-  {%- set ids = item_ids -%}
+{%- set ids = item_ids -%}
 {%- elif item_ids -%}
-  {%- set ids = [item_ids] -%}
+{%- set ids = [item_ids] -%}
 {%- else -%}
-  {%- set ids = [] -%}
+{%- set ids = [] -%}
 {%- endif -%}
 {%- set ns = namespace(items=[]) -%}
 {%- for mid in ids -%}
-  {%- if mid and media.get(mid) -%}
-    {%- set ns.items = ns.items + [media.get(mid)] -%}
-  {%- endif -%}
+{%- if mid and media.get(mid) -%}
+{%- set ns.items = ns.items + [media.get(mid)] -%}
+{%- endif -%}
 {%- endfor -%}
 {%- set count = ns.items | length -%}
 {%- if count == 1 -%}
-  {%- set m = ns.items[0] -%}
-  {%- if 'sticker' in m.kind -%}{{ sticker(m) }}{%- else -%}<div class="mf">{{ pic(m, caption) }}</div>{%- endif -%}
+{%- set m = ns.items[0] -%}
+{%- if 'sticker' in m.kind -%}{{ sticker(m) }}{%- else -%}<div class="mf">{{ pic(m, caption) }}</div>{%- endif -%}
 {%- elif count == 2 -%}
-  <div class="mf-grid mf-grid-2">
-    {%- for m in ns.items -%}
-    <div class="mf">{{ pic(m, caption) }}</div>
-    {%- endfor -%}
-  </div>
+<div class="mf-grid mf-grid-2">
+  {%- for m in ns.items -%}
+  <div class="mf">{{ pic(m, caption) }}</div>
+  {%- endfor -%}
+</div>
 {%- elif count == 3 -%}
-  <div class="mf-grid mf-grid-3">
-    {%- for m in ns.items -%}
-    <div class="mf">{{ pic(m, caption) }}</div>
-    {%- endfor -%}
-  </div>
+<div class="mf-grid mf-grid-3">
+  {%- for m in ns.items -%}
+  <div class="mf">{{ pic(m, caption) }}</div>
+  {%- endfor -%}
+</div>
 {%- elif count >= 4 -%}
-  <div class="mf-grid mf-grid-4">
-    {%- for m in ns.items -%}
-    <div class="mf">{{ pic(m, caption) }}</div>
-    {%- endfor -%}
-  </div>
+<div class="mf-grid mf-grid-4">
+  {%- for m in ns.items -%}
+  <div class="mf">{{ pic(m, caption) }}</div>
+  {%- endfor -%}
+</div>
 {%- endif -%}
 {%- endmacro -%}
 {%- macro short_news_card() -%}
