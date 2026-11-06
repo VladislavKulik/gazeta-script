@@ -9,14 +9,12 @@
 """
 
 import base64
+import hashlib
 import io
 import json
 import os
 import re
-import shutil
-import subprocess
 import sys
-import tempfile
 import time
 from collections import Counter
 from datetime import datetime
@@ -35,11 +33,11 @@ from dotenv import load_dotenv
 import games
 import weekly
 
-FFMPEG = shutil.which("ffmpeg") or (
-    Path(__file__).parent / "ffmpeg" / ("ffmpeg.exe" if os.name == "nt" else "ffmpeg")
-)
-if isinstance(FFMPEG, Path) and not FFMPEG.exists():
-    FFMPEG = None
+try:
+    import av
+    HAS_AV = True
+except ImportError:
+    HAS_AV = False
 
 load_dotenv()
 TZ = ZoneInfo(os.getenv("TZ_NAME", "Europe/Kyiv"))
@@ -78,6 +76,7 @@ ARTICLE = {
     "properties": {
         "rubric": {"type": "string"},
         "title": {"type": "string"},
+        "lead": {"type": "string"},
         "body": {"type": "string"},
         "illustration_message_ids": {
             "type": "array",
@@ -107,14 +106,7 @@ def make_schema(is_games: bool = True) -> dict:
         "articles": {"type": "array", "items": ARTICLE},
         "quotes": {
             "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "message_id": {"type": "integer"},
-                    "comment": {"type": "string"},
-                },
-                "required": ["message_id", "comment"],
-            },
+            "items": {"type": "integer"},
         },
         "short_news": {"type": "array", "items": {"type": "string"}},
         "hero_of_day": {
@@ -168,9 +160,9 @@ def make_system_prompt(name: str, date: str, is_games: bool = True) -> str:
         "- Жодних галюцинацій: не вигадуй подій, драми і реплік, яких не було в чаті. Сатирично перебільшувати й докручувати абсурд можна, але факти беруться виключно з логів.",
         "- Жодних id у тексті: СУВОРО ЗАБОРОНЕНО вставляти у текст статей (body), заголовків чи коротких новин (short_news) номери повідомлень у квадратних дужках типу [220259] чи [1234]! Номери повідомлень потрібні виключно для полів illustration_message_ids, quiz_message_ids та quotes. Усередині тексту цитати оформлюються виключно словами й лапками (наприклад: Назар заявив: «я рік не стригся»), без жодних дужок із цифрами.",
         "- headline — головний заміс дня: найгучніший срач, найтупіший факап або найсмішніша тема. body 400–700 слів. Обов'язково цитуй учасників дослівно (вставляй прямі цитати з переписки в лапках із зазначенням автора). Детально описуй хронологію, причини і наслідки, хто що робив і як реагували інші.",
-        "- articles — 3–6 розгромних статей на інші теми дня, кожна 200–450 слів, з їдкою рубрикою за змістом (наприклад: «Скандали», «Крінж дня», «Диванна аналітика», «Кулінарні злочини», «Техно-срач», «Плітки»). Кожна стаття ОБОВ'ЯЗКОВО має містити 2–4 прямі цитати учасників (дослівно з переписки, в лапках). Описуй контекст і реакції детально. Жодних номерів [id] у тексті!",
+        "- articles — 3–6 розгромних статей на інші теми дня, кожна 200–450 слів, з їдкою рубрикою за змістом та коротким підзаголовком-тизером (lead) на 1–2 речення. Кожна стаття ОБОВ'ЯЗКОВО має містити 2–4 прямі цитати учасників (дослівно з переписки, в лапках). Описуй контекст і реакції детально. Жодних номерів [id] у тексті!",
         "- illustration_message_ids — масив id повідомлень з [фото], [gif] або [стікер], які пасують до статті. Можна 1–3 фото на статтю. Порожній масив [], якщо нічого не пасує. Бери лише id з переписки, у яких справді є медіа, і не повторюй одну ілюстрацію двічі. Якщо фото має опис контексту — враховуй його при виборі.",
-        "- quotes — 3–5 найепічніших або найабсурдніших реплік дня: вкажи лише message_id (текст підставиться автоматично) і короткий, уїдливий коментар-панчлайн від редакції.",
+        "- quotes — 3–5 найепічніших або найабсурдніших реплік дня: вкажи лише message_id (текст підставиться автоматично).",
         "- short_news — 3–6 коротких новин одним реченням: максимально сухо, панчево й саркастично. Жодних медіа, жодних номерів [id].",
         "- hero_of_day — головний персонаж (або клоун) дня: ім'я точно як у переписці, саркастичне звання і жорстке, але смішне пояснення за які заслуги чи гріхи.",
     ]
@@ -221,9 +213,9 @@ def make_system_prompt(name: str, date: str, is_games: bool = True) -> str:
   "tagline": "підзаголовок випуску",
   "headline": {{"title": "заголовок", "subtitle": "підзаголовок", "body": "текст 400-700 слів з прямими цитатами", "illustration_message_ids": [123, 456]}},
   "articles": [
-    {{"rubric": "Скандали", "title": "заголовок", "body": "текст 200-450 слів з прямими цитатами", "illustration_message_ids": [789]}}
+    {{"rubric": "Скандали", "title": "заголовок", "lead": "короткий вступний тизер", "body": "текст 200-450 слів з прямими цитатами", "illustration_message_ids": [789]}}
   ],
-  "quotes": [{{"message_id": 123, "comment": "коментар редакції"}}],
+  "quotes": [123, 456],
   "short_news": ["коротка новина"],
   "hero_of_day": {{"sender": "Ім'я", "title": "звання", "reason": "за що"}},
   "jokes": ["анекдот 1", "анекдот 2"]{games_json}
@@ -405,11 +397,29 @@ def save_media_cache(cache: dict[str, dict]):
         print(f"  ! не вдалося зберегти media_cache.json: {e}")
 
 
+def content_hash_of_media(media_item: dict) -> str | None:
+    """SHA-256 від data URI медіа. Однаковий контент → однаковий хеш."""
+    data_uri = media_item.get("data") or ""
+    if not data_uri:
+        return None
+    return hashlib.sha256(data_uri.encode("utf-8")).hexdigest()
+
+
+def build_hash_index(cache: dict[str, dict]) -> dict[str, str]:
+    """Будує зворотній індекс {content_hash: media_id} для швидкого пошуку дублів."""
+    index: dict[str, str] = {}
+    for mid, entry in cache.items():
+        h = entry.get("content_hash")
+        if h and entry.get("description"):
+            index.setdefault(h, mid)  # перший знайдений виграє
+    return index
+
+
 def extract_image_b64_from_media(media_item: dict) -> str | None:
     """Витягує base64-зображення (JPEG/PNG/WebP) з медіа будь-якого типу:
     - photo: безпосередньо з data URI
     - sticker: статичний WebP безпосередньо з data URI
-    - video_sticker / gif: витягує перший кадр через ffmpeg або PIL
+    - video_sticker / gif: витягує перший кадр через PyAV або PIL
     """
     data_uri = media_item.get("data") or ""
     if not data_uri or "," not in data_uri:
@@ -443,35 +453,17 @@ def extract_image_b64_from_media(media_item: dict) -> str | None:
         except Exception:
             pass
 
-    # Відео (mp4, webm) — перший кадр через ffmpeg
-    if FFMPEG and ("video/" in header or kind in ("gif", "video_sticker")):
-        ext = ".webm" if "webm" in header else ".mp4"
+    # Відео (mp4, webm) — перший кадр через PyAV
+    if HAS_AV and ("video/" in header or kind in ("gif", "video_sticker")):
         try:
-            with tempfile.TemporaryDirectory() as tmp:
-                src = os.path.join(tmp, f"input{ext}")
-                dst = os.path.join(tmp, "frame.jpg")
-                with open(src, "wb") as f:
-                    f.write(raw)
-                res = subprocess.run(
-                    [
-                        str(FFMPEG),
-                        "-v",
-                        "error",
-                        "-y",
-                        "-i",
-                        src,
-                        "-frames:v",
-                        "1",
-                        "-q:v",
-                        "2",
-                        dst,
-                    ],
-                    capture_output=True,
-                    timeout=20,
-                )
-                if os.path.exists(dst):
-                    with open(dst, "rb") as df:
-                        return base64.b64encode(df.read()).decode("ascii")
+            container = av.open(io.BytesIO(raw))
+            for frame in container.decode(video=0):
+                img = frame.to_image()  # PIL Image
+                buf = io.BytesIO()
+                img.convert("RGB").save(buf, format="JPEG", quality=80)
+                container.close()
+                return base64.b64encode(buf.getvalue()).decode("ascii")
+            container.close()
         except Exception as e:
             print(f"  ! не вдалося витягти кадр для {kind}: {e}")
 
@@ -532,6 +524,7 @@ def describe_all_media(
 
     descriptions = {}
     to_describe = []
+    hash_index = build_hash_index(cache)
 
     for mid in candidate_ids:
         m = media[mid]
@@ -542,7 +535,16 @@ def describe_all_media(
             descriptions[mid] = desc
             m["description"] = desc
         else:
-            to_describe.append(mid)
+            # Перевірка дубліката за content hash
+            ch = content_hash_of_media(m)
+            if ch and ch in hash_index:
+                donor_mid = hash_index[ch]
+                desc = cache[donor_mid]["description"]
+                descriptions[mid] = desc
+                m["description"] = desc
+                cache[mid] = {"kind": m.get("kind", "media"), "description": desc, "content_hash": ch}
+            else:
+                to_describe.append(mid)
 
     if skip_api or not to_describe:
         if descriptions:
@@ -563,7 +565,7 @@ def describe_all_media(
             desc = f"анімований стікер {emoji}" if emoji else "анімований стікер"
             descriptions[mid] = desc
             m["description"] = desc
-            cache[mid] = {"kind": kind, "description": desc}
+            cache[mid] = {"kind": kind, "description": desc, "content_hash": content_hash_of_media(m)}
             updated = True
             continue
 
@@ -576,7 +578,10 @@ def describe_all_media(
         if desc:
             descriptions[mid] = desc
             m["description"] = desc
-            cache[mid] = {"kind": kind, "description": desc}
+            ch = content_hash_of_media(m)
+            cache[mid] = {"kind": kind, "description": desc, "content_hash": ch}
+            if ch:
+                hash_index[ch] = mid
             updated = True
             print(desc[:60] + ("..." if len(desc) > 60 else ""))
         else:
@@ -748,7 +753,9 @@ def extract_lead(body: str, max_chars: int = 180) -> str:
     """Витягує короткий вступний лід/тизер для картки на головній сторінці."""
     if not body:
         return ""
-    first_p = body.strip().split("\n")[0].strip()
+    paragraphs = [p.strip() for p in body.strip().split("\n\n") if p.strip()]
+    first_p = paragraphs[0] if paragraphs else body.strip().split("\n")[0].strip()
+    first_p = " ".join(first_p.split())
     if len(first_p) > max_chars:
         trimmed = first_p[:max_chars].rsplit(" ", 1)[0]
         return trimmed.rstrip(".,:;!?") + "…"
@@ -802,6 +809,7 @@ def normalize(c) -> dict:
         art = {
             "rubric": as_text(a.get("rubric")) or "Новини",
             "title": as_text(a.get("title")),
+            "lead": as_text(a.get("lead") or a.get("subtitle")),
             "body": as_text(a.get("body") or a.get("text")),
             "illustration_message_ids": as_int_list(
                 a.get("illustration_message_ids") or a.get("illustration_message_id")
@@ -812,15 +820,9 @@ def normalize(c) -> dict:
 
     quotes = []
     for q in c.get("quotes") or []:
-        if isinstance(q, dict):
-            quotes.append(
-                {
-                    "message_id": as_int(q.get("message_id")),
-                    "comment": as_text(q.get("comment")),
-                }
-            )
-        else:
-            quotes.append({"message_id": as_int(q), "comment": ""})
+        mid = as_int(q.get("message_id") if isinstance(q, dict) else q)
+        if mid:
+            quotes.append({"message_id": mid})
 
     news = c.get("short_news") or []
     if isinstance(news, str):
@@ -884,14 +886,14 @@ def resolve(content: dict, data: dict) -> dict:
     h["id"] = "headline"
     h["slug"] = make_slug(h.get("title", "headline"))
     h["rubric"] = "Головне"
-    h["lead"] = h.get("subtitle") or extract_lead(h.get("body", ""))
+    h["lead"] = h.get("lead") or h.get("subtitle") or extract_lead(h.get("body", ""))
     h["media_ids"] = media_ids_of(h.pop("illustration_message_ids", []))
     h["cover_media_id"] = h["media_ids"][0] if h["media_ids"] else None
 
     for idx, a in enumerate(content["articles"], 1):
         a["id"] = f"article-{idx}"
         a["slug"] = make_slug(a.get("title", f"article-{idx}"))
-        a["lead"] = extract_lead(a.get("body", ""))
+        a["lead"] = a.get("lead") or a.get("subtitle") or extract_lead(a.get("body", ""))
         a["media_ids"] = media_ids_of(a.pop("illustration_message_ids", []))
         a["cover_media_id"] = a["media_ids"][0] if a["media_ids"] else None
 
@@ -900,7 +902,12 @@ def resolve(content: dict, data: dict) -> dict:
         m = by_id.get(q["message_id"])
         if m and not m.get("forwarded") and m["text"] and not m["text"].startswith("["):
             quotes.append(
-                {**q, "sender": m["sender"], "time": m["time"], "text": m["text"]}
+                {
+                    "message_id": q["message_id"],
+                    "sender": m["sender"],
+                    "time": m["time"],
+                    "text": m["text"],
+                }
             )
     content["quotes"] = quotes
     return content

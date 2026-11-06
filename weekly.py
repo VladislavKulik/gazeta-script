@@ -196,6 +196,9 @@ def get_weekly_headlines(day: str, today_paper: dict | None = None) -> list[dict
         if not c or not c.get("headline"):
             continue
         h = c["headline"]
+        lead_text = str(h.get("lead") or h.get("subtitle") or "").strip()
+        if not lead_text and h.get("body"):
+            lead_text = str(h.get("body", "")).strip().split("\n")[0].strip()[:180]
         headlines.append(
             {
                 "date": iso,
@@ -204,6 +207,7 @@ def get_weekly_headlines(day: str, today_paper: dict | None = None) -> list[dict
                 "weekday": WEEKDAYS[d.weekday()],
                 "title": str(h.get("title", "")).strip(),
                 "subtitle": str(h.get("subtitle", "")).strip(),
+                "lead": lead_text,
                 "body": str(h.get("body", "")).strip(),
                 "media_id": (
                     (h.get("media_ids") or [h.get("cover_media_id") or h.get("media_id")])[0]
@@ -245,7 +249,6 @@ def collect_weekly_quotes(
                         "sender": q.get("sender", ""),
                         "text": q.get("text", ""),
                         "time": q.get("time", ""),
-                        "comment": q.get("comment", ""),
                         "message_id": q.get("message_id", 0),
                     }
                 )

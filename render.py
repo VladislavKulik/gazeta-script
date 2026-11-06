@@ -11,6 +11,7 @@
 """
 
 import base64
+from collections import Counter
 import json
 import os
 import re
@@ -18,6 +19,7 @@ import sys
 from datetime import date as Date, datetime, timedelta
 from pathlib import Path
 
+from generate import extract_lead
 from optimize_media import optimize_media, make_posters, ensure_media_dimensions
 from games import (
     WORDLE_STRICT,
@@ -29,6 +31,7 @@ from games import (
     word_of_day,
 )
 from weekly import (
+    _days,
     _load,
     collect_weekly_quotes,
     get_weekly_headlines,
@@ -212,7 +215,6 @@ def get_weekly_dialogue(day: str, paper: dict) -> dict | None:
                                 }
                                 for m in chunk
                             ],
-                            "moral": "Класичний чатовий діалог тижня.",
                         }
     except Exception:
         pass
@@ -252,7 +254,6 @@ def get_daily_dialogue(day: str, paper: dict) -> dict | None:
             "title": dlg.get("title") or "Суперечка дня",
             "topic": dlg.get("topic") or "",
             "time_range": dlg.get("time_range") or "",
-            "moral": dlg.get("moral") or "",
             "messages": [
                 {
                     "sender": m.get("sender", ""),
@@ -303,7 +304,6 @@ def get_daily_dialogue(day: str, paper: dict) -> dict | None:
                                 }
                                 for m in chunk
                             ],
-                            "moral": "Живий діалог із чату.",
                         }
     except Exception:
         pass
@@ -396,6 +396,16 @@ def main():
 
     used = set()
     if content:
+        # Забезпечуємо наявність lead для кожної картки (зокрема для старих збережених JSON)
+        if "headline" in content and isinstance(content["headline"], dict):
+            if not content["headline"].get("lead"):
+                content["headline"]["lead"] = content["headline"].get(
+                    "subtitle"
+                ) or extract_lead(content["headline"].get("body", ""))
+        for a in content.get("articles") or []:
+            if isinstance(a, dict) and not a.get("lead"):
+                a["lead"] = a.get("subtitle") or extract_lead(a.get("body", ""))
+
         # Підтримка як нового формату (media_ids / cover_media_id), так і старого архівного (media_id)
         h_ids = content["headline"].get("media_ids") or []
         if not h_ids and content["headline"].get("cover_media_id"):
@@ -451,8 +461,8 @@ def main():
         opt_media = result["media"]
         opt_report = result["report"]
 
-    # ── Постери для гіфок у галереї ───────────────────────────────────────
-    posters = make_posters(opt_media, [g["media_id"] for g in gallery])
+    # ── Постери для гіфок та відео (галерея та обкладинки новин) ──────────
+    posters = make_posters(opt_media, [g["media_id"] for g in gallery] + list(used))
     if posters:
         opt_media = dict(opt_media)
         for mid, uri in posters.items():
@@ -489,9 +499,9 @@ def main():
     if is_weekly_day(day) or paper.get("weekly"):
         w_quotes, w_senders = collect_weekly_quotes(day, paper)
 
-    games_day = is_games_day(
-        day
-    )  # кросворд і вікторина — лише у «ігровий» день (неділя)
+    games_day = is_games_day(day) and bool(
+        paper.get("weekly")
+    )  # кросворд і вікторина — лише у тижневому спецвипуску (неділя)
     cw = (content or {}).get("crossword") if games_day else None
     quiz = ((content or {}).get("quiz") or []) if games_day else []
     if games_day and len(quiz) < 3:
@@ -587,6 +597,60 @@ def main():
             hm_is_h = True
             hm_aspect = f"{min(max(r, 4 / 3), 16 / 9):.3f}"
 
+    # ── Для «Цифри дня → Детально»: усі учасники та медіа за типами ─────────
+    people = Counter(
+        m["sender"] for m in data.get("messages", []) if not m.get("forwarded")
+    )
+    stats_people = [[name, n] for name, n in people.most_common()]
+    mc = stats.get("media_counts") or {}
+    stats_media = {
+        "photo": mc.get("photo", 0),
+        "sticker": sum(v for k, v in mc.items() if "sticker" in k),
+        "gif": mc.get("gif", 0) + mc.get("gif_preview", 0),
+    }
+
+    # ── Для «Цифри тижня → Детально»: учасники за 7 днів та медіа за типами ─
+    week_stats_people = []
+    week_stats_media = None
+    if weekly or is_weekly_day(day):
+        week_people = Counter()
+        week_mc = Counter()
+        for wd in _days(d):
+            w_iso = wd.isoformat()
+            if w_iso == day:
+                w_data = data
+                w_stats = stats
+            else:
+                w_data = _load(DATA_DIR / f"{w_iso}.json") or {}
+                w_paper = _load(DATA_DIR / f"{w_iso}.newspaper.json") or {}
+                w_stats = w_paper.get("stats") or {}
+
+            for m in w_data.get("messages", []):
+                if not m.get("forwarded") and m.get("sender"):
+                    week_people[m["sender"]] += 1
+
+            day_mc = w_stats.get("media_counts")
+            if not day_mc and isinstance(w_data.get("media"), dict):
+                day_mc = dict(
+                    Counter(
+                        item.get("type", "")
+                        for item in w_data.get("media", {}).values()
+                        if isinstance(item, dict)
+                    )
+                )
+
+            if isinstance(day_mc, dict):
+                for k, v in day_mc.items():
+                    if isinstance(v, (int, float)):
+                        week_mc[k] += int(v)
+
+        week_stats_people = [[name, n] for name, n in week_people.most_common()]
+        week_stats_media = {
+            "photo": week_mc.get("photo", 0),
+            "sticker": sum(v for k, v in week_mc.items() if "sticker" in k),
+            "gif": week_mc.get("gif", 0) + week_mc.get("gif_preview", 0),
+        }
+
     env = Environment(
         loader=FileSystemLoader(BASE), autoescape=select_autoescape(["html"])
     )
@@ -594,7 +658,7 @@ def main():
     env.globals["plural"] = plural
     env.globals["format_period"] = format_period
     env.globals["format_headline_date"] = format_headline_date
-    html = env.get_template("template.html").render(
+    html = env.get_template("template_v12.html").render(
         name=paper.get("newspaper_name", "Вісник Чату"),
         date_text=ua_date(d),
         date_short=d.strftime("%d.%m.%Y"),
@@ -628,6 +692,10 @@ def main():
         hm_is_h=hm_is_h,
         hm_aspect=hm_aspect,
         is_sunday=(d.weekday() == 6),
+        stats_people=stats_people,
+        stats_media=stats_media,
+        week_stats_people=week_stats_people,
+        week_stats_media=week_stats_media,
     )
 
     OUT_DIR.mkdir(exist_ok=True)

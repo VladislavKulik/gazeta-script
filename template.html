@@ -2832,7 +2832,7 @@
     <div class="top">
       <div class="chips">
         <span class="chip on">{{ date_short }}</span>
-        {% if is_sunday %}<span class="chip sp">Спецвипуск</span>{% endif %}
+        {% if weekly and weekly.content %}<span class="chip sp">Спецвипуск</span>{% endif %}
         {% if issue %}<span class="chip">випуск № {{ issue }}</span>{% endif %}
         <span class="chip">{{ stats.total_messages }} {{ plural(stats.total_messages, 'повідомлення', 'повідомлення',
           'повідомлень') }}</span>
@@ -3143,11 +3143,7 @@
           <h3 class="dialogue-title">{{ daily_dialogue.title }}</h3>
           {% if daily_dialogue.time_range %}<span class="chip on">{{ daily_dialogue.time_range }}</span>{% endif %}
         </div>
-        {% if daily_dialogue.moral %}
-        <p class="dialogue-moral">
-          <span class="moral-text">{{ daily_dialogue.moral }}</span>
-        </p>
-        {% elif daily_dialogue.topic %}
+        {% if daily_dialogue.topic %}
         <p class="dialogue-topic">{{ daily_dialogue.topic }}</p>
         {% endif %}
         <div class="dialogue-thread">
