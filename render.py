@@ -5,19 +5,30 @@
        template.html                   (шаблон верстки — дизайн міняється тут)
 Вихід: output/Газета {name} Випуск №{issue} DD-MM-YYYY.html
 
+Шаблон збирається прямо тут з папки src/ (template.html + style.css + app.js), окремий build.py не потрібен.
+Якщо папки src/ немає — береться готовий template.html.
+
 Запуск:
     python render.py              -> сьогоднішня доба
     python render.py 2026-10-03   -> конкретна дата
+    --no-min       не мінімізувати CSS/JS (для налагодження в DevTools)
+    --build-only   лише зібрати шаблон -> template.html (без рендеру газети)
 """
 
 import base64
+import zlib
+from collections import Counter
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 from datetime import date as Date, datetime, timedelta
 from pathlib import Path
 
+from generate import extract_lead
+from page_data import build_day_stats, build_news, build_week_stats, plural
 from optimize_media import optimize_media, make_posters, ensure_media_dimensions
 from games import (
     WORDLE_STRICT,
@@ -29,9 +40,10 @@ from games import (
     word_of_day,
 )
 from weekly import (
+    _days,
     _load,
     collect_weekly_quotes,
-    get_weekly_headlines,
+    get_weekly_picks_fallback,
     is_weekly_day,
 )
 from zoneinfo import ZoneInfo
@@ -48,6 +60,7 @@ TZ = ZoneInfo(os.getenv("TZ_NAME", "Europe/Kyiv"))
 NEWSPAPER_START = os.getenv(
     "NEWSPAPER_START", ""
 ).strip()  # дата першого випуску -> номер випуску
+WORDLE_PACKED = os.getenv("WORDLE_PACKED", "").strip() in ("1", "true", "yes")  # пакований словник Wordle (-230 КБ)
 GALLERY_MAX = int(os.getenv("GALLERY_MAX", "12"))  # скільки фото/гіфок у «Фото дня»
 
 MONTHS = [
@@ -133,6 +146,84 @@ def fonts_css() -> str:
     return "<style>" + "\n".join(out) + "</style>"
 
 
+# ── Збірка шаблону з src/ ─────────────────────────────────────────────────────
+SRC_DIR = BASE / "src"
+BUILT_TEMPLATE = BASE / "template.html"
+CSS_MARK = "/*@@CSS@@*/"
+JS_MARK = "{# @@JS@@ #}"
+
+
+def _esbuild_cmd():
+    exe = shutil.which("esbuild")
+    if exe:
+        return [exe]
+    if shutil.which("npx"):
+        return ["npx", "--no-install", "esbuild"]
+    return None
+
+
+def _minify(code: str, loader: str, cmd: list) -> str:
+    args = cmd + ["--minify", f"--loader={loader}", "--charset=utf8", "--legal-comments=none"]
+    # скрипт без модулів: імена верхнього рівня (toggleTheme, closeAppModal…) мають лишитись глобальними
+    args += ["--target=es2017"] if loader == "js" else ["--target=chrome90,safari14,firefox90"]
+    r = subprocess.run(args, input=code, capture_output=True, text=True, encoding="utf-8")
+    if r.returncode != 0:
+        sys.exit(f"esbuild ({loader}) впав:\n{r.stderr}")
+    return r.stdout.strip()
+
+
+def build_template(minify: bool = True) -> str:
+    """Збирає текст Jinja-шаблону: src/template.html + src/style.css + src/app.js.
+    CSS і JS вставляються всередину {% raw %}…{% endraw %}, тому Jinja їх не чіпає.
+    Мінімізація потребує esbuild (npm i -g esbuild); без нього збирається без мінімізації з попередженням.
+    Якщо src/ немає — повертає готовий template.html."""
+    if not (SRC_DIR / "template.html").exists():
+        if not BUILT_TEMPLATE.exists():
+            sys.exit(f"Немає ні {SRC_DIR}/, ні {BUILT_TEMPLATE.name}")
+        return BUILT_TEMPLATE.read_text(encoding="utf-8")
+
+    tpl = (SRC_DIR / "template.html").read_text(encoding="utf-8")
+    css = (SRC_DIR / "style.css").read_text(encoding="utf-8")
+    js = (SRC_DIR / "app.js").read_text(encoding="utf-8")
+
+    for mark in (CSS_MARK, JS_MARK):
+        if tpl.count(mark) != 1:
+            sys.exit(f"У src/template.html має бути рівно одна заглушка {mark!r}, знайдено {tpl.count(mark)}")
+    for name, code in (("style.css", css), ("app.js", js)):
+        if re.search(r"\{%\s*endraw\s*%\}", code):
+            sys.exit(f"src/{name} містить {{% endraw %}} — це зламає блок raw")
+
+    if minify:
+        cmd = _esbuild_cmd()
+        if cmd:
+            css, js = _minify(css, "css", cmd), _minify(js, "js", cmd)
+        else:
+            print("  УВАГА: esbuild не знайдено — шаблон збирається без мінімізації (npm i -g esbuild)")
+
+    out = tpl.replace(CSS_MARK, "{% raw %}" + css + "{% endraw %}")
+    return out.replace(JS_MARK, "{% raw %}" + js + "{% endraw %}")
+
+
+def pack_words(words) -> str | None:
+    """Упаковує словник Wordle: відсортовані слова, кожне як «цифра = спільний префікс із попереднім» + хвіст
+    (front coding), далі deflate-raw і base64. ≈10× менше за простий список; розпаковує скрипт сторінки.
+    None — якщо упакувати не можна (слово з цифрою або спільний префікс довший за 9) -> лишається звичайний список."""
+    prev, parts = "", []
+    for w in sorted(set(words)):
+        if any(ch.isdigit() or ch.isspace() for ch in w):
+            return None
+        k = 0
+        while k < len(w) and k < len(prev) and w[k] == prev[k]:
+            k += 1
+        if k > 9:
+            return None
+        parts.append(f"{k}{w[k:]}")
+        prev = w
+    co = zlib.compressobj(9, zlib.DEFLATED, -15)
+    raw = co.compress("".join(parts).encode("utf-8")) + co.flush()
+    return base64.b64encode(raw).decode("ascii")
+
+
 def ua_date(d: Date) -> str:
     return f"{WEEKDAYS[d.weekday()]}, {d.day} {MONTHS[d.month - 1]} {d.year}"
 
@@ -212,7 +303,6 @@ def get_weekly_dialogue(day: str, paper: dict) -> dict | None:
                                 }
                                 for m in chunk
                             ],
-                            "moral": "Класичний чатовий діалог тижня.",
                         }
     except Exception:
         pass
@@ -252,7 +342,6 @@ def get_daily_dialogue(day: str, paper: dict) -> dict | None:
             "title": dlg.get("title") or "Суперечка дня",
             "topic": dlg.get("topic") or "",
             "time_range": dlg.get("time_range") or "",
-            "moral": dlg.get("moral") or "",
             "messages": [
                 {
                     "sender": m.get("sender", ""),
@@ -303,7 +392,6 @@ def get_daily_dialogue(day: str, paper: dict) -> dict | None:
                                 }
                                 for m in chunk
                             ],
-                            "moral": "Живий діалог із чату.",
                         }
     except Exception:
         pass
@@ -313,15 +401,6 @@ def get_daily_dialogue(day: str, paper: dict) -> dict | None:
 def paragraphs(text: str) -> Markup:
     parts = [p.strip() for p in re.split(r"\n+", text or "") if p.strip()]
     return Markup("".join(f"<p>{escape(p)}</p>" for p in parts))
-
-
-def plural(n: int, one: str, few: str, many: str) -> str:
-    """Українська множина: 1 стікер, 2 стікери, 5 стікерів."""
-    if n % 10 == 1 and n % 100 != 11:
-        return one
-    if 2 <= n % 10 <= 4 and not 12 <= n % 100 <= 14:
-        return few
-    return many
 
 
 def strip_tag(text: str) -> str:
@@ -375,6 +454,10 @@ def media_summary(counts: dict) -> str:
 
 
 def main():
+    if "--build-only" in sys.argv:
+        BUILT_TEMPLATE.write_text(build_template("--no-min" not in sys.argv), encoding="utf-8")
+        print(f"Шаблон зібрано -> {BUILT_TEMPLATE}")
+        return
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     day = args[0] if args else datetime.now(TZ).strftime("%Y-%m-%d")
     chat_file = DATA_DIR / f"{day}.json"
@@ -396,6 +479,16 @@ def main():
 
     used = set()
     if content:
+        # Забезпечуємо наявність lead для кожної картки (зокрема для старих збережених JSON)
+        if "headline" in content and isinstance(content["headline"], dict):
+            if not content["headline"].get("lead"):
+                content["headline"]["lead"] = content["headline"].get(
+                    "subtitle"
+                ) or extract_lead(content["headline"].get("body", ""))
+        for a in content.get("articles") or []:
+            if isinstance(a, dict) and not a.get("lead"):
+                a["lead"] = a.get("subtitle") or extract_lead(a.get("body", ""))
+
         # Підтримка як нового формату (media_ids / cover_media_id), так і старого архівного (media_id)
         h_ids = content["headline"].get("media_ids") or []
         if not h_ids and content["headline"].get("cover_media_id"):
@@ -414,20 +507,23 @@ def main():
         used.add(stats["top_sticker"]["media_id"])
     used.discard(None)
 
-    # Тижневі новини дня (для спецвипуску)
-    weekly_headlines = []
+    # «Обране за тиждень»: новини з попередніх випусків тижня (вибір моделі, див. weekly.build_picks)
+    weekly_picks = []
     if is_weekly_day(day) or paper.get("weekly"):
-        weekly_headlines = (paper.get("weekly") or {}).get(
-            "headlines"
-        ) or get_weekly_headlines(day, paper)
-        for wh in weekly_headlines:
-            mid = wh.get("media_id")
-            if mid and mid not in data.get("media", {}):
-                raw_day = _load(DATA_DIR / f"{wh['date']}.json")
-                if raw_day and mid in raw_day.get("media", {}):
-                    data["media"][mid] = raw_day["media"][mid]
-            if mid and mid in data.get("media", {}):
-                used.add(mid)
+        weekly_picks = (paper.get("weekly") or {}).get("picks")
+        if weekly_picks is None:  # випуск згенеровано до появи «Обраного» — беремо головні новини днів
+            weekly_picks = get_weekly_picks_fallback(day, paper)
+        raw_days: dict = {}
+        for wp in weekly_picks:
+            for mid in wp.get("media_ids") or []:
+                if mid not in data.get("media", {}):
+                    if wp["date"] not in raw_days:
+                        raw_days[wp["date"]] = _load(DATA_DIR / f"{wp['date']}.json")
+                    raw_day = raw_days[wp["date"]]
+                    if raw_day and mid in raw_day.get("media", {}):
+                        data["media"][mid] = raw_day["media"][mid]
+                if mid in data.get("media", {}):
+                    used.add(mid)
 
     gallery = pick_gallery(data, used) if content else []
 
@@ -451,8 +547,8 @@ def main():
         opt_media = result["media"]
         opt_report = result["report"]
 
-    # ── Постери для гіфок у галереї ───────────────────────────────────────
-    posters = make_posters(opt_media, [g["media_id"] for g in gallery])
+    # ── Постери для гіфок та відео (галерея та обкладинки новин) ──────────
+    posters = make_posters(opt_media, [g["media_id"] for g in gallery] + list(used))
     if posters:
         opt_media = dict(opt_media)
         for mid, uri in posters.items():
@@ -489,9 +585,9 @@ def main():
     if is_weekly_day(day) or paper.get("weekly"):
         w_quotes, w_senders = collect_weekly_quotes(day, paper)
 
-    games_day = is_games_day(
-        day
-    )  # кросворд і вікторина — лише у «ігровий» день (неділя)
+    games_day = is_games_day(day) and bool(
+        paper.get("weekly")
+    )  # кросворд і вікторина — лише у тижневому спецвипуску (неділя)
     cw = (content or {}).get("crossword") if games_day else None
     quiz = ((content or {}).get("quiz") or []) if games_day else []
     if games_day and len(quiz) < 3:
@@ -546,7 +642,7 @@ def main():
             word = word_of_day(day, None, save=False)
         except Exception as e:  # noqa: BLE001 — гра не критична
             print(f"  Wordle пропущено: {e}")
-    word_meta = word_data = word_dict = None
+    word_meta = word_data = word_dict = word_dict_packed = None
     if word:
         word_meta = {
             "id": word.get("id") or word.get("week") or day,
@@ -565,6 +661,11 @@ def main():
         pool.add(word["word"])
         if len(pool) > 1:
             word_dict = " ".join(sorted(pool))
+            if WORDLE_PACKED:
+                word_dict_packed = pack_words(pool)
+                if word_dict_packed:
+                    word_dict = None
+                    print(f"  Словник Wordle упаковано: {len(pool)} слів -> {len(word_dict_packed) // 1024} КБ")
         else:
             print(
                 "  УВАГА: немає словника data/words/uk_words.txt — Wordle прийматиме будь-які літери"
@@ -587,6 +688,70 @@ def main():
             hm_is_h = True
             hm_aspect = f"{min(max(r, 4 / 3), 16 / 9):.3f}"
 
+    # ── Для «Цифри дня → Детально»: усі учасники та медіа за типами ─────────
+    people = Counter(
+        m["sender"] for m in data.get("messages", []) if not m.get("forwarded")
+    )
+    stats_people = [[name, n] for name, n in people.most_common()]
+    mc = stats.get("media_counts") or {}
+    stats_media = {
+        "photo": mc.get("photo", 0),
+        "sticker": sum(v for k, v in mc.items() if "sticker" in k),
+        "gif": mc.get("gif", 0) + mc.get("gif_preview", 0),
+    }
+
+    # ── Для «Цифри тижня → Детально»: учасники за 7 днів та медіа за типами ─
+    week_stats_people = []
+    week_stats_media = None
+    if weekly or is_weekly_day(day):
+        week_people = Counter()
+        week_mc = Counter()
+        for wd in _days(d):
+            w_iso = wd.isoformat()
+            if w_iso == day:
+                w_data = data
+                w_stats = stats
+            else:
+                w_data = _load(DATA_DIR / f"{w_iso}.json") or {}
+                w_paper = _load(DATA_DIR / f"{w_iso}.newspaper.json") or {}
+                w_stats = w_paper.get("stats") or {}
+
+            for m in w_data.get("messages", []):
+                if not m.get("forwarded") and m.get("sender"):
+                    week_people[m["sender"]] += 1
+
+            day_mc = w_stats.get("media_counts")
+            if not day_mc and isinstance(w_data.get("media"), dict):
+                day_mc = dict(
+                    Counter(
+                        item.get("type", "")
+                        for item in w_data.get("media", {}).values()
+                        if isinstance(item, dict)
+                    )
+                )
+
+            if isinstance(day_mc, dict):
+                for k, v in day_mc.items():
+                    if isinstance(v, (int, float)):
+                        week_mc[k] += int(v)
+
+        week_stats_people = [[name, n] for name, n in week_people.most_common()]
+        week_stats_media = {
+            "photo": week_mc.get("photo", 0),
+            "sticker": sum(v for k, v in week_mc.items() if "sticker" in k),
+            "gif": week_mc.get("gif", 0) + week_mc.get("gif_preview", 0),
+        }
+
+    # ── Дані для шаблону, раніше пораховані в Jinja/JS (див. page_data.py) ──
+    news = build_news(content, weekly, weekly_picks, opt_media, format_headline_date)
+    day_stats = build_day_stats(stats, stats_people, stats_media, d.strftime("%d.%m.%Y"))
+    week_stats = build_week_stats(
+        weekly,
+        week_stats_people,
+        week_stats_media,
+        format_period((weekly or {}).get("range")),
+    )
+
     env = Environment(
         loader=FileSystemLoader(BASE), autoescape=select_autoescape(["html"])
     )
@@ -594,7 +759,7 @@ def main():
     env.globals["plural"] = plural
     env.globals["format_period"] = format_period
     env.globals["format_headline_date"] = format_headline_date
-    html = env.get_template("template.html").render(
+    html = env.from_string(build_template("--no-min" not in sys.argv)).render(
         name=paper.get("newspaper_name", "Вісник Чату"),
         date_text=ua_date(d),
         date_short=d.strftime("%d.%m.%Y"),
@@ -614,7 +779,6 @@ def main():
         generated_at=paper.get("generated_at", ""),
         day=day,
         weekly=weekly,
-        weekly_headlines=weekly_headlines,
         weekly_quotes=weekly_quotes,
         weekly_dialogue=weekly_dialogue,
         weekly_meme=weekly_meme,
@@ -624,10 +788,17 @@ def main():
         word_data=word_data,
         word_meta=word_meta,
         word_dict=word_dict,
+        word_dict_packed=word_dict_packed,
         fonts_css=Markup(fonts_css()),
         hm_is_h=hm_is_h,
         hm_aspect=hm_aspect,
         is_sunday=(d.weekday() == 6),
+        news_items=news["news"],
+        week_recap=news["recap"],
+        week_picks=news["picks"],
+        cover_ids=news["cover_ids"],
+        day_stats=day_stats,
+        week_stats=week_stats,
     )
 
     OUT_DIR.mkdir(exist_ok=True)

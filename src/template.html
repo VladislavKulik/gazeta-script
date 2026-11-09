@@ -1,0 +1,1216 @@
+{#- Шаблон газети. Це ДЖЕРЕЛО: CSS і JS лежать окремо (src/style.css, src/app.js), в один файл їх збирає render.py (build_template)
+(CSS/JS потрапляють у блоки raw, тому Jinja їх не чіпає). Збірку template.html руками редагувати не треба.
+Один автономний файл без звернень до інтернету: головна, сторінки новин і ігор перемикаються в пам'яті (адреса не
+змінюється). Медіа вставляються в файл один раз: на сторінках новин і в «Читайте також» вони підтягуються з обкладинок
+на головній (data-ref). -#}
+{#- ================= МАКРОСИ ================= -#}
+{%- macro sticker(m) -%}
+{%- if m.kind == "sticker" -%}<img class="stk" src="{{ m.data }}" alt="{{ m.emoji or 'стікер' }}" loading="lazy" {% if
+  m.w %} width="{{ m.w }}" height="{{ m.h }}" {% endif %}>
+{%- elif m.kind == "video_sticker" -%}<video class="stk" src="{{ m.data }}" autoplay loop muted playsinline></video>
+{#- animated_sticker (TGS) без бібліотеки Lottie показати не можна (CDN у автономному файлі заборонений): емодзі-заглушка.
+Щоб стікер був анімованим, бекенд має віддати його як video_sticker (webm/mp4) -#}
+{%- elif m.kind == "animated_sticker" -%}<span class="stk stk-emoji" role="img" aria-label="{{ m.emoji or 'стікер' }}">{{
+  m.emoji or '🙂' }}</span>
+{%- endif -%}
+{%- endmacro -%}
+
+{#- «Детально» для цифр дня й тижня: вміст модального вікна. Усі числа, відсотки й підписи вже пораховані в
+page_data.build_day_stats / build_week_stats; тут лише розмітка. Розмітка без пробілів між тегами (як і була у JS) -#}
+{%- macro stats_detail(S, week) -%}
+<div class="sd{{ ' sd--week' if week }}">
+{{- '' -}}<div class="sd-kpis">{% for k in S.kpis %}<div class="sd-kpi{{ ' sd-kpi-hi' if k.hi }}"><strong class="disp">{{ k.val }}</strong><span>{{ k.text }}</span></div>{% endfor %}</div>
+{%- if S.chart -%}
+<section class="sd-sec"><div class="sd-sec-head"><h4 class="disp">{{ S.chart.title }}</h4><span>{{ S.chart.hint }}</span></div><div class="sd-readout"></div><div class="sd-plot"><div class="sd-gl" style="--p:1"><span>{{ S.chart.gl_top }}</span></div><div class="sd-gl" style="--p:.5"><span>{{ S.chart.gl_mid }}</span></div><div class="sd-bars" role="group" aria-label="{{ S.chart.aria }}">{% for b in S.chart.bars %}<button type="button" class="sd-bar{{ ' is-peak' if b.is_peak }}" data-h="{{ b.i }}" style="--h:{{ b.h }}%" aria-label="{{ b.aria }}" data-rt="{{ b.rt }}" data-rs="{{ b.rs }}" data-pk="{{ b.pk }}"><i></i><b>{{ b.label }}</b></button>{% endfor %}</div></div></section>
+{%- endif -%}
+<section class="sd-sec"><div class="sd-sec-head"><h4 class="disp">Головні спостереження</h4><span>{{ S.insights_hint }}</span></div><ul class="sd-insights">{% for b, t in S.insights %}<li><b>{{ b }}</b>{{ t }}</li>{% endfor %}</ul></section>
+{{- '' -}}<section class="sd-sec"><div class="sd-sec-head"><h4 class="disp">Хто скільки написав</h4><span>{{ S.people_head }}</span></div><ol class="sd-people">{% for p in S.people %}<li><span class="sd-rank">{{ p.rank }}</span><span class="sd-pava" aria-hidden="true">{{ p.ava }}</span><span class="sd-pname">{{ p.name }}</span><span class="sd-pbar"><i style="--w:{{ p.w }}%"></i></span><strong class="sd-pcount">{{ p.count }}</strong><span class="sd-pshare">{{ p.share }}%</span></li>{% endfor %}</ol></section>
+{%- if S.media -%}
+{%- set M = S.media -%}
+<section class="sd-sec"><div class="sd-sec-head"><h4 class="disp">{{ M.title }}</h4><span>{{ M.count }}</span></div><div class="sd-media-bar" role="img" aria-label="Фото {{ M.photo }}, стікерів {{ M.sticker }}, GIF {{ M.gif }}"><i class="m-photo" style="flex:{{ M.photo }}"></i><i class="m-sticker" style="flex:{{ M.sticker }}"></i><i class="m-gif" style="flex:{{ M.gif }}"></i></div><ul class="sd-media-legend">{% for l in M.legend %}<li><i class="{{ l.cls }}"></i><strong>{{ l.n }}</strong> {{ l.label }} · {{ l.share }}%</li>{% endfor %}</ul></section>
+{%- endif -%}
+</div>
+{%- endmacro -%}
+
+{#- смужка «До випуску» (+ необов'язковий лічильник «2 / 5» на сторінках новин) -#}
+{%- macro back_bar(pos, pos_label) -%}
+<div class="article-nav-bar">
+  <a href="#main" class="btn btn-back" aria-label="До випуску"><span class="ico ico-go ico-l"
+      aria-hidden="true"></span><span>До випуску</span></a>
+  {%- if pos %}<span class="nav-pos" aria-label="{{ pos_label }}">{{ pos }}</span>{% endif %}
+</div>
+{%- endmacro -%}
+{#- логотип «Тетріс» (фігурки): один раз у макросі, використовується на картці гри й на стартовому екрані -#}
+{%- macro tetro_logo() -%}
+<div class="tetro-logo" aria-hidden="true">
+<div class="tp" style="--w:1;--h:4">
+<span class="tc tb-i" style="grid-area:1/1"></span>
+<span class="tc tb-i" style="grid-area:2/1"></span>
+<span class="tc tb-i" style="grid-area:3/1"></span>
+<span class="tc tb-i" style="grid-area:4/1"></span>
+</div>
+<div class="tp" style="--w:2;--h:2">
+<span class="tc tb-o" style="grid-area:1/1"></span>
+<span class="tc tb-o" style="grid-area:1/2"></span>
+<span class="tc tb-o" style="grid-area:2/1"></span>
+<span class="tc tb-o" style="grid-area:2/2"></span>
+</div>
+<div class="tp" style="--w:2;--h:3">
+<span class="tc tb-t" style="grid-area:1/1"></span>
+<span class="tc tb-t" style="grid-area:2/1"></span>
+<span class="tc tb-t" style="grid-area:2/2"></span>
+<span class="tc tb-t" style="grid-area:3/1"></span>
+</div>
+<div class="tp" style="--w:2;--h:3">
+<span class="tc tb-s" style="grid-area:1/1"></span>
+<span class="tc tb-s" style="grid-area:2/1"></span>
+<span class="tc tb-s" style="grid-area:2/2"></span>
+<span class="tc tb-s" style="grid-area:3/2"></span>
+</div>
+<div class="tp" style="--w:2;--h:3">
+<span class="tc tb-z" style="grid-area:1/2"></span>
+<span class="tc tb-z" style="grid-area:2/1"></span>
+<span class="tc tb-z" style="grid-area:2/2"></span>
+<span class="tc tb-z" style="grid-area:3/1"></span>
+</div>
+<div class="tp" style="--w:2;--h:3">
+<span class="tc tb-j" style="grid-area:1/2"></span>
+<span class="tc tb-j" style="grid-area:2/2"></span>
+<span class="tc tb-j" style="grid-area:3/1"></span>
+<span class="tc tb-j" style="grid-area:3/2"></span>
+</div>
+<div class="tp" style="--w:2;--h:3">
+<span class="tc tb-l" style="grid-area:1/1"></span>
+<span class="tc tb-l" style="grid-area:2/1"></span>
+<span class="tc tb-l" style="grid-area:3/1"></span>
+<span class="tc tb-l" style="grid-area:3/2"></span>
+</div>
+</div>
+{%- endmacro -%}
+
+{%- macro is_video(m) -%}{{ 'yes' if m.kind in ['gif', 'video', 'video_sticker'] else '' }}{%- endmacro -%}
+
+{%- macro initials(name) -%}{{ (name or '').split()[:2] | map('first') | join | upper }}{%- endmacro -%}
+
+{#- сітка плиток «Головне»: класи плиток (it.tile_cls — перша велика, решта під кількість) і прапорець it.cover_seen
+(обкладинка вже вставлена повними даними вище — тоді data-ref) рахує page_data.build_news -#}
+{%- macro news_grid(items) -%}
+<div class="main-news">
+  {%- for it in items -%}
+  {#- без обкладинки: один із трьох кольорових варіантів (по колу) + початок тексту новини -#}
+  <a href="#{{ it.slug }}" class="tile {{ it.tile_cls }}{{ '' if it.cover else (' no-cover nc-' ~ (loop.index0 % 3)) }}"
+    aria-label="{{ it.title }}">
+    {%- if it.cover %}
+    <div class="cover">
+      {%- set seen = it.cover_seen -%}
+      {%- if is_video(it.cover) -%}<video {{ 'data-ref' if seen else 'data-mid' }}="{{ it.cover_id }}" {% if it.cover.poster %}{% if not seen %}poster="{{ it.cover.poster }}" {% endif %}preload="none" {% else %}preload="metadata" {% endif %}{% if not seen %}src="{{ it.cover.data }}{{ '' if it.cover.poster else '#t=0.001' }}" {% endif %}muted loop playsinline></video>
+      {%- else -%}<img {{ 'data-ref' if seen else 'data-mid' }}="{{ it.cover_id }}" {% if not seen %}src="{{ it.cover.data }}" {% endif %}alt="{{ it.title }}" loading="lazy" decoding="async">{%- endif -%}
+    </div>
+    {%- endif %}
+    <div class="tile-top">
+      <span class="category">{{ it.cat }}</span>
+      <span class="tile-read" aria-hidden="true"></span>
+    </div>
+    <div class="card-copy">
+      {%- if it.day_chip %}<span class="day-chip">{{ it.day_chip }}</span>{% endif %}
+      <h3 class="disp">{{ it.title }}</h3>
+      {%- set ex = (it.lead or ((it.body or '') | string).split('\n\n')[0]) | trim -%}
+      {%- if ex %}<p class="tile-sub">{{ ex | truncate(180, false, '…') }}</p>{% endif -%}
+    </div>
+    <span class="go" aria-hidden="true"></span>
+  </a>
+  {%- endfor -%}
+</div>
+{%- endmacro -%}
+
+{#- «Читайте також»: усі новини групи в порядку випуску (cur — індекс відкритої новини, -1 для сторінок ігор).
+Стан «прочитано» (клас is-read) ставить скрипт за localStorage; поточна новина позначена is-current. -#}
+{%- macro also_links(items, cur) -%}
+{%- for it in items -%}{{ also_link(it, loop.index0 == cur) }}{%- endfor -%}
+{%- endmacro -%}
+{%- macro also_link(it, is_cur) -%}
+<a href="#{{ it.slug }}" class="ai{{ ' is-current' if is_cur else '' }}" {% if is_cur %} aria-current="page" {% endif
+  %}>
+  <div class="ai-thumb{{ '' if it.cover else ' ph' }}">
+    {%- if it.cover -%}
+    {%- if is_video(it.cover) -%}<video data-ref="{{ it.cover_id }}" preload="metadata" muted playsinline></video>
+    {%- else -%}<img data-ref="{{ it.cover_id }}" alt="">{%- endif -%}
+    {%- endif -%}
+  </div>
+  <div class="ai-body"><span class="ai-cat">{{ it.cat }}</span><span class="ait">{{ it.title }}</span></div>
+  <span class="ico ai-go" aria-hidden="true">{{ 'Зараз' if is_cur else '' }}</span>
+</a>
+{%- endmacro -%}
+
+{#- індикатор прогресу читання: тексти й ширину смужки заповнює скрипт -#}
+{%- macro news_progress(n) -%}
+<div class="news-progress" data-total="{{ n }}">
+  <span class="np-text" data-np-text></span>
+  <span class="np-bar" aria-hidden="true"><i data-np-bar></i></span>
+</div>
+{%- endmacro -%}
+
+{%- macro also_card(items) -%}
+<div class="also-read-card" data-news-nav>
+  <h2 class="disp">Читайте також</h2>
+  {{ news_progress(items | length) }}
+  <nav aria-label="Новини випуску" class="also-read-nav">{{ also_links(items, -1) }}</nav>
+  <a href="#main" class="btn btn-cta news-continue" data-continue hidden><span data-continue-label>Читати
+      далі</span><span class="ico ico-go ico-ne" aria-hidden="true"></span></a>
+</div>
+{%- endmacro -%}
+
+{#- медіа сторінки новини: рамки 16:9; обкладинка не дублюється (data-ref), решта — один раз -#}
+{%- macro art_media(it, cover_ids) -%}
+{%- for e in it.media if 'sticker' not in e.m.kind -%}
+{%- if loop.first %}<div class="article-media-grid">{% endif %}
+  <figure class="article-media-box" data-caption="{{ it.title }}">
+    {%- if is_video(e.m) -%}
+    <video {% if e.id in cover_ids %}data-ref="{{ e.id }}" {% else %}src="{{ e.m.data }}" {% endif %}
+      class="article-media-fit" autoplay muted loop playsinline data-lightbox></video>
+    {%- else -%}
+    <img {% if e.id in cover_ids %}data-ref="{{ e.id }}" {% else %}src="{{ e.m.data }}" {% endif %} alt="{{ it.title }}"
+      {% if e.m.w %}width="{{ e.m.w }}" height="{{ e.m.h }}" {% endif %} class="article-media-fit" data-lightbox>
+    {%- endif -%}
+  </figure>
+  {%- if loop.last %}
+</div>{% endif %}
+{%- endfor -%}
+{%- for e in it.media if 'sticker' in e.m.kind -%}
+{%- if loop.first %}<div class="article-stickers">{% endif %}{{ sticker(e.m) }}{% if loop.last %}</div>{% endif %}
+{%- endfor -%}
+{%- endmacro -%}
+
+{#- сторінка новини / дня тижня -#}
+{%- macro article_page(items, idx, cover_ids, label_extra) -%}
+{%- set it = items[idx] -%}
+{%- set total = items | length -%}
+{%- set nx = items[idx + 1] if (idx + 1) < total else none -%} <template id="tpl-{{ it.slug }}" data-news{% if it.twin %} data-twin="{{ it.twin }}"{% endif %}>
+  <div class="article-view">
+    {{ back_bar((idx + 1) ~ ' / ' ~ total, 'Новина ' ~ (idx + 1) ~ ' з ' ~ total) }}
+    <div class="article-columns">
+      <div class="article-col">
+        <article class="article-main-body">
+          <span class="lbl">{{ it.cat }}</span>
+          <h1 class="disp article-title">{{ it.title }}</h1>
+          {{ art_media(it, cover_ids) }}
+          <div class="article-prose">{{ it.body | paragraphs }}</div>
+        </article>
+        {#- «Далі»: окрема картка під текстом новини; на останній — підсумок (скрипт підставляє першу непрочитану, якщо
+        така є) -#}
+        <nav class="article-next" aria-label="Наступна новина" {% if not nx %} data-last{% endif %}>
+          <a href="#{{ nx.slug if nx else 'main' }}" class="an-card">
+            <span class="an-meta">
+              <span class="an-kicker" data-an-kicker>{% if nx %}Наступна новина · {{ idx + 2 }} з {{ total }}{% else
+                %}Це остання новина{% endif %}</span>
+              <span class="an-title" data-an-title>{{ nx.title if nx else 'Повернутися до випуску' }}</span>
+            </span>
+            <span class="an-btn"><span data-an-label>{{ 'Далі' if nx else 'До випуску' }}</span><span
+                class="ico ico-go ico-r" aria-hidden="true"></span></span>
+          </a>
+        </nav>
+      </div>
+      <aside class="article-side-nav" data-news-nav>
+        <h2 class="disp">Читайте також</h2>
+        {{ news_progress(total) }}
+        <nav class="also-read-nav" aria-label="Новини випуску">{{ also_links(items, idx) }}</nav>
+      </aside>
+    </div>
+  </div>
+  </template>
+  {%- endmacro -%}
+
+  {%- macro dialog_tile(d, label, meta, cls) -%}
+  {%- set first_sender = d.messages[0].sender if d.messages else '' -%}
+  <article class="widget-tile tile--dialog t {{ cls }}" aria-label="{{ label }}">
+    <div class="tile-head">
+      <span class="tile-label">{{ label }}</span>
+      {% if meta %}<span class="eyemeta">{{ meta }}</span>{% endif %}
+    </div>
+    <div class="dlg-chat" role="log" aria-label="{{ label }}">
+      {%- for m in d.messages %}
+      <div class="dlg-msg{{ ' dlg-alt' if m.sender != first_sender else '' }}"
+        data-p="{{ 1 if m.sender != first_sender else 0 }}">
+        <span class="dlg-ava" aria-hidden="true">{{ initials(m.sender) }}</span>
+        <div class="dlg-body">
+          <div class="d-meta"><b class="d-sender">{{ m.sender }}</b>{% if m.time %}<span class="d-time">{{ m.time
+              }}</span>{% endif %}</div>
+          <div class="d-bubble">
+            <p>{{ m.text }}</p>
+          </div>
+        </div>
+      </div>
+      {%- endfor %}
+    </div>
+  </article>
+  {%- endmacro -%}
+
+  {%- macro quotes_tile(list, label, weekly, cls) -%}
+  <article class="widget-tile tile--qts t {{ cls }}" aria-label="{{ label }}">
+    <div class="tile-head">
+      <span class="tile-label">{{ label }}</span>
+      <span class="eyemeta">{{ list | length }} {{ plural(list | length, 'ЦИТАТА', 'ЦИТАТИ', 'ЦИТАТ') }}</span>
+    </div>
+    <div class="qt-chat">
+      {%- for q in list %}
+      <figure class="qt-msg">
+        <span class="dlg-ava" aria-hidden="true">{{ initials(q.sender) }}</span>
+        <div class="dlg-body">
+          <figcaption class="d-meta"><b class="d-sender">{{ q.sender }}</b>
+            {%- if weekly -%}
+            <span class="d-time">{{ q.label if q.label else q.date_short }}{% if q.time %}, {{ q.time }}{% endif
+              %}</span>
+            {%- elif q.time -%}<span class="d-time">{{ q.time }}</span>{%- endif -%}
+          </figcaption>
+          <blockquote class="d-bubble">
+            <p>{{ q.text }}</p>
+          </blockquote>
+        </div>
+      </figure>
+      {%- endfor %}
+    </div>
+  </article>
+  {%- endmacro -%}
+
+  {%- macro hero_tile(label, h, bottom, number, cls) -%}
+  <article class="widget-tile tile--hero t {{ cls }}">
+    <div class="hero-copy">
+      <span class="tile-label">{{ label }}</span>
+      <h3 class="hero-name disp">{{ h.sender }}</h3>
+      {% if h.title %}<p class="hero-role">{{ h.title }}</p>{% endif %}
+      {% if h.reason %}<p class="hero-desc">{{ h.reason }}</p>{% endif %}
+    </div>
+    <div class="hero-bottom"><span>{{ bottom }}</span>{% if number %}<span class="hero-number">{{ number }}</span>{%
+      endif %}</div>
+  </article>
+  {%- endmacro -%}
+
+  {#- галерея (день / тиждень): pool — id, що вже є у файлі (береться за посиланням), mark — позначати дані для
+  повторного використання -#}
+  {%- macro gallery_block(items, tid, title, sub, pool, mark) -%}
+  <section class="sec-mt" aria-labelledby="{{ tid }}">
+    <div class="section-head">
+      <h2 id="{{ tid }}" class="disp">{{ title }}</h2>
+      <span class="sub">{{ sub }}</span>
+    </div>
+    <div class="gallery-card">
+      <div class="gal">
+        {%- for g in items -%}
+        {%- set m = media.get(g.media_id) -%}
+        {%- if m -%}
+        {%- set ref = g.media_id in pool -%}
+        {%- set gd = ((g.date_short ~ ' ') if g.date_short else '') ~ g.time -%}
+        <figure class="g" data-gal-index="{{ loop.index0 }}"
+          data-caption="{{ g.sender }}, {{ gd }}{% if g.caption %} — {{ g.caption }}{% endif %}">
+          {%- if is_video(m) -%}<video{% if mark and not ref %} data-mid="{{ g.media_id }}" {% endif %}{% if m.poster
+            and not ref %} poster="{{ m.poster }}" preload="none" {% else %} preload="metadata" {% endif %} {% if ref
+            %}data-ref="{{ g.media_id }}" {% else %}src="{{ m.data }}{{ '' if m.poster else '#t=0.001' }}" {% endif %}
+            muted loop playsinline></video><span class="gp" aria-hidden="true">{{ 'GIF' if m.kind == 'gif' else 'ВІДЕО'
+              }}</span>
+            {%- else -%}<img{% if mark and not ref %} data-mid="{{ g.media_id }}" {% endif %} {% if ref
+              %}data-ref="{{ g.media_id }}" {% else %}src="{{ m.data }}" {% endif %} alt="" loading="lazy"
+              decoding="async" {% if m.w %} width="{{ m.w }}" height="{{ m.h }}" {% endif %}>{%- endif -%}
+          <figcaption class="gt"><b>{{ gd }}</b>{{ g.sender }}</figcaption></figure>
+        {%- endif -%}
+        {%- endfor -%}
+      </div>
+    </div>
+  </section>
+  {%- endmacro -%}
+
+  {#- ================= ДАНІ ДЛЯ ПЛИТОК І СТОРІНОК ================= -#}
+  {#- списки новин збирає page_data.build_news (slug, обкладинки, «близнюк» тижневої новини, класи плиток) -#}
+  {%- set NI = namespace(items=news_items or []) -%}
+  {%- set WR = namespace(items=week_recap or []) -%}
+  {%- set WP = namespace(items=week_picks or []) -%}
+  {%- set WA = namespace(items=(week_recap or []) + (week_picks or [])) -%}
+  {%- set CV = namespace(ids=cover_ids or []) -%}
+  {%- set hd = c.hero_of_day if c else none -%}
+  {%- set has_hero = hd and (hd.title or hd.sender) -%}
+  {%- set has_sticker = c and stats and stats.top_sticker and media.get(stats.top_sticker.media_id) -%}
+  {%- set has_short = c and c.short_news -%}
+  {%- set has_joke = c and c.jokes -%}
+  {#- ідентифікатори медіа, що вже лежать у файлі повним даними (обкладинки + галерея дня): решта місць бере їх за
+  посиланням -#}
+  {%- set GI = namespace(ids=[]) -%}
+  {%- for g in (gallery or []) -%}{%- set GI.ids = GI.ids + [g.media_id] -%}{%- endfor -%}
+  {%- set POOL = CV.ids + GI.ids -%}
+  {%- set wk = weekly if (weekly and weekly.content) else none -%}
+  {%- set wc = wk.content if wk else none -%}
+  {%- set period = ((format_period(weekly.range) if format_period else weekly.range) if wk else (weekly_gallery_range or
+  '')) -%}
+  {%- set has_wgames = (quiz_data or cw_data) and wk -%}
+  {%- set has_week = c and (wk or weekly_gallery) -%}
+  <!DOCTYPE html>
+  <html lang="uk" data-theme="light" data-view="main">
+
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" id="tc" content="#e6e4f1">
+    <title>{{ name }} — {{ date_short }}</title>
+    <link rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
+    {#- Шрифти: Onest 400–800, Unbounded 500/600/800 (кирилиця + латиниця) вбудовуються через fonts_css (@font-face з
+    data-URI). Без fonts_css файл спирається на системні шрифти (див. --body і --display у CSS): до інтернету він не звертається. -#}
+    {% if fonts_css %}{{ fonts_css }}{% endif %}
+    <script>
+      document.documentElement.classList.add("js");
+      (function () {
+        var t;
+        try { t = localStorage.getItem("gazeta-theme"); } catch (e) { }
+        if (!t) t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.dataset.theme = t;
+      })();
+      /* Прочитані новини: ще до першої відмальовки позначаємо плитки однією змінною --rd:1, щоб після оновлення сторінки
+         не було «блимання». Увесь вигляд «прочитаної» плитки описано в CSS (.tile.is-read) — тут лише список slug-ів.
+         Сховище: один ключ "gazeta-read", у ньому масив рядків "випуск/slug" (див. READ_KEY нижче, формат той самий). */
+      (function () {
+        try {
+          var p = {{ (day or date_short) | tojson
+        }} + "/", a = JSON.parse(localStorage.getItem("gazeta-read")), css = "";
+      if (!Array.isArray(a)) return;
+      a.forEach(function (e) {
+        if (typeof e === "string" && e.indexOf(p) === 0) css += 'a.tile[href="#' + e.slice(p.length).replace(/["\\]/g, "\\$&") + '"]{--rd:1}';
+      });
+      if (!css) return;
+      var st = document.createElement("style");
+      st.textContent = css;
+      document.head.appendChild(st);
+      } catch (e) { }
+    }) ();
+    </script>
+    <style>
+/*@@CSS@@*/
+    </style>
+  </head>
+
+  <body data-issue="{{ day or date_short }}">
+    <div class="shell">
+      <header class="masthead">
+      <div class="top">
+        <div class="chips">
+          <span class="chip on">{{ date_short }}</span>
+          {% if wk %}<span class="chip sp">Тижневий випуск</span>{% endif %}
+          {% if issue %}<span class="chip">випуск № {{ issue }}</span>{% endif %}
+          {% if stats %}<span class="chip">{{ stats.total_messages }} {{ plural(stats.total_messages, 'повідомлення',
+            'повідомлення', 'повідомлень') }}</span>{% endif %}
+        </div>
+        <button class="theme" id="tb" type="button" onclick="toggleTheme()"><span class="th-i" aria-hidden="true">☾</span><span class="th-t">Темна тема</span></button>
+        <script>
+          function updateTheme() {
+            var b = document.getElementById("tb");
+            if (b) {
+              var d = document.documentElement.dataset.theme === "dark";
+              b.querySelector(".th-i").textContent = d ? "☀" : "☾";
+              b.querySelector(".th-t").textContent = d ? "Світла тема" : "Темна тема";
+            }
+            var tc = document.getElementById("tc");
+            if (tc) {
+              var bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+              if (bg) tc.setAttribute("content", bg);
+            }
+          }
+          function toggleTheme() {
+            var r = document.documentElement, t = r.dataset.theme === "dark" ? "light" : "dark";
+            r.dataset.theme = t;
+            try { localStorage.setItem("gazeta-theme", t); } catch (e) { }
+            updateTheme();
+          }
+          updateTheme();
+        </script>
+      </div>
+
+      <div class="header">
+        <div class="htext">
+          <h1><a href="#main" class="logo-link">{% if name.startswith('Вісник ') %}Вісник<br><span class="hacc">{{
+                name[7:] }}</span>{% elif ' ' in name
+              %}{% set p = name.split(' ', 1) %}{{ p[0] }}<br><span class="hacc">{{ p[1] }}</span>{% else %}{{ name }}{%
+              endif %}</a></h1>
+          <p class="sub">{{ c.tagline if c and c.tagline else 'Головне за добу' }}</p>
+        </div>
+      </div>
+      </header>
+
+      <!-- Єдиний <main> на сторінці: усередині — або головна, або змонтована сторінка новини/гри -->
+      <main id="content">
+      <!-- ================= ГОЛОВНА ================= -->
+      <div id="view-main">
+        {%- if c %}
+
+        <section aria-labelledby="mainTitle">
+          <div class="section-head">
+            <h2 id="mainTitle" class="disp">Головне</h2>
+            <span class="sub">Спершу — найважливіше <i class="arr arr-se" aria-hidden="true"></i></span>
+          </div>
+          {{ news_grid(NI.items) }}
+        </section>
+
+        {%- set has_dialog = daily_dialogue and daily_dialogue.messages -%}
+        {%- if has_dialog or c.quotes %}
+        <section class="dispute-wrapper" aria-labelledby="disputeTitle">
+          <div class="section-head">
+            <h2 id="disputeTitle" class="disp">Підслухано в чаті</h2>
+            <span class="sub">{{ 'Діалог і цитати дня' if (has_dialog and c.quotes) else ('Діалог дня' if has_dialog
+              else 'Цитати дня') }} <i class="arr arr-se" aria-hidden="true"></i></span>
+          </div>
+          <div class="widget-grid overheard-grid">
+            {%- set solo = '' if (has_dialog and c.quotes) else 'is-solo' -%}
+            {%- if has_dialog -%}{{ dialog_tile(daily_dialogue, 'Діалог дня', daily_dialogue.time_range, solo) }}{%-
+            endif -%}
+            {%- if c.quotes -%}{{ quotes_tile(c.quotes, 'Цитати дня', false, solo) }}{%- endif -%}
+          </div>
+        </section>
+        {%- endif %}
+
+        {%- set has_day_more = has_hero or has_sticker or has_short or has_joke -%}
+        {%- if has_day_more %}
+        <section aria-labelledby="sectionIntroTitle" class="sec-mt">
+          <div class="section-head">
+            <h2 id="sectionIntroTitle" class="disp">Ще за день</h2>
+            <span class="sub">Поза головними заголовками <i class="arr arr-se" aria-hidden="true"></i></span>
+          </div>
+          <div class="widget-grid" id="widgetGrid">
+            {%- if has_hero %}
+            {{ hero_tile('Герой дня', hd, 'Головний персонаж дня', ('№ ' ~ issue) if issue else date_short, '' if
+            has_sticker else 'is-solo') }}
+            {%- endif %}
+
+            {%- if has_sticker %}
+            {%- set sm = media[stats.top_sticker.media_id] %}
+            <article class="widget-tile tile--sticker t{{ '' if has_hero else ' is-solo' }}">
+              <div class="tile-head"><span class="tile-label">Стікер дня</span></div>
+              <div class="sticker-stage">{{ sticker(sm) }}</div>
+              <div class="sticker-bottom">
+                <p class="sticker-note">Надіслано {{ stats.top_sticker.count }} {{ plural(stats.top_sticker.count,
+                  'раз', 'рази', 'разів') }}</p>
+                <span class="sticker-mark">:)</span>
+              </div>
+            </article>
+            {%- endif %}
+
+            {%- if has_short %}
+            <article class="widget-tile tile--short{{ '' if has_joke else ' is-solo' }}">
+              <div class="tile-head">
+                <span class="tile-label">Коротко</span>
+                <span class="eyemeta">{{ c.short_news | length }} {{ plural(c.short_news | length, 'ПОДІЯ', 'ПОДІЇ',
+                  'ПОДІЙ') }}</span>
+              </div>
+              <div class="short-list">
+                {%- for n in c.short_news %}
+                <div class="short-item"><span class="short-num">{{ '%02d' % loop.index }}</span>
+                  <p>{{ n }}</p>
+                </div>
+                {%- endfor %}
+              </div>
+            </article>
+            {%- endif %}
+
+            {%- if has_joke %}
+            <article class="widget-tile tile--joke t{{ '' if has_short else ' is-solo' }}">
+              <div class="tile-head">
+                <span class="tile-label">Анекдоти</span>
+                <span class="eyemeta" id="jokeCounter"></span>
+              </div>
+              <div class="joke-main">
+                <div class="joke-mark" aria-hidden="true">“</div>
+                <div class="joke-stack" id="jokeStack"></div>
+              </div>
+              <div class="joke-actions"><button class="btn" type="button" id="nextJoke">Хочу ще</button></div>
+            </article>
+            {%- endif %}
+          </div>
+        </section>
+        {%- endif %}
+
+        {#- ================= ЦИФРИ ДНЯ ================= -#}
+        {%- if stats %}
+        {%- set hmax = hour_max or 1 %}
+        <section class="sec-mt" aria-labelledby="dayStatsTitle">
+          <div class="section-head">
+            <h2 id="dayStatsTitle" class="disp">Цифри дня</h2>
+            <span class="sub">Підсумки доби в числах <i class="arr arr-se" aria-hidden="true"></i></span>
+          </div>
+          <div class="widget-grid">
+            <article class="widget-tile tile--stats stats-redesign t" style="grid-column: span 12">
+              <div class="tile-head">
+                <span class="tile-label">Цифри дня</span>
+                <span class="eyemeta">{{ date_short }}</span>
+              </div>
+              <div class="st-grid">
+                <section class="st-total" aria-label="Загальна активність за день">
+                  <strong class="st-number">{{ stats.total_messages }}</strong>
+                  <span class="st-unit">{{ plural(stats.total_messages, 'повідомлення', 'повідомлення', 'повідомлень')
+                    }} за день</span>
+                  <div class="st-submetrics">
+                    {% if hour_max %}
+                    <div class="st-submetric">
+                      <span class="st-submetric__val">{{ hour_max }}</span>
+                      <span class="st-unit">пік за годину</span>
+                    </div>
+                    {% endif %}
+                    {% if stats.busiest_hour %}
+                    <div class="st-submetric">
+                      <span class="st-submetric__val">{{ stats.busiest_hour }}</span>
+                      <span class="st-unit">година пік</span>
+                    </div>
+                    {% endif %}
+                  </div>
+                </section>
+                <section class="st-chart" aria-label="Активність по годинах">
+                  <div class="st-chart-head"><span>Активність по годинах</span></div>
+                  <div class="st-bars" id="hoursChart" role="img"
+                    aria-label="Кількість повідомлень по годинах{% if stats.busiest_hour %}. Пік о {{ stats.busiest_hour }}{% endif %}">
+                    {%- for n in stats.messages_by_hour -%}
+                    <span class="{{ 'peak' if (n == hour_max and n > 0) else ('has' if n > 0 else '') }}"
+                      style="--h: {{ (n / hmax * 100) | round(1) }}%;"
+                      data-v="{{ ('%02d:00 · %d' % (loop.index0, n)) if (n == hour_max and n > 0) else n }}"
+                      data-tip="{{ '%02d' % loop.index0 }}:00 · {{ n }} {{ plural(n, 'повідомлення', 'повідомлення', 'повідомлень') }}"></span>
+                    {%- endfor -%}
+                  </div>
+                  <div class="st-axis" aria-hidden="true"><span
+                      class="k6">00</span><span></span><span></span><span>03</span><span></span><span></span><span
+                      class="k6">06</span><span></span><span></span><span>09</span><span></span><span></span><span
+                      class="k6">12</span><span></span><span></span><span>15</span><span></span><span></span><span
+                      class="k6">18</span><span></span><span></span><span>21</span><span></span><span
+                      class="k6">23</span></div>
+                </section>
+                <section class="st-top" aria-label="Найактивніші учасники">
+                  {%- set top5 = ((stats.top_senders or stats.all_senders) or [])[:5] -%}
+                  <div class="st-top-head"><span>Топ-{{ top5 | length }} учасників</span><span>повідомлень</span>
+                  </div>
+                  <ol class="st-leaders" id="leaderboard">
+                    {%- for s in top5 %}
+                    <li><span class="rank">{{ '%02d' % loop.index }}</span><span class="name">{{ s.sender
+                        }}</span><strong class="count">{{ s.count }}</strong><span class="bar"><i
+                          style="--w: {{ (s.count / (top5[0].count or 1) * 100) | round(1) }}%"></i></span></li>
+                    {%- endfor %}
+                  </ol>
+                </section>
+              </div>
+              {%- if day_stats %}
+              <div class="st-foot">
+                <span class="st-foot-note">Усі учасники та кожна година — у розгорнутій статистиці</span>
+                <button class="btn" type="button" id="statsDetail" aria-haspopup="dialog">Детально<span
+                    class="ico ico-mo" aria-hidden="true"></span></button>
+              </div>
+              {%- endif %}
+            </article>
+          </div>
+        </section>
+        {%- endif %}
+
+        {#- ================= ФОТО ТА ВІДЕО ЗА ДЕНЬ ================= -#}
+        {%- if gallery %}
+        {{ gallery_block(gallery, 'galleryTitle', 'Фото та відео за день', (gallery | length) ~ ' ' ~ plural(gallery |
+        length, 'файл', 'файли', 'файлів') ~ ((' · ' ~ gallery_range) if gallery_range else ''), CV.ids, true) }}
+        {%- endif %}
+
+        <section aria-labelledby="gameTitle" class="sec-mt">
+          <div class="section-head">
+            <h2 id="gameTitle" class="disp">Ігри</h2>
+            <span class="sub">Щоденна розминка <i class="arr arr-se" aria-hidden="true"></i></span>
+          </div>
+          {%- if word_data %}
+          <article class="game-card" aria-labelledby="wordleCardTitle">
+            <div class="game-card__top"><span class="category">Гра дня</span></div>
+            <div class="game-letters" aria-hidden="true">
+              <span class="game-letter disp is-absent">С</span><span class="game-letter disp is-present">Л</span><span
+                class="game-letter disp is-correct">О</span><span class="game-letter disp is-absent">В</span><span
+                class="game-letter disp is-correct">О</span>
+            </div>
+            <div class="game-card__info">
+              <h3 id="wordleCardTitle" class="disp game-card__title">Wordle</h3>
+              <p class="game-card__desc">Вгадай слово дня</p>
+            </div>
+            <a href="#wordle" class="btn btn-cta" aria-label="Грати у Wordle">Грати<span class="ico ico-go ico-ne"
+                aria-hidden="true"></span></a>
+          </article>
+          {%- endif %}
+          <article class="game-card" aria-labelledby="tetrisCardTitle">
+            <div class="game-card__top"><span class="category">Гра дня</span></div>
+            {{ tetro_logo() }}
+            <div class="game-card__info">
+              <h3 id="tetrisCardTitle" class="disp game-card__title">Тетріс</h3>
+              <p class="game-card__desc">Збери лінії</p>
+            </div>
+            <a href="#tetris" class="btn btn-cta" aria-label="Грати в Тетріс">Грати<span class="ico ico-go ico-ne"
+                aria-hidden="true"></span></a>
+          </article>
+        </section>
+
+        {#- ================= ПІДСУМКИ ТИЖНЯ ================= -#}
+        {%- if has_week %}
+        <div class="week-sep" role="separator"></div>
+        {#- ================= ПІДСУМОК ТИЖНЯ ================= -#}
+        {%- if wk and WR.items %}
+        <section class="week-first" aria-labelledby="recapTitle">
+          <div class="section-head">
+            <h2 id="recapTitle" class="disp">Підсумок тижня</h2>
+            <span class="sub sub--wk">{{ period }}{{ ' ' if period }}<i class="arr arr-se"
+                aria-hidden="true"></i></span>
+          </div>
+          {{ news_grid(WR.items) }}
+        </section>
+        {%- endif %}
+
+        {#- ================= ОБРАНЕ ЗА ТИЖДЕНЬ =================
+        Смішні й цікаві новини з попередніх випусків тижня (обирає модель, weekly.build_picks); новин поточного випуску
+        тут немає — вони вже в «Головному». -#}
+        {%- if wk and WP.items %}
+        <section class="{{ 'sec-mt' if WR.items else 'week-first' }}" aria-labelledby="picksTitle">
+          <div class="section-head">
+            <h2 id="picksTitle" class="disp">Обране за тиждень</h2>
+            <span class="sub sub--wk">{{ WP.items | length }} {{ plural(WP.items | length, 'новина', 'новини', 'новин') }}<i
+                class="arr arr-se" aria-hidden="true"></i></span>
+          </div>
+          {{ news_grid(WP.items) }}
+        </section>
+        {%- endif %}
+
+        {%- set wh = wc.hero_of_week -%}
+        {%- set has_whero = wh and (wh.sender or wh.title) -%}
+        {%- set has_wside = weekly_meme or (weekly_dialogue and weekly_dialogue.messages) or weekly_quotes -%}
+        {%- if wk and (has_whero or has_wside) %}
+        <section class="sec-mt" aria-labelledby="peopleTitle">
+          <div class="section-head">
+            <h2 id="peopleTitle" class="disp">Ще за тиждень</h2>
+            <span class="sub sub--wk">{{ period }}{{ ' ' if period }}<i class="arr arr-se"
+                aria-hidden="true"></i></span>
+          </div>
+          <div class="widget-grid">
+            {%- if has_whero -%}{{ hero_tile('Герой тижня', wh, 'Головний персонаж тижня', period, 'span-7' if has_wside
+            else 'is-solo') }}{%- endif -%}
+            {%- set sc = 'span-5' if has_whero else 'is-solo' -%}
+            {%- if weekly_meme %}
+            <article class="widget-tile tile--meme t {{ sc }}">
+              <div class="tile-head">
+                <span class="tile-label">Мем тижня</span>
+                {% if weekly_meme.count_chip %}<span class="eyemeta">{{ weekly_meme.count_chip }}</span>{% endif %}
+              </div>
+              <h3 class="meme-word disp">{{ weekly_meme.word }}</h3>
+              {% if weekly_meme.pos or weekly_meme.author %}
+              <p class="meme-sub">{% if weekly_meme.pos %}<em>{{ weekly_meme.pos }}</em>{% endif %}{% if
+                weekly_meme.author %} · автор: <b>{{ weekly_meme.author }}</b>{% endif %}</p>
+              {% endif %}
+              <p class="meme-def">{{ weekly_meme.definition }}</p>
+              {% if weekly_meme.example %}<div class="meme-example">{{ weekly_meme.example }}</div>{% endif %}
+            </article>
+            {%- elif weekly_dialogue and weekly_dialogue.messages -%}
+            {{ dialog_tile(weekly_dialogue, 'Діалог тижня', weekly_dialogue.day_label, sc) }}
+            {%- elif weekly_quotes -%}
+            {{ quotes_tile(weekly_quotes, 'Цитати тижня', true, sc) }}
+            {%- endif %}
+          </div>
+        </section>
+        {%- endif %}
+
+
+        {#- ================= НОМІНАЦІЇ ТИЖНЯ =================
+        weekly_awards: до 6 об'єктів — {title, sender, value, unit, note, meta}; value/unit/meta необов'язкові -#}
+        {%- set AW = (weekly_awards or [])[:6] -%}
+        {%- if wk and AW %}
+        <section class="sec-mt" aria-labelledby="awardsTitle">
+          <div class="section-head">
+            <h2 id="awardsTitle" class="disp">Номінації тижня</h2>
+            <span class="sub sub--wk">{{ period }}{{ ' ' if period }}<i class="arr arr-se"
+                aria-hidden="true"></i></span>
+          </div>
+          <div class="award-grid award-grid--{{ AW | length }}">
+            {%- for a in AW %}
+            <article class="widget-tile tile--award aw-{{ loop.index0 % 6 }} t">
+              <div class="tile-head">
+                <span class="tile-label">{{ a.title }}</span>
+                {%- if a.meta %}<span class="eyemeta">{{ a.meta }}</span>{% endif %}
+              </div>
+              <div class="aw-who">
+                <span class="dlg-ava aw-ava" aria-hidden="true">{{ initials(a.sender) }}</span>
+                <h3 class="aw-name disp">{{ a.sender }}</h3>
+              </div>
+              {%- if a.value %}
+              <div class="aw-val"><span class="aw-num">{{ a.value }}</span>{% if a.unit %}<span class="aw-unit">{{ a.unit }}</span>{% endif %}</div>
+              {%- endif %}
+              {%- if a.note %}<p class="aw-note">{{ a.note }}</p>{% endif %}
+            </article>
+            {%- endfor %}
+          </div>
+        </section>
+        {%- endif %}
+        {%- if wk %}
+        {%- if wk.stats %}
+        {%- set ws = wk.stats -%}
+        <section class="sec-mt" aria-labelledby="weekStatsTitle">
+          <div class="section-head">
+            <h2 id="weekStatsTitle" class="disp">Цифри тижня</h2>
+            <span class="sub sub--wk">{{ period }}{{ ' ' if period }}<i class="arr arr-se"
+                aria-hidden="true"></i></span>
+          </div>
+          <div class="widget-grid">
+            <article class="widget-tile tile--stats stats-redesign t" style="grid-column: span 12">
+              <div class="tile-head">
+                <span class="tile-label">Цифри тижня</span>
+                <span class="eyemeta">{{ period }}</span>
+              </div>
+              <div class="st-grid">
+                <section class="st-total" aria-label="Загальна активність за тиждень">
+                  <strong class="st-number">{{ ws.total_messages }}</strong>
+                  <span class="st-unit">{{ plural(ws.total_messages, 'повідомлення', 'повідомлення', 'повідомлень') }}
+                    за тиждень</span>
+                  <div class="st-submetrics">
+                    <div class="st-submetric">
+                      <span class="st-submetric__val">~{{ ws.avg_per_day }}</span>
+                      <span class="st-unit">на добу</span>
+                    </div>
+                    {% if ws.busiest_day %}
+                    <div class="st-submetric">
+                      <span class="st-submetric__val">{{ ws.busiest_day.count }}</span>
+                      <span class="st-unit">пік дня</span>
+                    </div>
+                    {% elif ws.msgs_per_hour %}
+                    <div class="st-submetric">
+                      <span class="st-submetric__val">{{ ws.msgs_per_hour }}</span>
+                      <span class="st-unit">щогодини</span>
+                    </div>
+                    {% endif %}
+                  </div>
+                </section>
+                <section class="st-chart" aria-label="Повідомлення по днях тижня">
+                  <div class="st-chart-head"><span>Повідомлення по днях тижня</span></div>
+                  <div class="st-bars" role="img" aria-label="Повідомлення по днях тижня">
+                    {%- for p in ws.per_day -%}
+                    <span
+                      class="{{ 'peak' if (p.count == ws.per_day_max and p.count > 0) else ('has' if p.count > 0 else '') }}"
+                      style="--h: {{ (p.count / (ws.per_day_max or 1) * 100) | round(1) }}%;" data-v="{{ p.count }}"
+                      data-tip="{{ p.date }} · {{ p.count }} {{ plural(p.count, 'повідомлення', 'повідомлення', 'повідомлень') }}"></span>
+                    {%- endfor -%}
+                  </div>
+                  <div class="st-axis st-axis--week" aria-hidden="true">{% for p in ws.per_day %}<span class="k6">{{
+                      p.label }}</span>{% endfor %}</div>
+                </section>
+                <section class="st-top" aria-label="Найактивніші за 7 днів">
+                  {%- set wtop = ws.top_senders or [] -%}
+                  <div class="st-top-head"><span>Найактивніші за 7 днів</span><span>повідомлень</span></div>
+                  <ol class="st-leaders">
+                    {%- for s in wtop %}
+                    <li><span class="rank">{{ '%02d' % loop.index }}</span><span class="name">{{ s.sender
+                        }}</span><strong class="count">{{ s.count }}</strong><span class="bar"><i
+                          style="--w: {{ (s.count / (wtop[0].count or 1) * 100) | round(1) }}%"></i></span></li>
+                    {%- endfor %}
+                  </ol>
+                </section>
+              </div>
+              {%- if week_stats %}
+              <div class="st-foot">
+                <span class="st-foot-note">Усі учасники та кожен день тижня — у розгорнутій статистиці</span>
+                <button class="btn" type="button" id="weekStatsDetail" aria-haspopup="dialog">Детально<span
+                    class="ico ico-mo" aria-hidden="true"></span></button>
+              </div>
+              {%- endif %}
+            </article>
+          </div>
+        </section>
+        {%- endif %}
+        {%- endif %}
+
+        {%- if weekly_gallery %}
+        {%- set WP = namespace(ids=CV.ids + GI.ids) -%}
+        {{ gallery_block(weekly_gallery, 'weekGalleryTitle', 'Фото та відео за тиждень', (weekly_gallery | length) ~ ' '
+        ~ plural(weekly_gallery | length, 'файл', 'файли', 'файлів') ~ ((' · ' ~ weekly_gallery_range) if
+        weekly_gallery_range else ''), WP.ids, false) }}
+        {%- endif %}
+
+        {%- if has_wgames %}
+        <section aria-labelledby="wGameTitle" class="sec-mt">
+          <div class="section-head">
+            <h2 id="wGameTitle" class="disp">Ігри тижня</h2>
+            <span class="sub sub--wk">{{ period }}{{ ' ' if period }}<i class="arr arr-se"
+                aria-hidden="true"></i></span>
+          </div>
+          {%- if quiz_data %}
+          <article class="game-card" aria-labelledby="quizCardTitle">
+            <div class="game-card__top"><span class="category">Гра тижня</span></div>
+            <div class="game-demo-bubble" aria-hidden="true">го в доту</div>
+            <div class="game-card__info">
+              <h3 id="quizCardTitle" class="disp game-card__title">Хто це сказав?</h3>
+              <p class="game-card__desc">Вгадай автора цитати</p>
+            </div>
+            <a href="#quiz" class="btn btn-cta" aria-label="Грати у «Хто це сказав?»">Грати<span
+                class="ico ico-go ico-ne" aria-hidden="true"></span></a>
+          </article>
+          {%- endif %}
+          {%- if cw_data %}
+          <article class="game-card" aria-labelledby="cwCardTitle">
+            <div class="game-card__top"><span class="category">Гра тижня</span></div>
+            <div class="game-demo-grid" aria-hidden="true">
+              <span class="f">К</span><span class="f">Р</span><span class="f">О</span><span class="f">С</span><span
+                class="x"></span>
+              <span class="x"></span><span class="x"></span><span class="f">В</span><span class="x"></span><span
+                class="x"></span>
+              <span class="x"></span><span class="x"></span><span class="f">О</span><span class="x"></span><span
+                class="x"></span>
+            </div>
+            <div class="game-card__info">
+              <h3 id="cwCardTitle" class="disp game-card__title">Кросворд</h3>
+              <p class="game-card__desc">Слова тижня за підказками з чату</p>
+            </div>
+            <a href="#crossword" class="btn btn-cta" aria-label="Грати в кросворд">Грати<span class="ico ico-go ico-ne"
+                aria-hidden="true"></span></a>
+          </article>
+          {%- endif %}
+        </section>
+        {%- endif %}
+        {%- endif %}
+
+        {%- else %}
+        <div class="empty-card">
+          <h2 class="disp">Тиша в ефірі</h2>
+          <p>За цю добу в чаті не було жодного повідомлення.</p>
+        </div>
+        {%- endif %}
+      </div>
+
+      <!-- ================= СТОРІНКИ НОВИН І ІГОР (монтуються сюди) ================= -->
+      <div id="articleHost" class="article-view-host" style="display: none;"></div>
+      </main>
+
+      <footer class="site-footer">
+        <div>
+          <span class="disp footer-brand">{{ name }}</span>
+          <p class="footer-note">Щоденна незалежна газета чату · {% if issue %}Випуск №{{ issue }} · {% endif %}{{
+            date_short }}</p>
+          <p class="footer-legal">Цитати взяті з чату без змін. Переслані пости з пабліків не враховуються{% if stats
+            and stats.forwarded %} (за добу: {{ stats.forwarded }}){% endif %}. Випуск підготувала модель {{ model }}.
+          </p>
+        </div>
+      </footer>
+    </div>
+
+    {#- ================= ШАБЛОНИ СТОРІНОК ================= -#}
+    {%- if c %}
+    {%- for it in NI.items %}
+    {{ article_page(NI.items, loop.index0, CV.ids) }}
+    {%- endfor %}
+    {%- for it in WA.items %}
+    {{ article_page(WA.items, loop.index0, CV.ids) }}
+    {%- endfor %}
+    {#- «Читайте також» для ігор: один екземпляр; скрипт клонує його в сторінку гри -#}
+    <template id="also-card-tpl">{{ also_card(NI.items) }}</template>
+
+    {%- if word_data %}
+    <template id="tpl-wordle">
+      <div class="article-view wordle-page-view">
+        {{ back_bar() }}
+        <div class="wordle-page-head">
+          <span class="lbl">Гра дня</span>
+          <h1 class="disp game-title">Wordle</h1>
+          <p class="game-subtitle">Вгадай слово дня: {{ word_meta.len }} {{ plural(word_meta.len, 'літера', 'літери',
+            'літер') }}, 6 спроб.</p>
+        </div>
+        <div class="wordle-layout-grid">
+          <section class="wordle-game-card" aria-label="Гра Wordle">
+            <div class="w-start no-anim" id="wStart">
+              <div class="w-start-inner">
+                <div class="game-letters" aria-hidden="true">
+                  <span class="game-letter disp is-absent">С</span><span
+                    class="game-letter disp is-present">Л</span><span class="game-letter disp is-correct">О</span><span
+                    class="game-letter disp is-absent">В</span><span class="game-letter disp is-correct">О</span>
+                </div>
+                <h2 class="disp w-start-title">Вгадай слово дня</h2>
+                <p class="w-start-text">{{ word_meta.len }} {{ plural(word_meta.len, 'літера', 'літери', 'літер') }}, 6
+                  спроб. Вводь справжні українські слова — після кожної спроби плитки підкажуть, наскільки ти близько.
+                </p>
+                <ul class="w-legend">
+                  <li><span class="ht-dot good" aria-hidden="true"></span>літера на своєму місці</li>
+                  <li><span class="ht-dot hi" aria-hidden="true"></span>є в слові, але на іншому місці</li>
+                  <li><span class="ht-dot absent" aria-hidden="true"></span>такої літери немає</li>
+                </ul>
+                <button type="button" class="btn btn-cta" id="wStartBtn">Грати</button>
+              </div>
+            </div>
+            <div class="w-start" id="wEnd" hidden>
+              <div class="w-start-inner" id="wResult">
+                <div id="wAnsTiles" class="w-ans-tiles" role="img" aria-label="Слово дня"></div>
+                <h2 id="wResultTitle" class="disp w-start-title"></h2>
+                <p id="wWhyText" class="w-start-text"></p>
+                <div id="wPattern" class="w-pattern" aria-hidden="true"></div>
+                <button id="wCopyBtn" type="button" class="btn btn-cta">Скопіювати результат</button>
+                <p class="w-next-note">Нове слово — у наступному випуску</p>
+              </div>
+            </div>
+            <div id="wBoardWrap" class="w-board-wrap" style="visibility: hidden" inert>
+              <div id="wGrid" role="grid" aria-label="Спроби" class="w-grid"></div>
+              <p id="wMsg" aria-live="polite" class="w-msg"></p>
+              <div id="wKb" class="w-kb"></div>
+            </div>
+          </section>
+          <aside class="wordle-side-col"></aside>
+        </div>
+      </div>
+    </template>
+    {%- endif %}
+
+    {%- if quiz_data %}
+    <template id="tpl-quiz">
+      <div class="article-view wordle-page-view quiz-page-view">
+        {{ back_bar() }}
+        <div class="wordle-page-head">
+          <span class="lbl">Гра тижня</span>
+          <h1 class="disp game-title">Хто це сказав?</h1>
+          <p class="game-subtitle">Цитати тижня з чату — вгадай, кому вони належать.</p>
+        </div>
+        <div class="wordle-layout-grid">
+          <section class="wordle-game-card" aria-label="Гра «Хто це сказав?»">
+            <div class="w-start no-anim" id="qStart">
+              <div class="w-start-inner">
+                <div class="game-demo-bubble" aria-hidden="true">го в доту</div>
+                <h2 class="disp w-start-title">Вгадай, хто це сказав</h2>
+                <p class="w-start-text">Випробуй інтуїцію та памʼять! Ми обрали найяскравіші цитати тижня з чату. Твоє
+                  завдання — згадати або вгадати, кому з учасників належить кожна фраза.</p>
+                <button type="button" class="btn btn-cta" id="qStartBtn">Грати</button>
+              </div>
+            </div>
+            <div class="w-start" id="qEnd" hidden>
+              <div class="w-start-inner" id="qResult"></div>
+            </div>
+            <div class="q-board-wrap" id="qBoard" style="visibility: hidden" inert>
+              <div class="q-dots" id="qDots" aria-label="Прогрес гри"></div>
+              <div id="qBody" aria-live="polite"></div>
+            </div>
+          </section>
+          <aside class="wordle-side-col"></aside>
+        </div>
+      </div>
+    </template>
+    {%- endif %}
+
+    {%- if cw_data %}
+    <template id="tpl-crossword">
+      <div class="article-view wordle-page-view crossword-page-view">
+        {{ back_bar() }}
+        <div class="wordle-page-head">
+          <span class="lbl">Гра тижня</span>
+          <h1 class="disp game-title">Кросворд тижня</h1>
+          <p class="game-subtitle">Слова тижня за підказками з чату. Натисни підказку або клітинку, щоб почати.</p>
+        </div>
+        <div class="wordle-layout-grid">
+          <section class="wordle-game-card" aria-label="Кросворд тижня">
+            <p class="cw-progress" id="cwp"></p>
+            <div class="cw-layout">
+              <div class="cwg-wrap">
+                <div class="cwg" id="cwg"></div>
+              </div>
+              <div class="clues">
+                <h2 class="cl-h">По горизонталі</h2>
+                <ol id="cwa"></ol>
+                <h2 class="cl-h">По вертикалі</h2>
+                <ol id="cwd"></ol>
+              </div>
+            </div>
+            <div class="cw-cur" id="cwcur"></div>
+            <div class="cw-tools">
+              <button class="btn btn-cta" id="cwc" type="button">Перевірити</button>
+              <button class="btn" id="cww" type="button">Показати слово</button>
+              <button class="btn" id="cwr" type="button">Показати все</button>
+              <button class="btn" id="cwx" type="button">Очистити</button>
+            </div>
+            <p class="cw-msg" id="cwm" aria-live="polite"></p>
+          </section>
+          <aside class="wordle-side-col"></aside>
+        </div>
+      </div>
+    </template>
+    {%- endif %}
+
+    <!-- Тетріс: та сама розкладка, що й у Wordle (картка гри + «Читайте також»); «Читайте також» скрипт бере з #also-card-tpl -->
+    <template id="tpl-tetris">
+      <div class="article-view wordle-page-view tetris-page-view">
+        {{ back_bar() }}
+
+        <div class="wordle-page-head">
+          <span class="lbl">Гра</span>
+          <h1 class="disp game-title">Тетріс</h1>
+          <p class="game-subtitle">Складай рядки з фігур, що падають, і побий свій рекорд.</p>
+        </div>
+
+        <div class="wordle-layout-grid">
+          <section class="wordle-game-card" aria-label="Гра Тетріс">
+            <!-- Стартовий екран: правила + «Грати» -->
+            <div class="w-start no-anim" id="tStart">
+              <div class="w-start-inner">
+                {{ tetro_logo() }}
+                <h2 class="disp w-start-title">Збери лінії</h2>
+                <p class="w-start-text">Фігури падають зверху. Склади рядок без прогалин — він зникне й додасть очок.
+                  Гра
+                  закінчується, коли стос сягне верху.</p>
+                <ul class="w-legend t-legend">
+                  <li><span class="t-caps" aria-hidden="true"><span class="t-cap"><i class="arr arr-l"></i></span><span
+                        class="t-cap"><i class="arr arr-r"></i></span></span>рухати фігуру</li>
+                  <li><span class="t-caps" aria-hidden="true"><span class="t-cap"><i
+                          class="arr arr-u"></i></span></span>повернути (також X)</li>
+                  <li><span class="t-caps" aria-hidden="true"><span class="t-cap"><i
+                          class="arr arr-d"></i></span></span>прискорити падіння</li>
+                  <li><span class="t-caps" aria-hidden="true"><span class="t-cap">Пробіл</span></span>скинути фігуру
+                    вниз
+                  </li>
+                  <li><span class="t-caps" aria-hidden="true"><span class="t-cap">P</span></span>пауза</li>
+                </ul>
+                <p class="t-note">На телефоні: кнопки під полем або свайпи по полю — вбік, вниз; дотик повертає фігуру.
+                </p>
+                <button type="button" class="btn btn-cta" id="tStartBtn">Грати</button>
+              </div>
+            </div>
+
+            <!-- Екран результату — той самий вигляд, що й стартовий -->
+            <div class="w-start" id="tEnd" hidden>
+              <div class="w-start-inner">
+                <div class="t-res-stats">
+                  <div class="t-stat"><span class="t-lab">Рахунок</span><span class="t-val" id="tResScore">0</span>
+                  </div>
+                  <div class="t-stat"><span class="t-lab">Лінії</span><span class="t-val" id="tResLines">0</span></div>
+                  <div class="t-stat"><span class="t-lab">Рівень</span><span class="t-val" id="tResLevel">1</span></div>
+                </div>
+                <h2 id="tResTitle" class="disp w-start-title"></h2>
+                <p id="tResText" class="w-start-text"></p>
+                <div class="t-res-actions">
+                  <button id="tRetryBtn" type="button" class="btn btn-cta">Грати ще раз</button>
+                  <button id="tCopyBtn" type="button" class="btn">Скопіювати результат</button>
+                </div>
+                <p class="w-next-note">Рекорд зберігається в цьому браузері</p>
+              </div>
+            </div>
+
+            <div id="tBoardWrap" class="t-wrap" style="visibility: hidden" inert>
+              <div class="t-col">
+                <!-- Показники: рахунок, рекорд, рівень, лінії; праворуч — пауза й наступна фігура -->
+                <div class="t-hud">
+                  <div class="t-stat"><span class="t-lab">Рахунок</span><span class="t-val" id="tScore">0</span></div>
+                  <div class="t-stat"><span class="t-lab">Рекорд</span><span class="t-val" id="tBest">0</span></div>
+                  <div class="t-side">
+                    <button type="button" class="w-key t-pb" id="tPauseBtn" aria-label="Пауза" title="Пауза (P)"><svg
+                        viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M8.5 5v14M15.5 5v14" />
+                      </svg></button>
+                    <div class="t-next" title="Наступна фігура" role="img" aria-label="Наступна фігура"><canvas
+                        id="tNext" width="112" height="112"></canvas></div>
+                  </div>
+                  <div class="t-stat"><span class="t-lab">Рівень</span><span class="t-val" id="tLevel">1</span></div>
+                  <div class="t-stat"><span class="t-lab">Лінії</span><span class="t-val" id="tLines">0</span></div>
+                </div>
+
+                <!-- Поле 10×20 -->
+                <div class="t-board">
+                  <canvas id="tCanvas" width="400" height="800" role="img"
+                    aria-label="Ігрове поле Тетрісу, 10 на 20 клітинок"></canvas>
+                  <p id="tMsg" class="t-toast" aria-live="polite"></p>
+                  <div class="t-pause" id="tPause" hidden>
+                    <h2 class="disp t-pause-title">Пауза</h2>
+                    <button type="button" class="btn btn-cta" id="tResume">Продовжити</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Кнопки керування -->
+              <div class="t-controls" id="tControls" role="group" aria-label="Керування">
+                <button type="button" class="w-key t-key" data-act="left" aria-label="Вліво" title="Вліво"><svg
+                    viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M15 5l-7 7 7 7" />
+                  </svg></button>
+                <button type="button" class="w-key t-key" data-act="rotate" aria-label="Повернути"
+                  title="Повернути"><svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M20 12a8 8 0 1 1-2.6-5.9" />
+                    <path d="M20 4v5h-5" />
+                  </svg></button>
+                <button type="button" class="w-key t-key" data-act="right" aria-label="Вправо" title="Вправо"><svg
+                    viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M9 5l7 7-7 7" />
+                  </svg></button>
+                <button type="button" class="w-key t-key" data-act="down" aria-label="Прискорити"
+                  title="Прискорити"><svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 9l7 7 7-7" />
+                  </svg></button>
+                <button type="button" class="w-key t-key main" data-act="drop" aria-label="Скинути вниз"
+                  title="Скинути вниз"><svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 5l6 6 6-6" />
+                    <path d="M6 13l6 6 6-6" />
+                  </svg></button>
+              </div>
+
+            </div>
+          </section>
+
+          <!-- Права колонка: «Читайте також» копіюється зі сторінки Wordle -->
+          <aside class="wordle-side-col"></aside>
+        </div>
+      </div>
+    </template>
+    {%- endif %}
+
+    {#- ================= ДАНІ ================= -#}
+    {%- if c %}
+    {%- if word_data %}
+    <script type="text/plain" id="wordleData" data-id="{{ word_meta.id }}"
+      data-len="{{ word_meta.len }}">{{ word_data }}</script>
+    {#- словник: word_dict — слова через пробіл; word_dict_packed (необов'язково, WORDLE_PACKED=1 у render.py) — те саме,
+    але front-coding + deflate + base64 (≈10× менше); скрипт розпакує його сам -#}
+    {%- if word_dict_packed %}
+    <script id="wdict" type="text/plain" data-fmt="fc-deflate">{{ word_dict_packed }}</script>
+    {%- elif word_dict %}
+    <script id="wdict" type="text/plain">{{ word_dict }}</script>{% endif %}{% endif %}
+    {%- if quiz_data %}
+    <script type="text/plain" id="quizData" data-day="{{ day }}" data-name="{{ name }}">{{ quiz_data }}</script>{% endif
+    %}
+    {%- if cw_data %}
+    <script type="text/plain" id="cwData" data-day="{{ day }}">{{ cw_data }}</script>{% endif %}
+    <script type="application/json" id="tplJokes">{{ (c.jokes or []) | tojson }}</script>
+    {#- вміст вікон «Детально» (відкриваються кнопками #statsDetail / #weekStatsDetail; скрипт бере innerHTML) -#}
+    {%- if day_stats %}
+    <template id="tpl-stats-day" data-title="{{ day_stats.title }}">{{ stats_detail(day_stats, false) }}</template>{% endif %}
+    {%- if week_stats %}
+    <template id="tpl-stats-week" data-title="{{ week_stats.title }}">{{ stats_detail(week_stats, true) }}</template>{% endif %}
+    {%- endif %}
+
+    <!-- Єдине модальне вікно: деталі статистики та перегляд фото/відео на весь екран -->
+    <dialog id="appModal" class="app-modal" aria-label="Модальне вікно">
+      <div id="modalContentView" class="modal-content-panel" style="display: none;">
+        <div class="modal-header">
+          <div>
+            <div class="modal-kicker" id="modalKicker">Деталі</div>
+            <h3 class="modal-title" id="modalTitle">Детальніше</h3>
+          </div>
+          <button type="button" class="modal-close-btn" onclick="closeAppModal()" aria-label="Закрити"><svg
+              viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg></button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+      </div>
+      <div id="modalMediaView" class="modal-media-panel" style="display: none;">
+        <button type="button" class="modal-close-btn media-close" onclick="closeAppModal()" aria-label="Закрити"><svg
+            viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg></button>
+        <button type="button" class="modal-nav-btn prev" id="modalPrevBtn" onclick="prevMedia()"
+          aria-label="Попереднє"><svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7" />
+          </svg></button>
+        <div class="modal-media-stage">
+          <div id="modalMediaContainer"></div>
+          <div class="modal-media-footer">
+            <div class="modal-caption" id="modalCaption"></div>
+            <div class="modal-counter" id="modalCounter"></div>
+          </div>
+        </div>
+        <button type="button" class="modal-nav-btn next" id="modalNextBtn" onclick="nextMedia()"
+          aria-label="Наступне"><svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 5l7 7-7 7" />
+          </svg></button>
+      </div>
+    </dialog>
+
+    <script>
+      {# @@JS@@ #}
+    </script>
+  </body>
+
+  </html>

@@ -169,6 +169,81 @@ def build_crossword(
     return {"w": w, "h": h, "entries": entries}
 
 
+CROSSWORD_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "crossword": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "answer": {"type": "string"},
+                    "clue": {"type": "string"},
+                },
+                "required": ["answer", "clue"],
+            },
+        }
+    },
+    "required": ["crossword"],
+}
+
+CROSSWORD_PROMPT = """Ти — укладач кросворду для святкового щотижневого випуску сатиричної газети «{name}» дружнього чату.
+Тобі надано зведення головних подій, тем, статей, срачів, героїв та мемів у чаті за тиждень{range}.
+Склади {count} слів із гострими підказками для підсумкового тижневого кросворду.
+
+Правила:
+- answer — ОДНЕ повнозначне слово ВИКЛЮЧНО українськими літерами, від 3 до 12 літер, без пробілів, дефісів та апострофів.
+  Можна і треба використовувати:
+  * Імена та нікнейми найпомітніших учасників тижня українською кирилицею (наприклад: ВІТАЛІЙ, ВАЛЕНТИН, ЄГОР, КОЛЯ, НАЗАР);
+  * Назви ігор, сервісів та тем (українською: ДЕДЛОК, ЗОМБОЇД, ДОТА, СТІМ);
+  * Ключові меми, явища, сленг або предмети тижня з переписки.
+- clue — дотепна, єхидна, саркастична й точна підказка, що відсилає до конкретної події, срачу, цитати чи факапу тижня.
+  СУВОРО ЗАБОРОНЕНО використовувати саме слово відповіді чи спільнокореневі слова у підказці!
+- Розподіляй слова по різних днях і темах тижня (не зациклюйся на одному дні).
+- Обирай слова з великою кількістю голосних і спільних літер, щоб вони добре перетиналися у сітці кросворду.
+
+Відповідай ЛИШЕ JSON:
+{"crossword": [{"answer": "ДЕДЛОК", "clue": "Гра, через яку чат пересварився і забув про роботу"}]}"""
+
+
+def generate_crossword_words(
+    material: str, ask_json, name: str = "", count: int = 14, rng: str = ""
+) -> list[dict]:
+    """Запитує у моделі слова та підказки для кросворду на основі тижневого зведення матеріалів."""
+    if not material or ask_json is None:
+        return []
+
+    system = (
+        CROSSWORD_PROMPT.replace("{name}", name or "Вісник Чату")
+        .replace("{range}", f" ({rng})" if rng else "")
+        .replace("{count}", str(count))
+    )
+
+    def post(c):
+        raw = (c or {}).get("crossword") if isinstance(c, dict) else c
+        if not isinstance(raw, list):
+            raise ValueError("немає списку crossword")
+        words = clean_crossword_words(raw)
+        if len(words) < 4:
+            raise ValueError(f"замало валідних слів: {len(words)} (потрібно щонайменше 4)")
+        return words
+
+    try:
+        return ask_json(system, material, CROSSWORD_SCHEMA, post)
+    except Exception as e:
+        print(f"  Кросворд: модель не змогла згенерувати слова ({e})")
+        return []
+
+
+def build_weekly_crossword(
+    day: str, today_paper: dict, ask_json, name: str = "", count: int = 14
+) -> dict | None:
+    """Зручний аліас: викликає build_weekly_crossword із модуля weekly."""
+    import weekly
+
+    return weekly.build_weekly_crossword(day, today_paper, ask_json, name, count)
+
+
 # ====================== УГАДАЙ ЦИТАТУ ======================
 
 LINK_RE = re.compile(r"https?://|t\.me/|www\.", re.I)
