@@ -6,13 +6,13 @@
 Вихід: output/Газета {name} Випуск №{issue} DD-MM-YYYY.html
 
 Шаблон збирається прямо тут з папки src/ (template.html + style.css + app.js), окремий build.py не потрібен.
-Якщо папки src/ немає — береться готовий template_v12.html.
+Якщо папки src/ немає — береться готовий template.html.
 
 Запуск:
     python render.py              -> сьогоднішня доба
     python render.py 2026-10-03   -> конкретна дата
     --no-min       не мінімізувати CSS/JS (для налагодження в DevTools)
-    --build-only   лише зібрати шаблон -> template_v12.html (без рендеру газети)
+    --build-only   лише зібрати шаблон -> template.html (без рендеру газети)
 """
 
 import base64
@@ -148,7 +148,7 @@ def fonts_css() -> str:
 
 # ── Збірка шаблону з src/ ─────────────────────────────────────────────────────
 SRC_DIR = BASE / "src"
-BUILT_TEMPLATE = BASE / "template_v12.html"
+BUILT_TEMPLATE = BASE / "template.html"
 CSS_MARK = "/*@@CSS@@*/"
 JS_MARK = "{# @@JS@@ #}"
 
@@ -176,7 +176,7 @@ def build_template(minify: bool = True) -> str:
     """Збирає текст Jinja-шаблону: src/template.html + src/style.css + src/app.js.
     CSS і JS вставляються всередину {% raw %}…{% endraw %}, тому Jinja їх не чіпає.
     Мінімізація потребує esbuild (npm i -g esbuild); без нього збирається без мінімізації з попередженням.
-    Якщо src/ немає — повертає готовий template_v12.html."""
+    Якщо src/ немає — повертає готовий template.html."""
     if not (SRC_DIR / "template.html").exists():
         if not BUILT_TEMPLATE.exists():
             sys.exit(f"Немає ні {SRC_DIR}/, ні {BUILT_TEMPLATE.name}")
