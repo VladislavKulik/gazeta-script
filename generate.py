@@ -35,6 +35,7 @@ import weekly
 
 try:
     import av
+
     HAS_AV = True
 except ImportError:
     HAS_AV = False
@@ -142,7 +143,7 @@ def make_schema(is_games: bool = True) -> dict:
             },
         }
         properties["quiz_message_ids"] = {"type": "array", "items": {"type": "integer"}}
-        required.extend(["crossword", "quiz_message_ids"])
+        required.append("quiz_message_ids")
 
     return {"type": "object", "properties": properties, "required": required}
 
@@ -159,8 +160,8 @@ def make_system_prompt(name: str, date: str, is_games: bool = True) -> str:
         "- Прямий вердикт: оцінюй ідеї та аргументи учасників безжальною логікою, прямо маркуючи їх як рідкісну базу, чистий копіум, брейнрот або тотальне фіаско.",
         "- Жодних галюцинацій: не вигадуй подій, драми і реплік, яких не було в чаті. Сатирично перебільшувати й докручувати абсурд можна, але факти беруться виключно з логів.",
         "- Жодних id у тексті: СУВОРО ЗАБОРОНЕНО вставляти у текст статей (body), заголовків чи коротких новин (short_news) номери повідомлень у квадратних дужках типу [220259] чи [1234]! Номери повідомлень потрібні виключно для полів illustration_message_ids, quiz_message_ids та quotes. Усередині тексту цитати оформлюються виключно словами й лапками (наприклад: Назар заявив: «я рік не стригся»), без жодних дужок із цифрами.",
-        "- headline — головний заміс дня: найгучніший срач, найтупіший факап або найсмішніша тема. body 400–700 слів. Обов'язково цитуй учасників дослівно (вставляй прямі цитати з переписки в лапках із зазначенням автора). Детально описуй хронологію, причини і наслідки, хто що робив і як реагували інші.",
-        "- articles — 3–6 розгромних статей на інші теми дня, кожна 200–450 слів, з їдкою рубрикою за змістом та коротким підзаголовком-тизером (lead) на 1–2 речення. Кожна стаття ОБОВ'ЯЗКОВО має містити 2–4 прямі цитати учасників (дослівно з переписки, в лапках). Описуй контекст і реакції детально. Жодних номерів [id] у тексті!",
+        "- headline — головний заміс дня: найгучніший срач, найтупіший факап або найсмішніша тема. Заголовок (title) — короткий і панчевий (2–6 слів, звичайний регістр, не капсом). body 400–700 слів. Обов'язково цитуй учасників дослівно (вставляй прямі цитати з переписки в лапках із зазначенням автора). Детально описуй хронологію, причини і наслідки, хто що робив і як реагували інші.",
+        "- articles — 3–6 розгромних статей на інші теми дня, кожна 200–450 слів, з їдкою рубрикою за змістом, коротким хлестким заголовком title (2–6 слів, звичайний регістр, не капсом) та коротким підзаголовком-тизером (lead) на 1–2 речення. Кожна стаття ОБОВ'ЯЗКОВО має містити 2–4 прямі цитати учасників (дослівно з переписки, в лапках). Описуй контекст і реакції детально. Жодних номерів [id] у тексті!",
         "- illustration_message_ids — масив id повідомлень з [фото], [gif] або [стікер], які пасують до статті. Можна 1–3 фото на статтю. Порожній масив [], якщо нічого не пасує. Бери лише id з переписки, у яких справді є медіа, і не повторюй одну ілюстрацію двічі. Якщо фото має опис контексту — враховуй його при виборі.",
         "- quotes — 3–5 найепічніших або найабсурдніших реплік дня: вкажи лише message_id (текст підставиться автоматично).",
         "- short_news — 3–6 коротких новин одним реченням: максимально сухо, панчево й саркастично. Жодних медіа, жодних номерів [id].",
@@ -169,9 +170,6 @@ def make_system_prompt(name: str, date: str, is_games: bool = True) -> str:
     if is_games:
         rules.extend(
             [
-                f"- crossword — {CROSSWORD_WORDS} слів для кросворду за подіями дня: answer — ОДНЕ слово українськими літерами, 3–12 літер,\n"
-                "  без пробілів, дефісів і апострофів (можна імена учасників, назви ігор, предмети, явища з чату);\n"
-                "  clue — дотепна й єхидна підказка, що відсилає до подій чи факапів дня і НЕ містить саме слово. Чим більше спільних літер між словами, тим краще.",
                 f"- quiz_message_ids — {QUIZ_SIZE + 2} id повідомлень для гри «Угадай, хто це ляпнув»: смішні, компрометуючі або дуже характерні репліки\n"
                 "  (довжиною від 20 символів), за якими можна вгадати автора. Не беріть репліки з quotes, переслані пости,\n"
                 "  медіа та повідомлення, де автор називає себе. Бажано від різних людей.",
@@ -188,7 +186,6 @@ def make_system_prompt(name: str, date: str, is_games: bool = True) -> str:
     games_json = ""
     if is_games:
         games_json = """,
-  "crossword": [{"answer": "ДЕДЛОК", "clue": "Гра, через яку чат пересварився і забув про роботу весь вечір"}],
   "quiz_message_ids": [123, 456]"""
 
     return f"""Ти — безжальний, цинічний, гострий на язик і абсолютно некомпліментарний головний редактор жовтої газети «{name}», який препарує щоденні логи групового чату. Твій пріоритет — емпіричні факти з переписки, причинно-наслідкові зв'язки, жорстка просмажка (роаст) і викриття чужої маячні, а не дружня атмосфера чи чиєсь крихке его. Стався до всіх учасників чату зі здоровим скепсисом і ніколи не підтакуй хибним чи тупим тейкам.
@@ -211,9 +208,9 @@ def make_system_prompt(name: str, date: str, is_games: bool = True) -> str:
 (headline, hero_of_day — об'єкти; articles, quotes, short_news — масиви):
 {{
   "tagline": "підзаголовок випуску",
-  "headline": {{"title": "заголовок", "subtitle": "підзаголовок", "body": "текст 400-700 слів з прямими цитатами", "illustration_message_ids": [123, 456]}},
+  "headline": {{"title": "Короткий їдкий заголовок", "subtitle": "підзаголовок", "body": "текст 400-700 слів з прямими цитатами", "illustration_message_ids": [123, 456]}},
   "articles": [
-    {{"rubric": "Скандали", "title": "заголовок", "lead": "короткий вступний тизер", "body": "текст 200-450 слів з прямими цитатами", "illustration_message_ids": [789]}}
+    {{"rubric": "Скандали", "title": "Короткий хлесткий заголовок", "lead": "короткий вступний тизер", "body": "текст 200-450 слів з прямими цитатами", "illustration_message_ids": [789]}}
   ],
   "quotes": [123, 456],
   "short_news": ["коротка новина"],
@@ -429,7 +426,9 @@ def extract_image_b64_from_media(media_item: dict) -> str | None:
     header, b64 = data_uri.split(",", 1)
 
     # 1. Фото та статичні стікери (вже зображення)
-    if kind == "photo" or (kind == "sticker" and ("image/" in header or "webp" in header)):
+    if kind == "photo" or (
+        kind == "sticker" and ("image/" in header or "webp" in header)
+    ):
         return b64
 
     # 2. Анімовані стікери Lottie (application/json) — растру немає
@@ -542,7 +541,11 @@ def describe_all_media(
                 desc = cache[donor_mid]["description"]
                 descriptions[mid] = desc
                 m["description"] = desc
-                cache[mid] = {"kind": m.get("kind", "media"), "description": desc, "content_hash": ch}
+                cache[mid] = {
+                    "kind": m.get("kind", "media"),
+                    "description": desc,
+                    "content_hash": ch,
+                }
             else:
                 to_describe.append(mid)
 
@@ -565,7 +568,11 @@ def describe_all_media(
             desc = f"анімований стікер {emoji}" if emoji else "анімований стікер"
             descriptions[mid] = desc
             m["description"] = desc
-            cache[mid] = {"kind": kind, "description": desc, "content_hash": content_hash_of_media(m)}
+            cache[mid] = {
+                "kind": kind,
+                "description": desc,
+                "content_hash": content_hash_of_media(m),
+            }
             updated = True
             continue
 
@@ -676,36 +683,68 @@ def as_int_list(v) -> list[int]:
 # ---------- нормалізація, захист від артефактів та слаги ----------
 
 CYR_TO_LAT = {
-    "а": "a", "б": "b", "в": "v", "г": "h", "ґ": "g", "д": "d", "е": "e", "є": "ye",
-    "ж": "zh", "з": "z", "и": "y", "і": "i", "ї": "yi", "й": "y", "к": "k", "л": "l",
-    "м": "m", "н": "n", "о": "o", "п": "p", "р": "r", "с": "s", "т": "t", "у": "u",
-    "ф": "f", "х": "kh", "ц": "ts", "ч": "ch", "ш": "sh", "щ": "shch", "ь": "",
-    "ю": "yu", "я": "ya", "ъ": "", "ы": "y", "э": "e",
+    "а": "a",
+    "б": "b",
+    "в": "v",
+    "г": "h",
+    "ґ": "g",
+    "д": "d",
+    "е": "e",
+    "є": "ye",
+    "ж": "zh",
+    "з": "z",
+    "и": "y",
+    "і": "i",
+    "ї": "yi",
+    "й": "y",
+    "к": "k",
+    "л": "l",
+    "м": "m",
+    "н": "n",
+    "о": "o",
+    "п": "p",
+    "р": "r",
+    "с": "s",
+    "т": "t",
+    "у": "u",
+    "ф": "f",
+    "х": "kh",
+    "ц": "ts",
+    "ч": "ch",
+    "ш": "sh",
+    "щ": "shch",
+    "ь": "",
+    "ю": "yu",
+    "я": "ya",
+    "ъ": "",
+    "ы": "y",
+    "э": "e",
 }
 
 # Поширені арабські літери, що помилково підставляються мультимовними LLM замість кирилиці
 ARABIC_TO_CYRILLIC = {
-    "\u064A": "й",  # ي -> й
+    "\u064a": "й",  # ي -> й
     "\u0649": "и",  # ى -> и
     "\u0632": "з",  # ز -> з
     "\u0648": "в",  # و -> в
     "\u0631": "р",  # ر -> р
-    "\u062F": "д",  # د -> д
+    "\u062f": "д",  # د -> д
     "\u0627": "а",  # ا -> а
     "\u0644": "л",  # ل -> л
     "\u0645": "м",  # م -> м
     "\u0646": "н",  # ن -> н
-    "\u062A": "т",  # ت -> т
+    "\u062a": "т",  # ت -> т
     "\u0628": "б",  # ب -> б
     "\u0633": "с",  # س -> с
     "\u0643": "к",  # ك -> к
-    "\u062E": "х",  # خ -> х
+    "\u062e": "х",  # خ -> х
 }
 
 
 def sanitize_text(text: str) -> str:
     """Очищає текст від сторонніх писемностей (арабських, східних літер тощо)
-    та прибирає згенеровані моделлю номери повідомлень у квадратних дужках типу [220259]."""
+    та прибирає згенеровані моделлю номери повідомлень у квадратних дужках типу [220259].
+    """
     if not text:
         return ""
     # Видаляємо випадкові номери повідомлень у квадратних дужках типу [220294] або [1234]
@@ -860,7 +899,8 @@ def normalize(c) -> dict:
 
 def resolve(content: dict, data: dict) -> dict:
     """Перетворює id повідомлень на media_ids і справжні цитати, відкидає вигадані id,
-    структурує дані для майбутнього переходу на окремі сторінки новин (slug, id, lead, cover_media_id)."""
+    структурує дані для майбутнього переходу на окремі сторінки новин (slug, id, lead, cover_media_id).
+    """
     by_id = {m["id"]: m for m in data["messages"]}
     media = data["media"]
     used = set()
@@ -893,7 +933,9 @@ def resolve(content: dict, data: dict) -> dict:
     for idx, a in enumerate(content["articles"], 1):
         a["id"] = f"article-{idx}"
         a["slug"] = make_slug(a.get("title", f"article-{idx}"))
-        a["lead"] = a.get("lead") or a.get("subtitle") or extract_lead(a.get("body", ""))
+        a["lead"] = (
+            a.get("lead") or a.get("subtitle") or extract_lead(a.get("body", ""))
+        )
         a["media_ids"] = media_ids_of(a.pop("illustration_message_ids", []))
         a["cover_media_id"] = a["media_ids"][0] if a["media_ids"] else None
 
@@ -996,8 +1038,14 @@ def main():
 
     # ---------- ігри (лише у неділю) ----------
     if games_day:
-        words = games.clean_crossword_words(c.pop("crossword_raw", []))
-        c["crossword"] = games.build_crossword(words, seed=date)
+        c["crossword"] = weekly.build_weekly_crossword(
+            date, result, ollama_json, NEWSPAPER_NAME, count=CROSSWORD_WORDS
+        )
+        if not c["crossword"] and c.get("crossword_raw"):
+            words = games.clean_crossword_words(c.pop("crossword_raw", []))
+            c["crossword"] = games.build_crossword(words, seed=date)
+        else:
+            c.pop("crossword_raw", None)
         quiz_ids = c.pop("quiz_message_ids", [])
         quoted = {q["message_id"] for q in c["quotes"]}
         w_quotes, w_senders = weekly.collect_weekly_quotes(date, result)
@@ -1009,7 +1057,7 @@ def main():
                 quiz_ids, data, quoted, seed=date, size=QUIZ_SIZE
             )
         print(
-            f"Кросворд: {len(c['crossword']['entries']) if c['crossword'] else 0} слів із {len(words)}, "
+            f"Кросворд: {len(c['crossword']['entries']) if c['crossword'] else 0} слів, "
             f"«Угадай цитату»: {len(c['quiz'])} питань"
         )
     else:

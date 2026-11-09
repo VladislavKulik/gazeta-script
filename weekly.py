@@ -1,7 +1,11 @@
-"""«Головне за тиждень».
+"""Тижневий випуск: «Підсумок тижня», «Обране за тиждень», цифри, цитати та кросворд для ігор.
 
 Використовує вже згенеровані випуски (data/*.newspaper.json) і сирі вивантаження (data/*.json),
 тому окремо нічого запускати не треба — generate.py викликає це сам.
+
+«Обране за тиждень» (weekly["picks"]): модель обирає найсмішніші й найцікавіші новини з випусків тижня. Вона лише
+називає номери зі списку кандидатів — тексти й медіа беруться з оригінальних випусків без переписування. Поточний
+випуск у кандидатах не бере участі: його новини вже стоять у «Головному».
 """
 
 import json
@@ -160,12 +164,19 @@ def build_weekly(day: str, today_paper: dict, ask_json, name: str) -> dict | Non
         system, "\n\n".join(digest), WEEKLY_SCHEMA, lambda c: _weekly_validate(c, valid)
     )
 
+    try:
+        picks = build_picks(day, today_paper, ask_json, name)
+    except Exception as e:  # «Обране» не повинно ламати підсумок тижня
+        print(f"  «Обране за тиждень» пропущено: {e}")
+        picks = []
+
     total = sum(p["count"] for p in per_day)
     busiest = max(per_day, key=lambda p: p["count"])
     return {
         "range": rng,
         "content": content,
         "headlines": get_weekly_headlines(day, today_paper),
+        "picks": picks,
         "stats": {
             "total_messages": total,
             "per_day": per_day,
@@ -219,6 +230,147 @@ def get_weekly_headlines(day: str, today_paper: dict | None = None) -> list[dict
     return headlines
 
 
+# ====================== ОБРАНЕ ЗА ТИЖДЕНЬ ======================
+
+PICKS_MAX = int(os.getenv("WEEKLY_PICKS", "6"))  # скільки новин брати
+PICKS_PER_DAY = int(os.getenv("WEEKLY_PICKS_PER_DAY", "2"))  # максимум з одного дня
+
+PICKS_SCHEMA = {
+    "type": "object",
+    "properties": {"picks": {"type": "array", "items": {"type": "integer"}}},
+    "required": ["picks"],
+}
+
+PICKS_PROMPT = """Ти — редактор жартівливої газети «{name}» дружнього чату.
+Нижче — нумерований список новин із випусків за тиждень {range}. Обери для рубрики «Обране за тиждень» {count} новин,
+які варто (пере)прочитати: найсмішніші, найнезвичайніші або найцікавіші.
+Правила:
+- Обирай лише номери зі списку. Нічого не вигадуй і не переписуй.
+- Не більше {per_day} новин з одного дня; за рівних варіантів чергуй дні.
+- Нудну побутову дрібницю пропускай; вище став те, що смішне чи добре розповідає історію.
+- Порядок — від найкращої до слабшої.
+Відповідай ЛИШЕ JSON:
+{"picks": [3, 7, 12]}"""
+
+
+def _lead_of(x: dict) -> str:
+    lead = str(x.get("lead") or x.get("subtitle") or "").strip()
+    if not lead and x.get("body"):
+        lead = str(x["body"]).strip().split("\n")[0].strip()[:180]
+    return lead
+
+
+def _media_ids_of(x: dict) -> list:
+    ids = list(x.get("media_ids") or [])
+    if not ids and (x.get("cover_media_id") or x.get("media_id")):
+        ids = [x.get("cover_media_id") or x.get("media_id")]
+    return [i for i in ids if i]
+
+
+def _pick_from(d: Date, kind: str, x: dict, rubric: str) -> dict | None:
+    title = str(x.get("title", "")).strip()
+    if not title:
+        return None
+    return {
+        "date": d.isoformat(),
+        "date_short": f"{d.day:02d}.{d.month:02d}",
+        "label": DAY_SHORT[d.weekday()],
+        "weekday": WEEKDAYS[d.weekday()],
+        "kind": kind,  # headline | article
+        "rubric": rubric,
+        "slug": str(x.get("slug", "")).strip(),
+        "title": title,
+        "subtitle": str(x.get("subtitle", "")).strip(),
+        "lead": _lead_of(x),
+        "body": str(x.get("body", "")).strip(),
+        "media_ids": _media_ids_of(x),
+    }
+
+
+def collect_pick_candidates(day: str, today_paper: dict | None = None) -> list[dict]:
+    """Новина дня й статті з випусків тижня, КРІМ поточного: його новини вже є в «Головному», тож у «Обране»
+    вони не потрапляють (так одна історія не з'являється у випуску двічі). Збіг за назвою теж відсікається."""
+    end = Date.fromisoformat(day)
+    c0 = (today_paper or {}).get("content") or {}
+    today_titles = {str((c0.get("headline") or {}).get("title", "")).strip().lower()}
+    today_titles |= {str(a.get("title", "")).strip().lower() for a in c0.get("articles") or []}
+    today_titles.discard("")
+
+    out = []
+    for d in _days(end):
+        if d.isoformat() == day:
+            continue
+        c = (_load(DATA_DIR / f"{d.isoformat()}.newspaper.json") or {}).get("content")
+        if not c:
+            continue
+        cand = []
+        if c.get("headline"):
+            cand.append(_pick_from(d, "headline", c["headline"], "Новина дня"))
+        for a in c.get("articles") or []:
+            cand.append(_pick_from(d, "article", a, str(a.get("rubric", "")).strip() or "Новини"))
+        out += [p for p in cand if p and p["title"].lower() not in today_titles]
+    return out
+
+
+def get_weekly_picks_fallback(day: str, today_paper: dict | None = None) -> list[dict]:
+    """Без моделі: головні новини днів тижня (крім поточного). Для випусків, згенерованих до появи «Обраного»."""
+    heads = [p for p in collect_pick_candidates(day, today_paper) if p["kind"] == "headline"]
+    return heads[:PICKS_MAX]
+
+
+def _picks_validate(c, cands: list[dict], limit: int) -> list[dict]:
+    if not isinstance(c, dict) or not isinstance(c.get("picks"), list):
+        raise ValueError("немає списку picks")
+    seen, per_day, res = set(), Counter(), []
+    for it in c["picks"]:
+        if isinstance(it, int):
+            it = {"n": it}
+        if not isinstance(it, dict):
+            continue
+        try:
+            n = int(it.get("n"))
+        except (TypeError, ValueError):
+            continue
+        if n in seen or not (1 <= n <= len(cands)):
+            continue  # вигаданий або повторений номер
+        p = cands[n - 1]
+        if per_day[p["date"]] >= PICKS_PER_DAY:
+            continue
+        seen.add(n)
+        per_day[p["date"]] += 1
+        res.append(dict(p))
+        if len(res) >= limit:
+            break
+    if not res:
+        raise ValueError("жодного коректного номера")
+    return res
+
+
+def build_picks(day: str, today_paper: dict, ask_json, name: str) -> list[dict]:
+    """ask_json(system, user, schema, post) — та сама функція запиту до моделі, що й для «Підсумку тижня»."""
+    cands = collect_pick_candidates(day, today_paper)
+    if not cands:
+        return []
+    limit = min(PICKS_MAX, len(cands))
+    if len(cands) <= 3:  # обирати нема з чого
+        return cands
+    days = _days(Date.fromisoformat(day))
+    rng = f"{days[0]:%d.%m} – {days[-1]:%d.%m.%Y}"
+    system = (
+        PICKS_PROMPT.replace("{name}", name).replace("{range}", rng)
+        .replace("{count}", str(limit)).replace("{per_day}", str(PICKS_PER_DAY))
+    )
+    lines = [
+        f"[{i}] {p['date']} ({p['label']}) · {p['rubric']}: {p['title']} — {p['lead'][:220]}"
+        for i, p in enumerate(cands, 1)
+    ]
+    try:
+        return ask_json(system, "\n".join(lines), PICKS_SCHEMA, lambda c: _picks_validate(c, cands, limit))
+    except Exception as e:
+        print(f"  «Обране за тиждень»: модель не впоралась ({e}), беру головні новини днів")
+        return get_weekly_picks_fallback(day, today_paper)
+
+
 def collect_weekly_quotes(
     day: str, today_paper: dict | None = None
 ) -> tuple[list[dict], list[str]]:
@@ -254,3 +406,102 @@ def collect_weekly_quotes(
                 )
     top_senders = [s for s, _ in senders.most_common(20)]
     return quotes, top_senders
+
+
+# ====================== ТИЖНЕВИЙ КРОСВОРД ======================
+
+
+def collect_weekly_crossword_material(
+    day: str, today_paper: dict | None = None
+) -> str:
+    """Збирає підсумок подій, тем, статей, героїв і цитат за останні 7 днів для тижневого кросворду."""
+    end = Date.fromisoformat(day)
+    days = _days(end)
+    sections = []
+    senders = Counter()
+
+    for d in days:
+        iso = d.isoformat()
+        paper = (
+            today_paper
+            if (today_paper and iso == day)
+            else _load(DATA_DIR / f"{iso}.newspaper.json")
+        )
+        msgs = _messages(d)
+        senders.update(m["sender"] for m in msgs)
+
+        c = (paper or {}).get("content")
+        if not c:
+            continue
+
+        day_lines = [
+            f"=== {iso} ({DAY_SHORT[d.weekday()]}, {WEEKDAYS[d.weekday()]}) ==="
+        ]
+
+        # Головна новина
+        h = c.get("headline") or {}
+        if h.get("title"):
+            lead = str(h.get("lead") or h.get("subtitle") or "").strip()
+            day_lines.append(
+                f"Головна новина: {h['title']}" + (f" — {lead}" if lead else "")
+            )
+
+        # Статті
+        for a in c.get("articles") or []:
+            t = str(a.get("title", "")).strip()
+            if t:
+                rubric = str(a.get("rubric", "")).strip() or "Тема"
+                lead = str(a.get("lead") or a.get("subtitle") or "").strip()
+                day_lines.append(
+                    f"Стаття [{rubric}]: {t}" + (f" — {lead}" if lead else "")
+                )
+
+        # Короткі новини
+        news = [str(n).strip() for n in c.get("short_news") or [] if str(n).strip()]
+        if news:
+            day_lines.append("Коротко: " + "; ".join(news[:4]))
+
+        # Герой дня
+        hero = c.get("hero_of_day")
+        if isinstance(hero, dict) and hero.get("sender"):
+            day_lines.append(
+                f"Герой дня: {hero['sender']} ({hero.get('title', '')}) — {hero.get('reason', '')}"
+            )
+
+        # Цитати
+        quotes = c.get("quotes") or []
+        for q in quotes[:3]:
+            if isinstance(q, dict) and q.get("text") and q.get("sender"):
+                day_lines.append(f"Цитата ({q['sender']}): «{q['text'][:120]}»")
+
+        sections.append("\n".join(day_lines))
+
+    top_senders = ", ".join(s for s, _ in senders.most_common(8) if s)
+    header = f"Найактивніші учасники тижня: {top_senders}\n\n" if top_senders else ""
+    return header + "\n\n".join(sections)
+
+
+def build_weekly_crossword(
+    day: str,
+    today_paper: dict,
+    ask_json,
+    name: str,
+    count: int = 14,
+) -> dict | None:
+    """Будує тижневий кросворд: збирає зведення за 7 днів, просить слова у моделі та розкладає сітку."""
+    import games
+
+    material = collect_weekly_crossword_material(day, today_paper)
+    if not material.strip():
+        return None
+
+    days = _days(Date.fromisoformat(day))
+    rng = f"{days[0]:%d.%m} – {days[-1]:%d.%m.%Y}"
+
+    words = games.generate_crossword_words(
+        material, ask_json, name=name, count=count, rng=rng
+    )
+    if not words:
+        return None
+
+    return games.build_crossword(words, seed=day)

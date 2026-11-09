@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Вісник Big Yeet — Ще за день / відновлена геометрія та контраст статистики</title>
+<style>
+:root{--bg:#e8e6f3;--paper:#fff;--ink:#151328;--text:#1c1933;--muted:#77738e;--line:#d4d0e5;--accent:#4d2de0;--yellow:#f5db4b;--yellow-ink:#211b32;--purple:#26164e;--tile-h:320px;--r:23px;--gap:14px}
+:root[data-theme="dark"]{--bg:#0d0b17;--paper:#191625;--ink:#f8f6ff;--text:#f5f2ff;--muted:#aaa5c1;--line:#332d48;--accent:#a595ff;--purple:#21183e;--yellow:#f5db4b;--yellow-ink:#211b32}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:Onest,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.45;-webkit-font-smoothing:antialiased;transition:background .18s,color .18s}button{font:inherit}button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}.shell{width:min(1200px,calc(100% - 44px));margin:0 auto}.disp{font-family:Unbounded,Onest,system-ui,sans-serif;letter-spacing:-.06em}.topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:22px 0 19px;border-bottom:1px solid var(--line)}.chips{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.chip{display:inline-flex;align-items:center;padding:6px 11px;border:1px solid var(--line);border-radius:999px;background:var(--paper);font-size:11px;font-weight:800;color:var(--text)}.chip.hot{background:var(--yellow);border-color:var(--yellow);color:var(--yellow-ink)}.right{display:flex;align-items:center;gap:14px;font-size:10px;font-weight:800;letter-spacing:.13em;color:var(--muted);text-transform:uppercase}.icon-btn{border:1px solid var(--line);background:var(--paper);color:var(--text);border-radius:50%;width:38px;height:38px;cursor:pointer;display:grid;place-items:center}.masthead{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,320px);align-items:end;gap:20px;padding:27px 0 29px;border-bottom:4px solid var(--ink)}.kicker{color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.21em;text-transform:uppercase}.brand{font-size:clamp(48px,8vw,96px);line-height:.92;font-weight:800;margin:11px 0 0;white-space:nowrap}.brand span{color:var(--accent)}.mast-copy{font-size:14px;line-height:1.5;color:var(--text);margin:0 0 4px;max-width:31ch}.section-intro{display:flex;justify-content:space-between;align-items:end;gap:24px;margin:30px 0 19px}.section-intro .eyebrow{font-size:10px;font-weight:850;letter-spacing:.19em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:9px;margin-bottom:10px}.eyebrow:before{content:"";height:2px;width:22px;background:var(--accent)}.section-intro h2{font-size:clamp(34px,5vw,58px);line-height:.98;letter-spacing:-.065em;margin:0;font-weight:800}.intro-note{max-width:36ch;margin:0 0 3px;color:var(--muted);font-size:13px;line-height:1.55}.concept-row{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:-2px 0 15px}.concept-pill{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border-radius:999px;background:var(--paper);border:1px solid var(--line);font-size:11px;font-weight:800}.concept-pill b{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent)}.concept-note{font-size:11px;color:var(--muted)}
+/* Core rule: every tile is one stable module. The amount of content changes presentation, not tile height. */
+.widget-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-rows:var(--tile-h);gap:var(--gap);align-items:stretch;grid-auto-flow:row}.tile{height:var(--tile-h);min-width:0;min-height:0;position:relative;overflow:hidden;border-radius:var(--r);padding:23px 24px;display:flex;flex-direction:column;isolation:isolate}.tile[hidden]{display:none!important}.tile-label{display:flex;align-items:center;gap:8px;font-size:10px;line-height:1.1;font-weight:850;letter-spacing:.13em;text-transform:uppercase;flex:0 0 auto}.tile-label:before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;flex:0 0 auto}.tile-head{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:17px;flex:0 0 auto}.eyemeta{font-size:10px;font-weight:800;letter-spacing:.08em;opacity:.7;white-space:nowrap}.tile-action{border:1px solid currentColor;background:transparent;color:inherit;min-height:34px;border-radius:999px;padding:0 13px;font-size:11px;font-weight:850;cursor:pointer;white-space:nowrap;transition:background .15s,transform .15s}.tile-action:hover{transform:translateY(-1px);background:rgba(255,255,255,.16)}.tile-action.dark{background:var(--yellow-ink);border-color:var(--yellow-ink);color:#fff}.tile-action.pale{background:var(--paper);border-color:var(--line);color:var(--text)}
+/* 1 — Hero */
+.tile--hero{grid-column:span 7;background:var(--yellow);color:var(--yellow-ink);justify-content:space-between}.hero-copy{position:relative;z-index:1;max-width:560px}.hero-name{font-size:clamp(31px,3.5vw,48px);line-height:1.02;letter-spacing:-.065em;margin:21px 0 8px;font-weight:800;overflow-wrap:anywhere}.hero-role{font-size:16px;font-weight:800;margin:0 0 9px}.hero-desc{font-size:14px;line-height:1.48;max-width:47ch;margin:0;color:rgba(33,27,50,.83)}.hero-bottom{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:12px;border-top:1px solid rgba(33,27,50,.18);font-size:10px;font-weight:750;letter-spacing:.04em}.hero-number{font-family:Unbounded,sans-serif;font-size:12px}.hero-ornament{position:absolute;right:20px;top:57px;width:min(29%,190px);opacity:.14;z-index:0;pointer-events:none}
+/* 2 — Sticker */
+.tile--sticker{grid-column:span 5;background:var(--purple);color:white}.sticker-stage{flex:1;min-height:0;display:grid;place-items:center;padding:4px 0}.sticker-svg{display:block;width:clamp(126px,13vw,166px);height:auto;max-height:176px;filter:drop-shadow(0 10px 0 rgba(0,0,0,.15))}.sticker-bottom{display:flex;align-items:end;justify-content:space-between;gap:12px;border-top:1px solid rgba(255,255,255,.17);padding-top:11px}.sticker-note{margin:0;color:#d9d3ef;font-size:11px;line-height:1.4;max-width:34ch}.sticker-mark{font:800 12px Unbounded,sans-serif;color:var(--yellow);white-space:nowrap}
+/* 3 — Short feed */
+.tile--short{grid-column:span 6;background:var(--paper);color:var(--text)}.tile--short .tile-label{color:var(--accent)}.short-list{list-style:none;padding:0;margin:12px 0 0;display:flex;flex-direction:column;min-height:0;flex:1}.short-item{display:grid;grid-template-columns:28px minmax(0,1fr) 18px;align-items:center;gap:9px;flex:1;min-height:0;width:100%;padding:7px 0;border:0;border-bottom:1px solid var(--line);background:transparent;color:inherit;text-align:left;cursor:pointer}.short-item:last-child{border-bottom:0}.short-num{font:800 11px/1.2 Unbounded,sans-serif;color:var(--accent)}.short-item p{margin:0;font-size:12px;line-height:1.4;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}.short-arrow{font-size:14px;color:var(--muted);text-align:right}.short-item:hover p{color:var(--accent)}
+/* 4 — Joke */
+.tile--joke{grid-column:span 6;background:var(--yellow);color:var(--yellow-ink)}.joke-main{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;padding:9px 0}.joke-mark{font:800 42px/.7 Unbounded,serif;letter-spacing:-.12em;margin:3px 0 10px;opacity:.4}.joke-text{font-size:clamp(17px,1.55vw,21px);font-weight:600;line-height:1.37;letter-spacing:-.025em;margin:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:5;overflow:hidden;overflow-wrap:anywhere;text-wrap:pretty}.joke-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:12px;border-top:1px solid rgba(33,27,50,.2)}.joke-actions .tile-action{font-size:10px;padding:0 12px}.joke-pair{display:flex;gap:7px;min-width:0}.joke-pair .tile-action{flex:1}
+/* 5 — Stats with people/counts shown immediately */
+.tile--stats{grid-column:span 6;background:var(--ink);color:white}.tile--stats .tile-label{color:var(--yellow)}.stats-hero{display:flex;align-items:baseline;gap:12px;margin:12px 0 8px}.stats-number{font:800 56px/.95 Unbounded,sans-serif;letter-spacing:-.09em;color:var(--yellow)}.stats-unit{font-size:12px;color:#ddd8f1;font-weight:700}.stats-sub{font-size:11px;color:#bdb7d5;margin:0 0 9px}.leaderboard{display:flex;flex-direction:column;gap:6px;min-height:0;flex:1}.leader-row{display:grid;grid-template-columns:minmax(0,1fr) 100px 28px;align-items:center;gap:8px;min-width:0;font-size:11px}.leader-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#f8f6ff}.leader-meter{height:5px;background:rgba(255,255,255,.14);border-radius:99px;overflow:hidden}.leader-meter span{display:block;height:100%;background:var(--accent);border-radius:99px}.leader-count{font-weight:800;text-align:right;color:var(--yellow);font-variant-numeric:tabular-nums}.stats-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:10px;margin-top:9px;border-top:1px solid rgba(255,255,255,.17)}.media-counts{display:flex;flex-wrap:wrap;gap:5px}.media-counts span{font-size:9px;color:#d6d1e9;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:4px 7px;white-space:nowrap}.stats-footer .tile-action{font-size:10px;min-height:30px;padding:0 11px}
+/* 6 — Two quotes per view; clicking opens an overlay, no route change */
+.tile--quotes{grid-column:span 6;background:var(--accent);color:#fff}.tile--quotes .tile-label{color:#fff}.quote-list{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;margin-top:10px}.quote-entry{display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:5px;flex:1;min-height:0;width:100%;text-align:left;color:white;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.11);border-radius:14px;padding:10px 13px;cursor:pointer;overflow:hidden}.quote-entry:hover{background:rgba(255,255,255,.18)}.quote-meta{display:flex;justify-content:space-between;gap:8px;font-size:9px;color:#e8e1ff;font-weight:800;white-space:nowrap}.quote-author{overflow:hidden;text-overflow:ellipsis}.quote-text{font-size:13px;line-height:1.37;letter-spacing:-.01em;font-weight:650;margin:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}.quote-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:9px;margin-top:9px;border-top:1px solid rgba(255,255,255,.2);font-size:10px;color:#e4ddff}.quote-bottom strong{color:#fff}.quote-bottom button{border:0;background:transparent;color:white;padding:4px 0;font-size:10px;font-weight:850;cursor:pointer;white-space:nowrap}
+/* Count changes module placement/width, never height. */
+.widget-grid[data-count="0"]{display:none}.widget-grid[data-count="1"] .tile:first-child{grid-column:span 12}.widget-grid[data-count="3"] .tile:nth-child(3){grid-column:span 12}.widget-grid[data-count="5"] .tile:nth-child(5){grid-column:span 12}
+.empty{display:none;margin:10px 0 0;padding:30px;border:1px dashed var(--line);border-radius:var(--r);text-align:center;background:rgba(255,255,255,.18)}.empty h3{margin:0 0 5px;font-size:24px;letter-spacing:-.05em}.empty p{margin:0;color:var(--muted);font-size:13px}
+.lab{margin:22px 0 12px;padding:14px 16px;border:1px dashed #aaa4c7;border-radius:18px;background:rgba(255,255,255,.28);display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}.lab-label{font-size:10px;text-transform:uppercase;letter-spacing:.15em;font-weight:850;color:var(--muted);margin-bottom:5px}.lab-title{font-size:13px;font-weight:750;color:var(--text)}.controls{display:flex;gap:6px;flex-wrap:wrap}.count-btn{width:37px;height:37px;border:1px solid var(--line);border-radius:11px;background:var(--paper);color:var(--text);font-weight:850;font-size:12px;cursor:pointer}.count-btn[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}.layout-caption{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:10px}.layout-caption strong{color:var(--text)}.principles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin:32px 0 42px}.principle{border-top:1px solid var(--line);padding-top:12px}.principle b{display:block;font-size:12px;margin-bottom:6px}.principle p{margin:0;font-size:11px;line-height:1.5;color:var(--muted)}.foot{border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;padding:17px 0 25px;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+/* Dialogs preserve context: details appear over the current section, never on a new page. */
+dialog{width:min(600px,calc(100% - 28px));max-height:min(80vh,760px);border:1px solid var(--line);border-radius:22px;padding:0;background:var(--paper);color:var(--text);box-shadow:0 24px 90px rgba(14,10,38,.35)}dialog::backdrop{background:rgba(14,10,32,.6);backdrop-filter:blur(5px)}.dialog-head{display:flex;justify-content:space-between;align-items:start;gap:20px;padding:22px 24px 16px;border-bottom:1px solid var(--line)}.dialog-kicker{font-size:10px;text-transform:uppercase;letter-spacing:.16em;color:var(--accent);font-weight:850}.dialog-head h3{margin:6px 0 0;font-size:25px;letter-spacing:-.05em;line-height:1.1}.close-btn{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--paper);color:var(--text);cursor:pointer;font-size:19px;line-height:1}.dialog-body{padding:20px 24px 25px;overflow:auto;max-height:calc(80vh - 90px)}.dialog-body p{font-size:15px;line-height:1.6;margin:0 0 13px}.dialog-note{font-size:11px!important;color:var(--muted);margin-top:17px!important;padding-top:12px;border-top:1px solid var(--line)}.dialog-list{display:flex;flex-direction:column;gap:8px}.dialog-person{display:grid;grid-template-columns:24px minmax(0,1fr) 40px;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}.dialog-person:last-child{border-bottom:0}.dialog-rank{font:800 10px Unbounded,sans-serif;color:var(--accent)}.dialog-person strong{text-align:right;font-variant-numeric:tabular-nums}.dialog-quote-meta{font-size:11px;color:var(--muted);font-weight:750;margin-bottom:10px}.dialog-quote-text{font-size:19px!important;font-weight:650;line-height:1.5!important;letter-spacing:-.02em}
+@media(max-width:900px){.shell{width:min(100% - 32px,760px)}.masthead{grid-template-columns:1fr;gap:10px}.mast-copy{max-width:50ch}.section-intro{align-items:start;flex-direction:column;gap:12px}.intro-note{max-width:55ch}.widget-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:320px}.tile{grid-column:span 1!important}.widget-grid[data-count="1"] .tile:first-child,.widget-grid[data-count="3"] .tile:nth-child(3),.widget-grid[data-count="5"] .tile:nth-child(5){grid-column:span 2!important}.tile--hero,.tile--sticker,.tile--short,.tile--joke,.tile--stats,.tile--quotes{padding:21px}.hero-name{font-size:clamp(29px,4vw,40px)}.hero-desc{font-size:13px}.leader-row{grid-template-columns:minmax(0,1fr) 70px 24px}.media-counts span{font-size:8px;padding:4px 6px}.tile--stats .stats-number{font-size:49px}.tile--stats .stats-hero{gap:8px}.principles{gap:14px}}
+@media(max-width:620px){:root{--tile-h:340px;--gap:11px;--r:19px}.shell{width:calc(100% - 24px)}.topbar{padding:14px 0}.right{font-size:8px}.masthead{padding:22px 0 22px}.brand{font-size:clamp(44px,13vw,70px)}.mast-copy{font-size:12px}.section-intro{margin:25px 0 14px}.section-intro h2{font-size:39px}.intro-note{font-size:12px}.concept-row{margin-bottom:12px}.concept-note{flex-basis:100%;line-height:1.45}.widget-grid{grid-template-columns:minmax(0,1fr);grid-auto-rows:var(--tile-h);gap:var(--gap)}.tile{grid-column:1!important;height:var(--tile-h);padding:21px!important}.widget-grid[data-count="1"] .tile:first-child,.widget-grid[data-count="3"] .tile:nth-child(3),.widget-grid[data-count="5"] .tile:nth-child(5){grid-column:1!important}.tile--hero .hero-name{font-size:38px;margin:18px 0 7px}.tile--hero .hero-desc{max-width:34ch;font-size:13px}.hero-ornament{width:110px;right:12px;top:86px}.hero-bottom{font-size:9px}.sticker-svg{width:145px;max-height:148px}.sticker-note{font-size:10px}.tile--short{padding-bottom:18px!important}.short-list{margin-top:8px}.short-item{grid-template-columns:25px minmax(0,1fr) 14px;gap:8px;padding:7px 0}.short-item p{font-size:12px;-webkit-line-clamp:2}.tile--joke .joke-text{font-size:18px;line-height:1.38;-webkit-line-clamp:5}.joke-mark{font-size:35px;margin-bottom:7px}.joke-actions{align-items:stretch;flex-direction:column;gap:7px}.joke-pair{width:100%}.joke-pair .tile-action{min-height:32px}.tile--stats{padding:20px!important}.stats-hero{margin:10px 0 4px}.stats-number{font-size:53px}.stats-sub{margin-bottom:8px}.leader-row{grid-template-columns:minmax(0,1fr) 75px 25px;font-size:10px;gap:7px}.leaderboard{gap:6px}.stats-footer{align-items:center;gap:7px;margin-top:7px;padding-top:8px}.media-counts{gap:4px}.media-counts span{font-size:8px;padding:3px 5px}.stats-footer .tile-action{padding:0 9px;min-height:29px;font-size:9px}.tile--quotes{padding:20px!important}.quote-list{gap:7px;margin-top:8px}.quote-entry{padding:9px 11px;border-radius:12px}.quote-text{font-size:12px;line-height:1.35;-webkit-line-clamp:2}.quote-meta{font-size:8px}.quote-bottom{margin-top:7px;padding-top:7px;font-size:9px}.lab{padding:13px}.lab-title{font-size:12px;max-width:25ch}.count-btn{width:34px;height:34px}.principles{grid-template-columns:1fr;gap:0;margin:27px 0 32px}.principle{padding:12px 0;border-top:1px solid var(--line)}.foot{font-size:8px}.dialog-head{padding:19px 19px 14px}.dialog-head h3{font-size:22px}.dialog-body{padding:17px 19px 21px}.dialog-body p{font-size:14px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+/* V.08 — restore the hourly chart and keep people counts visible in the same stable tile */
+.tile--stats.stats-redesign{padding:20px 22px;background:var(--ink);color:#fff}
+.stats-redesign .tile-head{margin-bottom:0}
+.stats-layout{display:grid;grid-template-columns:minmax(0,.93fr) minmax(0,1.07fr);gap:22px;flex:1;min-height:0;margin-top:10px}
+.stats-activity{min-width:0;min-height:0;display:flex;flex-direction:column;gap:8px}
+.stats-total{display:flex;align-items:center;gap:12px;min-height:42px}
+.stats-total .stats-number{font-size:43px;line-height:.96;letter-spacing:-.08em;flex:0 0 auto}
+.stats-total span{font-size:11px;line-height:1.25;color:#ddd8f1;font-weight:700}
+.stats-chart-wrap{min-width:0;flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center}
+.stats-chart-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;font-weight:800;color:#ddd8f1;margin-bottom:7px}
+.hours-chart{display:flex;align-items:flex-end;gap:3px;height:64px;min-height:38px;width:100%;border-bottom:1px solid rgba(255,255,255,.22)}
+.hours-chart span{display:block;min-width:0;flex:1;border-radius:3px 3px 0 0;background:rgba(255,255,255,.38);height:var(--bar-h);}
+.hours-chart span.has-activity{background:rgba(255,255,255,.62)}
+.hours-chart span.is-peak{background:var(--yellow)}
+.hours-axis{display:flex;justify-content:space-between;color:#aaa5c1;font-size:8px;font-variant-numeric:tabular-nums;margin-top:4px}
+.stats-peak{margin:5px 0 0;font-size:10px;line-height:1.25;color:#c9c3df}.stats-peak strong{color:var(--yellow)}
+.stats-media{margin-top:auto;padding-top:2px}
+.stats-redesign .media-counts span{font-size:9px;padding:4px 7px}
+.stats-top{min-width:0;min-height:0;border-left:1px solid rgba(255,255,255,.17);padding-left:18px;display:flex;flex-direction:column}
+.stats-list-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;line-height:1.2;font-weight:800;color:#ddd8f1;margin:1px 0 11px}
+.stats-list-head span:last-child{font-size:9px;opacity:.75;white-space:nowrap}
+.stats-redesign .leaderboard{display:flex;flex-direction:column;gap:9px;flex:1;min-height:0}
+.stats-redesign .leader-row{display:grid;grid-template-columns:18px minmax(0,1fr) 42px 25px;align-items:center;gap:6px;min-width:0;font-size:10px;line-height:1.2}
+.stats-redesign .leader-rank{font:800 9px/1 Unbounded,sans-serif;color:#a8a1c3}
+.stats-redesign .leader-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#f8f6ff}
+.stats-redesign .leader-meter{height:4px;background:rgba(255,255,255,.14);border-radius:99px;overflow:hidden}
+.stats-redesign .leader-meter span{display:block;height:100%;background:var(--accent);border-radius:99px}
+.stats-redesign .leader-count{font-weight:800;text-align:right;color:var(--yellow);font-variant-numeric:tabular-nums}
+.stats-more{align-self:flex-start;margin-top:11px;min-height:30px!important;padding:0 11px!important;font-size:10px!important}
+@media(max-width:900px){.stats-layout{grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:14px}.stats-top{padding-left:13px}.stats-redesign .leader-row{grid-template-columns:16px minmax(0,1fr) 33px 23px;gap:5px}.stats-redesign .media-counts span{font-size:8px;padding:4px 5px}.stats-total .stats-number{font-size:39px}}
+@media(max-width:620px){.tile--stats.stats-redesign{padding:18px!important}.stats-layout{grid-template-columns:minmax(0,1fr);gap:8px;margin-top:7px}.stats-activity{display:grid;grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);grid-template-rows:auto 1fr;gap:5px 11px;align-items:center}.stats-total{grid-column:1;grid-row:1;gap:8px;align-items:center;min-height:0}.stats-total .stats-number{font-size:38px}.stats-total span{font-size:10px}.stats-chart-wrap{grid-column:2;grid-row:1 / span 2;align-self:stretch;justify-content:center;gap:0}.stats-chart-head{font-size:9px;margin-bottom:4px}.hours-chart{height:43px;min-height:34px;gap:2px}.hours-axis{font-size:7px;margin-top:3px}.stats-peak{font-size:8px;margin-top:3px;white-space:nowrap}.stats-media{grid-column:1;grid-row:2;align-self:end;gap:3px;flex-wrap:wrap}.stats-redesign .media-counts span{font-size:7px;padding:3px 4px}.stats-top{border-left:0;border-top:1px solid rgba(255,255,255,.17);padding:7px 0 0;min-height:0}.stats-list-head{margin:0 0 6px;font-size:9px}.stats-list-head span:last-child{font-size:8px}.stats-redesign .leaderboard{gap:4px}.stats-redesign .leader-row{grid-template-columns:17px minmax(0,1fr) 38px 23px;font-size:10px;line-height:1.25;gap:5px}.stats-redesign .leader-name,.stats-redesign .leader-count{font-size:10px}.stats-redesign .leader-rank{font-size:9px}.stats-redesign .leader-meter{height:3px}.stats-list-head{font-size:10px}.hours-axis{font-size:8px}.stats-more{margin-top:7px;min-height:27px!important;font-size:9px!important;padding:0 10px!important}}
+
+
+/* V.08 — only the statistics tile receives a dark-theme contrast correction. */
+:root[data-theme="dark"] .tile--stats.stats-redesign{background:#211d32;color:#f8f6ff;border:1px solid #39314f}
+:root[data-theme="dark"] .stats-redesign .tile-label{color:#ffe777}
+:root[data-theme="dark"] .stats-redesign .eyemeta{color:#d8d2ec;opacity:1}
+:root[data-theme="dark"] .stats-redesign .stats-total span,
+:root[data-theme="dark"] .stats-redesign .stats-chart-head,
+:root[data-theme="dark"] .stats-redesign .stats-list-head{color:#e8e3f5}
+:root[data-theme="dark"] .stats-redesign .hours-chart{border-bottom-color:rgba(235,230,255,.32)}
+:root[data-theme="dark"] .stats-redesign .hours-chart span{background:rgba(205,196,255,.48)}
+:root[data-theme="dark"] .stats-redesign .hours-chart span.has-activity{background:rgba(205,196,255,.72)}
+:root[data-theme="dark"] .stats-redesign .hours-chart span.is-peak{background:#ffe777}
+:root[data-theme="dark"] .stats-redesign .hours-axis{color:#c9c2df}
+:root[data-theme="dark"] .stats-redesign .stats-peak{color:#e0daef}
+:root[data-theme="dark"] .stats-redesign .stats-peak strong,
+:root[data-theme="dark"] .stats-redesign .leader-count{color:#ffe777}
+:root[data-theme="dark"] .stats-redesign .leader-name{color:#fbfaff}
+:root[data-theme="dark"] .stats-redesign .leader-rank{color:#bcb4d6}
+:root[data-theme="dark"] .stats-redesign .leader-row{border-bottom-color:rgba(235,230,255,.12)}
+:root[data-theme="dark"] .stats-redesign .stats-top{border-left-color:rgba(235,230,255,.22)}
+:root[data-theme="dark"] .stats-redesign .media-counts span{color:#e8e3f5;border-color:rgba(224,219,241,.28)}
+
+
+/* V.08 — concise leaderboard: no per-user bars; rows use the full available height. */
+.stats-redesign .stats-top{display:flex;flex-direction:column;min-height:0}
+.stats-redesign .stats-list-head{display:flex;justify-content:space-between;gap:8px;margin:0 0 7px;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,.18);font-size:9px;line-height:1.2;font-weight:850;letter-spacing:.08em;color:#e7e2f4}
+.stats-redesign .stats-list-head span:last-child{white-space:nowrap;font-size:8px;opacity:.8}
+.stats-redesign .leaderboard{display:flex;flex:1;flex-direction:column;justify-content:stretch;gap:0;min-height:0}
+.stats-redesign .leader-row{display:grid;grid-template-columns:22px minmax(0,1fr) 34px;align-items:center;gap:8px;flex:1;min-height:0;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.14);font-size:11px;line-height:1.2}
+.stats-redesign .leader-row:last-child{border-bottom:0}
+.stats-redesign .leader-rank{font:800 9px/1 Unbounded,sans-serif;color:#bcb4d6}
+.stats-redesign .leader-name{font-size:11px;color:#fbfaff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stats-redesign .leader-count{font-size:12px;font-weight:850;text-align:right;color:#ffe777;font-variant-numeric:tabular-nums}
+.stats-redesign .leader-meter{display:none!important}
+.stats-redesign .stats-more{align-self:flex-start;margin-top:7px}
+@media(max-width:900px){.stats-redesign .leader-row{grid-template-columns:18px minmax(0,1fr) 30px;gap:6px}}
+@media(max-width:620px){.stats-redesign .stats-top{padding-top:8px}.stats-redesign .stats-list-head{margin-bottom:4px;padding-bottom:5px}.stats-redesign .leaderboard{gap:0}.stats-redesign .leader-row{grid-template-columns:18px minmax(0,1fr) 32px;gap:6px;padding:2px 0;font-size:10px}.stats-redesign .leader-name{font-size:10px}.stats-redesign .leader-count{font-size:11px}.stats-redesign .stats-more{margin-top:5px}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar">
+    <div class="chips"><span class="chip hot">29.10.2026</span><span class="chip">Випуск № 14</span><span class="chip">Спецвипуск</span></div>
+    <div class="right"><span>Редакційний макет · V.05</span><button class="icon-btn" id="themeToggle" type="button" aria-label="Змінити тему">◐</button></div>
+  </header>
+  <div class="masthead">
+    <div><div class="kicker">Вісник / незалежна хроніка</div><h1 class="brand disp">Big Yeet <span>2</span></h1></div>
+    <p class="mast-copy">Спецвипуск про академію Дедлока та богемні монепеді.</p>
+  </div>
+  <main>
+    <section aria-labelledby="sectionTitle">
+      <div class="section-intro">
+        <div><div class="eyebrow">Друга хвиля · поза головними заголовками</div><h2 id="sectionTitle" class="disp">Ще за день</h2></div>
+        <p class="intro-note">Єдиний ритм карток, а всередині — потрібний зміст. Композиція змінюється за кількістю модулів, без стискання тексту.</p>
+      </div>
+      <div class="concept-row"><span class="concept-pill"><b></b> Стабільна геометрія</span><span class="concept-pill"><b></b> Графік + учасники одночасно</span><span class="concept-note">Демонстраційні дані для перевірки компонування</span></div>
+      <div class="widget-grid" id="widgetGrid" data-count="6" aria-live="polite">
+        <article class="tile tile--hero" data-module="hero">
+          <svg class="hero-ornament" viewBox="0 0 220 220" aria-hidden="true"><path d="M15 178L110 25L205 178Z" fill="none" stroke="currentColor" stroke-width="12"/><path d="M110 83V178" stroke="currentColor" stroke-width="20"/><circle cx="166" cy="54" r="28" fill="currentColor"/></svg>
+          <div class="hero-copy"><span class="tile-label">Герой дня</span><h3 class="hero-name disp">Коля Капалкін</h3><p class="hero-role">Магістр Холодної Зварки</p><p class="hero-desc">За порятунок мопеда за допомогою соди, суперклею та створення вогняного шоу з вихлопної труби.</p></div>
+          <div class="hero-bottom"><span>Головний персонаж дня</span><span class="hero-number">01 / 06</span></div>
+        </article>
+        <article class="tile tile--sticker" data-module="sticker">
+          <div class="tile-head"><span class="tile-label">Стікер дня</span><span class="eyemeta">ВІЗУАЛЬНИЙ АРХІВ</span></div>
+          <div class="sticker-stage"><svg class="sticker-svg" viewBox="0 0 200 200" role="img" aria-label="Жовтий стікер із кумедним обличчям"><path d="M101 10C122 10 130 24 149 31C167 37 179 53 174 72C169 90 189 101 181 121C174 141 153 143 145 161C136 179 119 190 100 182C80 174 67 188 49 175C31 161 38 143 25 127C11 111 18 91 29 77C40 63 34 43 52 31C68 21 82 10 101 10Z" fill="#f5db4b" stroke="#fff" stroke-width="5"/><path d="M57 76Q69 62 82 76M118 76Q132 62 145 77" fill="none" stroke="#20183f" stroke-width="8" stroke-linecap="round"/><path d="M72 112Q100 140 132 110" fill="none" stroke="#20183f" stroke-width="9" stroke-linecap="round"/><path d="M48 49L35 34M151 48L164 33M100 28V12" stroke="#f5db4b" stroke-width="7" stroke-linecap="round"/><circle cx="55" cy="103" r="7" fill="#ec795f"/><circle cx="144" cy="103" r="7" fill="#ec795f"/></svg></div>
+          <div class="sticker-bottom"><p class="sticker-note">Маленький візуальний перепочинок між текстовими блоками.</p><span class="sticker-mark">:)</span></div>
+        </article>
+        <article class="tile tile--short" data-module="short">
+          <div class="tile-head"><span class="tile-label">Коротко</span><span class="eyemeta">4 ПОДІЇ</span></div>
+          <div class="short-list">
+            <button class="short-item" type="button" data-short="0"><span class="short-num">01</span><p>Коля Капалкін отримав практику в магазині електроніки (формально Rozetka) на два місяці.</p><span class="short-arrow">↗</span></button>
+            <button class="short-item" type="button" data-short="1"><span class="short-num">02</span><p>Артем Оріхон знайшов лайфхак для сну: засинати під балачки у войсі.</p><span class="short-arrow">↗</span></button>
+            <button class="short-item" type="button" data-short="2"><span class="short-num">03</span><p>Валентин Прус оголосив бойкот Вордлу після того, як навіть онлайн-словник не допоміг.</p><span class="short-arrow">↗</span></button>
+            <button class="short-item" type="button" data-short="3"><span class="short-num">04</span><p>Назар Бедей іде в нічні зміни без вихідних на наступні два тижні.</p><span class="short-arrow">↗</span></button>
+          </div>
+        </article>
+        <article class="tile tile--joke" data-module="joke">
+          <div class="tile-head"><span class="tile-label">Анекдоти</span><span class="eyemeta" id="jokeCounter">01 / 05</span></div>
+          <div class="joke-main"><div class="joke-mark" aria-hidden="true">“</div><p class="joke-text" id="jokeText">Зустрічаються два студенти Deadlock Academy. Один каже: «Я склав іспит!». Другий: «Та ти що, вже вмієш грати чи просто підкупив декана?»</p></div>
+          <div class="joke-actions"><button class="tile-action" type="button" id="readJoke">Читати повністю ↗</button><div class="joke-pair"><button class="tile-action dark" type="button" id="nextJoke">Інший анекдот →</button></div></div>
+        </article>
+        <article class="tile tile--stats stats-redesign" data-module="stats">
+          <div class="tile-head"><span class="tile-label">Цифри дня</span><span class="eyemeta">29.10.2026</span></div>
+          <div class="stats-layout">
+            <section class="stats-activity" aria-label="Загальна активність за день">
+              <div class="stats-total"><strong class="stats-number">273</strong><span>повідомлень<br>за день</span></div>
+              <div class="stats-chart-wrap">
+                <div class="stats-chart-head"><span>Активність</span><span>24 год</span></div>
+                <div class="hours-chart" id="hoursChart" role="img" aria-label="Кількість повідомлень за кожну годину. Пік активності о 17:00 — 116 повідомлень."></div>
+                <div class="hours-axis"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
+                <p class="stats-peak">Пік: <strong>17:00 · 116</strong></p>
+              </div>
+              <div class="media-counts stats-media"><span>26 фото</span><span>16 стікерів</span><span>6 GIF</span></div>
+            </section>
+            <section class="stats-top" aria-label="Найактивніші учасники">
+              <div class="stats-list-head"><span>ТОП-5 УЧАСНИКІВ</span><span>ПОВІДОМЛЕНЬ</span></div>
+              <div class="leaderboard" id="leaderboard">
+                <div class="leader-row"><span class="leader-rank">01</span><span class="leader-name">Артем Оріхон</span><strong class="leader-count">53</strong></div>
+                <div class="leader-row"><span class="leader-rank">02</span><span class="leader-name">Валентин Прус</span><strong class="leader-count">49</strong></div>
+                <div class="leader-row"><span class="leader-rank">03</span><span class="leader-name">Ярослав Бабич</span><strong class="leader-count">35</strong></div>
+                <div class="leader-row"><span class="leader-rank">04</span><span class="leader-name">Назар Бедей</span><strong class="leader-count">35</strong></div>
+                <div class="leader-row"><span class="leader-rank">05</span><span class="leader-name">Коля Капалкін</span><strong class="leader-count">30</strong></div>
+              </div>
+              <button class="tile-action stats-more" type="button" id="allStats">Усі 12 ↗</button>
+            </section>
+          </div>
+        </article>
+        <article class="tile tile--quotes" data-module="quotes">
+          <div class="tile-head"><span class="tile-label">Цитати дня</span><span class="eyemeta" id="quoteCounter">01—02 / 04</span></div>
+          <div class="quote-list" id="quoteList">
+            <button class="quote-entry" type="button" data-quote="0"><span class="quote-meta"><span class="quote-author">Владислав Дорогань</span><span>17:50</span></span><p class="quote-text">Я 3 сторінки по 200 слів листав, поки не знайшов перше слово, яке має дві букви, які я впізнав — і воно підійшло.</p></button>
+            <button class="quote-entry" type="button" data-quote="1"><span class="quote-meta"><span class="quote-author">Артем Оріхон</span><span>16:22</span></span><p class="quote-text">Якщо пошук слова триває довше за саму гру, це вже не Вордл, а наукова робота.</p></button>
+          </div>
+          <div class="quote-bottom"><span>Вислови, які запам'яталися сьогодні</span><button type="button" id="nextQuotes">Ще цитати →</button></div>
+        </article>
+      </div>
+      <div class="empty" id="emptyState"><h3>Сьогодні — тиша.</h3><p>Немає додаткових блоків — розділ не займає місце у стрічці.</p></div>
+      <div class="lab"><div><div class="lab-label">Прототип · перевірка компонування</div><div class="lab-title">Скільки блоків доступно в «Ще за день»?</div></div><div class="controls" role="group" aria-label="Кількість блоків"><button class="count-btn" data-count="0" aria-pressed="false">0</button><button class="count-btn" data-count="1" aria-pressed="false">1</button><button class="count-btn" data-count="2" aria-pressed="false">2</button><button class="count-btn" data-count="3" aria-pressed="false">3</button><button class="count-btn" data-count="4" aria-pressed="false">4</button><button class="count-btn" data-count="5" aria-pressed="false">5</button><button class="count-btn" data-count="6" aria-pressed="true">6</button></div></div>
+      <p class="layout-caption"><span id="layoutName"><strong>Композиція:</strong> три ряди однакової висоти</span><span id="countCaption">06 / 06 блоків</span></p>
+    </section>
+    <section class="principles" aria-label="Правила компонування"><div class="principle"><b>Одна висота для всіх модулів</b><p>Довгий текст не збільшує картку. Вміст має передбачені слоти, а не впливає на геометрію сусідів.</p></div><div class="principle"><b>Модальне вікно — тільки для коротких деталей</b><p>Окрема новина з повним текстом і галереєю має відкриватися на своїй сторінці. Модальне вікно доречне для короткого анекдоту або швидкої довідки.</p></div><div class="principle"><b>Кількість змінює ширину, не висоту</b><p>При 1, 3 або 5 блоках один модуль отримує додаткову ширину. В межах одного екрана висота всіх модулів залишається однаковою.</p></div></section>
+  </main>
+  <footer class="foot"><span>Вісник Big Yeet 2</span><span>Редизайн · «Ще за день» · V.05</span></footer>
+</div>
+<dialog id="detailDialog" aria-labelledby="dialogTitle"><div class="dialog-head"><div><div class="dialog-kicker" id="dialogKicker">Деталі</div><h3 id="dialogTitle">Детальніше</h3></div><button type="button" class="close-btn" id="closeDialog" aria-label="Закрити">×</button></div><div class="dialog-body" id="dialogBody"></div></dialog>
+<script>
+const grid=document.getElementById('widgetGrid');
+const modules=[...grid.querySelectorAll('[data-module]')];
+const empty=document.getElementById('emptyState');
+const layoutName=document.getElementById('layoutName');
+const countCaption=document.getElementById('countCaption');
+const names={0:'Розділ приховано — порожнього контейнера немає',1:'Один модуль займає ширший формат, але зберігає висоту',2:'Герой і стікер — одна стабільна лінія',3:'Коротко отримує повну ширину',4:'Дві рівні колонки в другому ряду',5:'Цифри дня розкриваються на всю ширину',6:'Три ряди з однаковою висотою плиток'};
+function renderCount(n){grid.dataset.count=String(n);modules.forEach((m,i)=>m.hidden=i>=n);grid.style.display=n===0?'none':'grid';empty.style.display=n===0?'block':'none';document.querySelectorAll('.count-btn').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.count)===n)));layoutName.innerHTML='<strong>Композиція:</strong> '+names[n];countCaption.textContent=String(n).padStart(2,'0')+' / 06 блоків';}
+document.querySelectorAll('.count-btn').forEach(b=>b.addEventListener('click',()=>renderCount(Number(b.dataset.count))));
+document.getElementById('themeToggle').addEventListener('click',()=>{const root=document.documentElement;root.dataset.theme=root.dataset.theme==='dark'?'light':'dark';});
+const jokes=[
+'Зустрічаються два студенти Deadlock Academy. Один каже: «Я склав іспит!». Другий: «Та ти що, вже вмієш грати чи просто підкупив декана?»',
+'Чому в чаті не люблять Денні? Бо він як політик: багато літає, але користі нуль.',
+'Коля настільки добре знає суперклей, що тепер його повідомлення в чаті приклеюються до екрана.',
+'Рівень відчаю: шукати слово у Вордлі, гортаючи три сторінки по 200 слів.',
+'Коли купив унітаз із підігрівом, але все одно чекаєш, поки ввімкнуть світло.'
+];let jokeIndex=0;const jokeText=document.getElementById('jokeText');
+function renderJoke(){jokeText.textContent=jokes[jokeIndex];document.getElementById('jokeCounter').textContent=String(jokeIndex+1).padStart(2,'0')+' / '+String(jokes.length).padStart(2,'0');}
+document.getElementById('nextJoke').addEventListener('click',()=>{jokeIndex=(jokeIndex+1)%jokes.length;renderJoke();});
+const shortItems=[
+['Коля Капалкін отримав практику в магазині електроніки (формально Rozetka) на два місяці.','Коля Капалкін отримав практику в магазині електроніки (формально Rozetka) на два місяці.'],
+['Артем Оріхон знайшов лайфхак для сну: засинати під балачки у войсі.','Артем Оріхон знайшов лайфхак для сну: засинати під балачки у войсі.'],
+['Валентин Прус оголосив бойкот Вордлу після того, як навіть онлайн-словник не допоміг.','Валентин Прус оголосив бойкот Вордлу після того, як навіть онлайн-словник не допоміг.'],
+['Назар Бедей іде в нічні зміни без вихідних на наступні два тижні.','Назар Бедей іде в нічні зміни без вихідних на наступні два тижні.']
+];document.querySelectorAll('[data-short]').forEach(btn=>btn.addEventListener('click',()=>openDialog('Коротко','Подія '+String(Number(btn.dataset.short)+1).padStart(2,'0'),'<p>'+shortItems[Number(btn.dataset.short)][1]+'</p><p class="dialog-note">Короткі події залишаються в цій же сторінці. У реальному продукті це може бути посилання на повну новину, якщо така існує.</p>')));
+const hourlyMessages=[4,0,4,10,0,1,1,0,0,0,0,1,2,4,6,41,37,116,26,14,6,0,0,0];
+const peakHour=Math.max(...hourlyMessages);document.getElementById('hoursChart').innerHTML=hourlyMessages.map((v,i)=>'<span class="'+(v?'has-activity ':'')+(v===peakHour?'is-peak':'')+'" style="--bar-h:'+Math.max(v===0?3:5,(v/peakHour)*100)+'%" title="'+String(i).padStart(2,'0')+':00 — '+v+' повідомлень"></span>').join('');
+const people=[['Артем Оріхон',53],['Валентин Прус',49],['Ярослав Бабич',35],['Назар Бедей',35],['Коля Капалкін',30],['Денні',12],['Марта Руденко',11],['Ілля Бойко',10],['Софія Марченко',10],['Олег Кравець',10],['Яна Соловей',9],['Макс Черненко',9]];
+function openDialog(kicker,title,html){document.getElementById('dialogKicker').textContent=kicker;document.getElementById('dialogTitle').textContent=title;document.getElementById('dialogBody').innerHTML=html;document.getElementById('detailDialog').showModal();}
+document.getElementById('allStats').addEventListener('click',()=>{const list=people.map((p,i)=>'<div class="dialog-person"><span class="dialog-rank">'+String(i+1).padStart(2,'0')+'</span><span>'+p[0]+'</span><strong>'+p[1]+'</strong></div>').join('');openDialog('Цифри дня · 29.10.2026','Хто скільки написав','<div class="dialog-list">'+list+'</div><p class="dialog-note">Разом — 273 повідомлення від 12 учасників. Додатково: 26 фото, 16 стікерів і 6 GIF. Дані для макета взяті з демонстраційного зрізу вихідного дизайну.</p>');});
+const quotes=[
+{author:'Владислав Дорогань',time:'17:50',text:'Я 3 сторінки по 200 слів листав, поки не знайшов перше слово, яке має дві букви, які я впізнав — і воно підійшло.',context:'Методика пошуку слів у Вордлі: відчай і перебір.'},
+{author:'Артем Оріхон',time:'16:22',text:'Якщо пошук слова триває довше за саму гру, це вже не Вордл, а наукова робота.',context:'Про пошуки правильного слова.'},
+{author:'Коля Капалкін',time:'14:08',text:'Я не ремонтував мопед. Я просто створив для нього новий спосіб пересування.',context:'Після історії про мопед і суперклей.'},
+{author:'Валентин Прус',time:'12:41',text:'Словник знає всі слова. Крім саме того, яке тобі зараз потрібне.',context:'Бойкот Вордлу продовжується.'}
+];let quotePage=0;
+function renderQuotes(){const start=quotePage*2;const shown=quotes.slice(start,start+2);document.getElementById('quoteCounter').textContent=String(start+1).padStart(2,'0')+'—'+String(start+2).padStart(2,'0')+' / '+String(quotes.length).padStart(2,'0');document.getElementById('quoteList').innerHTML=shown.map((q,i)=>'<button class="quote-entry" type="button" data-quote="'+(start+i)+'"><span class="quote-meta"><span class="quote-author">'+q.author+'</span><span>'+q.time+'</span></span><p class="quote-text">'+q.text+'</p></button>').join('');document.querySelectorAll('[data-quote]').forEach(btn=>btn.addEventListener('click',()=>{const q=quotes[Number(btn.dataset.quote)];openDialog('Цитати дня',q.author+' · '+q.time,'<p class="dialog-quote-meta">'+q.context+'</p><p class="dialog-quote-text">«'+q.text+'»</p><p class="dialog-note">Відкрилось поверх поточного розділу — без переходу на нову сторінку.</p>')}));}
+document.getElementById('nextQuotes').addEventListener('click',()=>{quotePage=(quotePage+1)%2;renderQuotes();});renderQuotes();
+document.getElementById('readJoke').addEventListener('click',()=>openDialog('Анекдоти','Анекдот '+String(jokeIndex+1).padStart(2,'0'),'<p class="dialog-quote-text">'+jokes[jokeIndex]+'</p><p class="dialog-note">Повний текст відкривається поверх розділу. Розмір плитки при цьому не змінюється.</p>'));
+document.getElementById('closeDialog').addEventListener('click',()=>document.getElementById('detailDialog').close());document.getElementById('detailDialog').addEventListener('click',e=>{const d=e.currentTarget;if(e.target===d)d.close();});
+renderCount(6);
+</script>
+</body>
+</html>

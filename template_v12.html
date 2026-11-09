@@ -1,4 +1,4 @@
-{#- Шаблон газети (v12). Це ДЖЕРЕЛО: CSS і JS лежать окремо (src/style.css, src/app.js), в один файл їх збирає build.py
+{#- Шаблон газети (v12). Це ДЖЕРЕЛО: CSS і JS лежать окремо (src/style.css, src/app.js), в один файл їх збирає render.py (build_template)
 (CSS/JS потрапляють у блоки raw, тому Jinja їх не чіпає). Збірку template_v12.html руками редагувати не треба.
 Один автономний файл без звернень до інтернету: головна, сторінки новин і ігор перемикаються в пам'яті (адреса не
 змінюється). Медіа вставляються в файл один раз: на сторінках новин і в «Читайте також» вони підтягуються з обкладинок
@@ -15,34 +15,21 @@
 {%- endif -%}
 {%- endmacro -%}
 
-{#- raw → список {id, m} лише з наявних у media -#}
-{%- macro mlist(ns, raw) -%}
-{%- if raw is iterable and raw is not string -%}{%- set ids = raw -%}
-{%- elif raw -%}{%- set ids = [raw] -%}
-{%- else -%}{%- set ids = [] -%}{%- endif -%}
-{%- set tmp = namespace(l=[]) -%}
-{%- for mid in ids -%}{%- if mid and media.get(mid) -%}{%- set tmp.l = tmp.l + [{'id': mid, 'm': media.get(mid)}] -%}{%-
-endif -%}{%- endfor -%}
-{%- set ns.l = tmp.l -%}
-{%- endmacro -%}
-
-{#- перше не-стікерне медіа = обкладинка плитки -#}
-{%- macro cover_of(out, lst) -%}
-{%- set out.m = none -%}{%- set out.id = none -%}
-{%- for e in lst -%}{%- if not out.m and 'sticker' not in e.m.kind -%}{%- set out.m = e.m -%}{%- set out.id = e.id
--%}{%- endif -%}{%- endfor -%}
-{%- endmacro -%}
-
-{#- Унікальний slug: slug — це і id шаблону сторінки (tpl-<slug>), і адреса переходу (#<slug>). Якщо slug порожній,
-зарезервований (назви головної та ігор) або вже зайнятий — додаємо «-2», «-3»… Результат — у SL.out -#}
-{%- macro uniq_slug(SL, raw) -%}
-{%- set r = namespace(s=((raw | string | trim) or 'news'), done=false) -%}
-{%- set base = r.s -%}
-{%- if r.s in SL.reserved or r.s in SL.used -%}
-{%- for i in range(2, 200) -%}{%- if not r.done and (base ~ '-' ~ i) not in SL.used and (base ~ '-' ~ i) not in SL.reserved
--%}{%- set r.s = base ~ '-' ~ i -%}{%- set r.done = true -%}{%- endif -%}{%- endfor -%}
+{#- «Детально» для цифр дня й тижня: вміст модального вікна. Усі числа, відсотки й підписи вже пораховані в
+page_data.build_day_stats / build_week_stats; тут лише розмітка. Розмітка без пробілів між тегами (як і була у JS) -#}
+{%- macro stats_detail(S, week) -%}
+<div class="sd{{ ' sd--week' if week }}">
+{{- '' -}}<div class="sd-kpis">{% for k in S.kpis %}<div class="sd-kpi{{ ' sd-kpi-hi' if k.hi }}"><strong class="disp">{{ k.val }}</strong><span>{{ k.text }}</span></div>{% endfor %}</div>
+{%- if S.chart -%}
+<section class="sd-sec"><div class="sd-sec-head"><h4 class="disp">{{ S.chart.title }}</h4><span>{{ S.chart.hint }}</span></div><div class="sd-readout"></div><div class="sd-plot"><div class="sd-gl" style="--p:1"><span>{{ S.chart.gl_top }}</span></div><div class="sd-gl" style="--p:.5"><span>{{ S.chart.gl_mid }}</span></div><div class="sd-bars" role="group" aria-label="{{ S.chart.aria }}">{% for b in S.chart.bars %}<button type="button" class="sd-bar{{ ' is-peak' if b.is_peak }}" data-h="{{ b.i }}" style="--h:{{ b.h }}%" aria-label="{{ b.aria }}" data-rt="{{ b.rt }}" data-rs="{{ b.rs }}" data-pk="{{ b.pk }}"><i></i><b>{{ b.label }}</b></button>{% endfor %}</div></div></section>
 {%- endif -%}
-{%- set SL.out = r.s -%}{%- set SL.used = SL.used + [r.s] -%}
+<section class="sd-sec"><div class="sd-sec-head"><h4 class="disp">Головні спостереження</h4><span>{{ S.insights_hint }}</span></div><ul class="sd-insights">{% for b, t in S.insights %}<li><b>{{ b }}</b>{{ t }}</li>{% endfor %}</ul></section>
+{{- '' -}}<section class="sd-sec"><div class="sd-sec-head"><h4 class="disp">Хто скільки написав</h4><span>{{ S.people_head }}</span></div><ol class="sd-people">{% for p in S.people %}<li><span class="sd-rank">{{ p.rank }}</span><span class="sd-pava" aria-hidden="true">{{ p.ava }}</span><span class="sd-pname">{{ p.name }}</span><span class="sd-pbar"><i style="--w:{{ p.w }}%"></i></span><strong class="sd-pcount">{{ p.count }}</strong><span class="sd-pshare">{{ p.share }}%</span></li>{% endfor %}</ol></section>
+{%- if S.media -%}
+{%- set M = S.media -%}
+<section class="sd-sec"><div class="sd-sec-head"><h4 class="disp">{{ M.title }}</h4><span>{{ M.count }}</span></div><div class="sd-media-bar" role="img" aria-label="Фото {{ M.photo }}, стікерів {{ M.sticker }}, GIF {{ M.gif }}"><i class="m-photo" style="flex:{{ M.photo }}"></i><i class="m-sticker" style="flex:{{ M.sticker }}"></i><i class="m-gif" style="flex:{{ M.gif }}"></i></div><ul class="sd-media-legend">{% for l in M.legend %}<li><i class="{{ l.cls }}"></i><strong>{{ l.n }}</strong> {{ l.label }} · {{ l.share }}%</li>{% endfor %}</ul></section>
+{%- endif -%}
+</div>
 {%- endmacro -%}
 
 {#- смужка «До випуску» (+ необов'язковий лічильник «2 / 5» на сторінках новин) -#}
@@ -105,56 +92,32 @@ endif -%}{%- endfor -%}
 
 {%- macro initials(name) -%}{{ (name or '').split()[:2] | map('first') | join | upper }}{%- endmacro -%}
 
-{#- сітка плиток «Головне»: lead=true — перша плитка велика (6×2), решта підлаштовується під кількість -#}
-{#- em — namespace(ids=[]): обкладинки, уже вставлені у файл повними даними (друга плитка з тим самим медіа бере їх за посиланням) -#}
-{%- macro news_grid(items, lead, em) -%}
-{%- set n = items | length -%}
-{%- set m = n - (1 if lead else 0) -%}
+{#- сітка плиток «Головне»: класи плиток (it.tile_cls — перша велика, решта під кількість) і прапорець it.cover_seen
+(обкладинка вже вставлена повними даними вище — тоді data-ref) рахує page_data.build_news -#}
+{%- macro news_grid(items) -%}
 <div class="main-news">
   {%- for it in items -%}
-  {%- if lead and loop.first -%}
-  {%- set cls = 'main-lead' ~ (' ms-solo' if m == 0 else '') -%}
-  {%- else -%}
-  {%- set k = loop.index0 - (1 if lead else 0) -%}
-  {%- set sp = '' -%}
-  {%- if lead -%}
-  {%- if m == 1 -%}{%- set sp = ' ms-6 ms-tall' -%}
-  {%- elif m == 2 -%}{%- set sp = ' ms-6' -%}
-  {%- elif m == 3 -%}{%- set sp = (' ms-6' if k == 0 else '') -%}
-  {%- elif k >= 4 -%}
-  {%- set rest = m - 4 -%}{%- set full = (rest // 4) * 4 -%}{%- set j = k - 4 -%}
-  {%- if j >= full -%}{%- set r = rest - full -%}{%- set sp = (' ms-12' if r == 1 else (' ms-6' if r == 2 else ' ms-4'))
-  -%}{%- endif -%}
-  {%- endif -%}
-  {%- else -%}
-  {%- set full = (n // 4) * 4 -%}
-  {%- if k >= full -%}{%- set r = n - full -%}{%- set sp = (' ms-12' if r == 1 else (' ms-6' if r == 2 else ' ms-4'))
-  -%}{%- endif -%}
-  {%- endif -%}
-  {%- set cls = 'main-small' ~ sp -%}
-  {%- endif -%}
   {#- без обкладинки: один із трьох кольорових варіантів (по колу) + початок тексту новини -#}
-  <a href="#{{ it.slug }}" class="tile {{ cls }}{{ '' if it.cover else (' no-cover nc-' ~ (loop.index0 % 3)) }}"
+  <a href="#{{ it.slug }}" class="tile {{ it.tile_cls }}{{ '' if it.cover else (' no-cover nc-' ~ (loop.index0 % 3)) }}"
     aria-label="{{ it.title }}">
     {%- if it.cover %}
     <div class="cover">
-      {%- set seen = it.cover_id in em.ids -%}
-      {%- if not seen -%}{%- set em.ids = em.ids + [it.cover_id] -%}{%- endif -%}
-      {%- if is_video(it.cover) -%}<video {{ 'data-ref' if seen else 'data-mid' }}="{{ it.cover_id }}" {% if not seen
-        %}src="{{ it.cover.data }}" {% endif %}autoplay muted loop playsinline></video>
-      {%- else -%}<img {{ 'data-ref' if seen else 'data-mid' }}="{{ it.cover_id }}" {% if not seen %}src="{{ it.cover.data }}"
-        {% endif %}alt="{{ it.title }}" loading="lazy" decoding="async">{%- endif -%}
+      {%- set seen = it.cover_seen -%}
+      {%- if is_video(it.cover) -%}<video {{ 'data-ref' if seen else 'data-mid' }}="{{ it.cover_id }}" {% if it.cover.poster %}{% if not seen %}poster="{{ it.cover.poster }}" {% endif %}preload="none" {% else %}preload="metadata" {% endif %}{% if not seen %}src="{{ it.cover.data }}{{ '' if it.cover.poster else '#t=0.001' }}" {% endif %}muted loop playsinline></video>
+      {%- else -%}<img {{ 'data-ref' if seen else 'data-mid' }}="{{ it.cover_id }}" {% if not seen %}src="{{ it.cover.data }}" {% endif %}alt="{{ it.title }}" loading="lazy" decoding="async">{%- endif -%}
     </div>
     {%- endif %}
     <div class="tile-top">
       <span class="category">{{ it.cat }}</span>
-      <span class="go" aria-hidden="true"></span>
+      <span class="tile-read" aria-hidden="true"></span>
     </div>
     <div class="card-copy">
+      {%- if it.day_chip %}<span class="day-chip">{{ it.day_chip }}</span>{% endif %}
       <h3 class="disp">{{ it.title }}</h3>
       {%- set ex = (it.lead or ((it.body or '') | string).split('\n\n')[0]) | trim -%}
       {%- if ex %}<p class="tile-sub">{{ ex | truncate(180, false, '…') }}</p>{% endif -%}
     </div>
+    <span class="go" aria-hidden="true"></span>
   </a>
   {%- endfor -%}
 </div>
@@ -222,7 +185,7 @@ endif -%}{%- endfor -%}
 {%- macro article_page(items, idx, cover_ids, label_extra) -%}
 {%- set it = items[idx] -%}
 {%- set total = items | length -%}
-{%- set nx = items[idx + 1] if (idx + 1) < total else none -%} <template id="tpl-{{ it.slug }}" data-news>
+{%- set nx = items[idx + 1] if (idx + 1) < total else none -%} <template id="tpl-{{ it.slug }}" data-news{% if it.twin %} data-twin="{{ it.twin }}"{% endif %}>
   <div class="article-view">
     {{ back_bar((idx + 1) ~ ' / ' ~ total, 'Новина ' ~ (idx + 1) ~ ' з ' ~ total) }}
     <div class="article-columns">
@@ -264,10 +227,6 @@ endif -%}{%- endfor -%}
       <span class="tile-label">{{ label }}</span>
       {% if meta %}<span class="eyemeta">{{ meta }}</span>{% endif %}
     </div>
-    {%- if d.title or d.moral or d.topic %}
-    <p class="dlg-moral">{% if d.title %}<b>{{ d.title }}</b>{% endif %}{% if d.moral or d.topic %}{{ ' — ' if d.title
-      else '' }}{{ d.moral or d.topic }}{% endif %}</p>
-    {%- endif %}
     <div class="dlg-chat" role="log" aria-label="{{ label }}">
       {%- for m in d.messages %}
       <div class="dlg-msg{{ ' dlg-alt' if m.sender != first_sender else '' }}"
@@ -360,56 +319,12 @@ endif -%}{%- endfor -%}
   {%- endmacro -%}
 
   {#- ================= ДАНІ ДЛЯ ПЛИТОК І СТОРІНОК ================= -#}
-  {%- set CV = namespace(ids=[]) -%}
-  {%- set EM = namespace(ids=[]) -%}
-  {%- set SL = namespace(used=[], out=none, reserved=['main', 'wordle', 'tetris', 'quiz', 'crossword']) -%}
-  {%- set NI = namespace(items=[]) -%}
-  {%- set WI = namespace(items=[]) -%}
-  {%- set tmp = namespace(l=[]) -%}
-  {%- set cv = namespace(m=none, id=none) -%}
-  {%- if c -%}
-  {%- set hraw = c.headline.media_ids or c.headline.cover_media_id or c.headline.media_id -%}
-  {%- set _ = mlist(tmp, hraw) -%}{%- set _ = cover_of(cv, tmp.l) -%}
-  {%- set _ = uniq_slug(SL, c.headline.slug or 'news-day') -%}
-  {%- set NI.items = NI.items + [{'slug': SL.out, 'cat': 'Новина дня', 'title':
-  c.headline.title, 'lead': (c.headline.lead or c.headline.subtitle), 'body': c.headline.body, 'media': tmp.l, 'cover': cv.m, 'cover_id':
-  cv.id}] -%}
-  {%- if cv.id %}{%- set CV.ids = CV.ids + [cv.id] -%}{%- endif -%}
-  {%- for a in c.articles -%}
-  {%- set araw = a.media_ids or a.cover_media_id or a.media_id -%}
-  {%- set tmp = namespace(l=[]) -%}{%- set cv = namespace(m=none, id=none) -%}
-  {%- set _ = mlist(tmp, araw) -%}{%- set _ = cover_of(cv, tmp.l) -%}
-  {%- set _ = uniq_slug(SL, a.slug or ('news-' ~ loop.index)) -%}
-  {%- set NI.items = NI.items + [{'slug': SL.out, 'cat': a.rubric, 'title': a.title, 'lead':
-  (a.lead or a.subtitle), 'body': a.body, 'media': tmp.l, 'cover': cv.m, 'cover_id': cv.id}] -%}
-  {%- if cv.id %}{%- set CV.ids = CV.ids + [cv.id] -%}{%- endif -%}
-  {%- endfor -%}
-  {%- if weekly and weekly.content -%}
-  {%- set tmp = namespace(l=[]) -%}{%- set cv = namespace(m=none, id=none) -%}
-  {%- set _ = mlist(tmp, weekly.content.media_id) -%}{%- set _ = cover_of(cv, tmp.l) -%}
-  {%- set _ = uniq_slug(SL, weekly.content.slug or 'week') -%}
-  {%- set WI.items = WI.items + [{'slug': SL.out, 'cat': 'Підсумок тижня', 'title':
-  weekly.content.title, 'lead': (weekly.content.lead or weekly.content.subtitle or weekly.content.intro), 'body': weekly.content.intro, 'media': tmp.l, 'cover': cv.m, 'cover_id': cv.id}]
-  -%}
-  {%- if cv.id %}{%- set CV.ids = CV.ids + [cv.id] -%}{%- endif -%}
-  {%- for h in (weekly_headlines or []) -%}
-  {%- set hraw = h.media_ids or h.cover_media_id or h.media_id -%}
-  {%- set tmp = namespace(l=[]) -%}{%- set cv = namespace(m=none, id=none) -%}
-  {%- set _ = mlist(tmp, hraw) -%}{%- set _ = cover_of(cv, tmp.l) -%}
-  {%- set dl = format_headline_date(h) if format_headline_date else ((h.weekday | capitalize) ~ ', ' ~ h.date_short) -%}
-  {#- Якщо новина тижня — це та сама новина, що вже є серед новин дня (збіг назви або slug, типово — неділя), окремої
-  сторінки не створюємо: плитка веде на сторінку новини дня (alias), тож «прочитано» діє для обох плиток -#}
-  {%- set dup = namespace(it=none) -%}
-  {%- for x in NI.items -%}{%- if not dup.it and ((x.title | trim) == (h.title | trim) or (h.slug and h.slug == x.slug))
-  -%}{%- set dup.it = x -%}{%- endif -%}{%- endfor -%}
-  {%- if dup.it -%}{%- set hslug = dup.it.slug -%}
-  {%- else -%}{%- set _ = uniq_slug(SL, h.slug or ('day-' ~ loop.index)) -%}{%- set hslug = SL.out -%}{%- endif -%}
-  {%- set WI.items = WI.items + [{'slug': hslug, 'alias': (dup.it is not none), 'cat': dl, 'title': h.title, 'lead':
-  (h.lead or h.subtitle), 'body': h.body, 'media': tmp.l, 'cover': cv.m, 'cover_id': cv.id}] -%}
-  {%- if cv.id %}{%- set CV.ids = CV.ids + [cv.id] -%}{%- endif -%}
-  {%- endfor -%}
-  {%- endif -%}
-  {%- endif -%}
+  {#- списки новин збирає page_data.build_news (slug, обкладинки, «близнюк» тижневої новини, класи плиток) -#}
+  {%- set NI = namespace(items=news_items or []) -%}
+  {%- set WR = namespace(items=week_recap or []) -%}
+  {%- set WP = namespace(items=week_picks or []) -%}
+  {%- set WA = namespace(items=(week_recap or []) + (week_picks or [])) -%}
+  {%- set CV = namespace(ids=cover_ids or []) -%}
   {%- set hd = c.hero_of_day if c else none -%}
   {%- set has_hero = hd and (hd.title or hd.sender) -%}
   {%- set has_sticker = c and stats and stats.top_sticker and media.get(stats.top_sticker.media_id) -%}
@@ -839,6 +754,25 @@ h3 {
   transition: background .2s, color .2s;
 }
 
+.tile .go {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.main-small .go {
+  right: 14px;
+  bottom: 14px;
+}
+
+.main-small.ms-6 .go,
+.main-small.ms-12 .go {
+  right: 18px;
+  bottom: 18px;
+}
+
 .tile:hover .go {
   background: var(--hi);
   color: #17142b;
@@ -847,7 +781,7 @@ h3 {
 .card-copy {
   position: relative;
   z-index: 2;
-  padding: 16px 18px 18px;
+  padding: 16px 54px 18px 18px;
   pointer-events: none;
 }
 
@@ -878,7 +812,7 @@ h3 {
 }
 
 .main-small .card-copy {
-  padding: 13px 14px 15px;
+  padding: 13px 48px 15px 14px;
 }
 
 .main-small .card-copy h3 {
@@ -1289,7 +1223,7 @@ h3 {
 }
 
 .g:first-child .gt {
-  padding: 40px 16px 14px;
+  padding: 40px 42px 14px 16px;
   font-size: 14px;
 }
 
@@ -1350,7 +1284,7 @@ h3 {
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 22px 10px 8px;
+  padding: 22px 38px 8px 10px;
   background: linear-gradient(transparent, rgba(10, 8, 24, .78));
   color: #fff;
   font-size: 12.5px;
@@ -1985,7 +1919,9 @@ dialog.app-modal[open].media-mode {
   width: 100vw;
   max-width: 100vw;
   height: 100vh;
+  height: 100dvh;
   max-height: 100vh;
+  max-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2439,38 +2375,33 @@ dialog.app-modal[open].media-mode {
 
 .st-submetrics {
   display: flex;
-  gap: 8px;
+  align-items: flex-start;
+  gap: 20px;
   margin-top: 14px;
 }
 
 .st-submetric {
-  flex: 1;
-  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, .07);
-  border: 1px solid rgba(255, 255, 255, .12);
-  border-radius: 12px;
+  min-width: 0;
 }
 
 .st-submetric__val {
   font-family: var(--display);
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 700;
   color: #fff;
   line-height: 1.1;
 }
 
+.st-submetric .st-unit,
 .st-submetric__lbl {
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 600;
   color: #c8c0e2;
   letter-spacing: .02em;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .media-counts {
@@ -2769,9 +2700,9 @@ dialog.app-modal.wide {
 
 .sd-sec-head {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
   margin-bottom: 14px;
 }
 
@@ -3371,7 +3302,7 @@ html.modal-open {
   box-shadow: 0 0 0 2px var(--accent);
 }
 
-/* галерея — фото відкривається в модалці: значок «+» у куті */
+/* галерея — фото відкривається в модалці: значок «+» унизу */
 .g {
   transition: box-shadow .15s;
 }
@@ -3383,7 +3314,7 @@ html.modal-open {
 .g::before {
   content: "";
   position: absolute;
-  top: 8px;
+  bottom: 8px;
   right: 8px;
   z-index: 2;
   width: 26px;
@@ -3403,7 +3334,7 @@ html.modal-open {
 .g::after {
   content: "";
   position: absolute;
-  top: 8px;
+  bottom: 8px;
   right: 8px;
   z-index: 3;
   width: 26px;
@@ -3717,7 +3648,7 @@ html.modal-open {
 }
 
 /* ================= v9 ================= */
-/* підпис розділу (.sub) на малих екранах — під заголовком */
+/* підпис розділу (.sub) та (.sd-sec-head) на малих екранах — під заголовком */
 @media (max-width: 720px) {
   .section-head {
     flex-direction: column;
@@ -3727,6 +3658,12 @@ html.modal-open {
 
   .section-head .sub {
     white-space: normal;
+  }
+
+  .sd-sec-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
   }
 }
 
@@ -4149,7 +4086,7 @@ html.modal-open {
 .game-card, .btn, .w-start, .also-read-*), нових кольорів немає.
 ===================================================================== */
 
-/* ---------- чіп «Спецвипуск» ---------- */
+/* ---------- чіп «Тижневий випуск» ---------- */
 .chip.sp {
   background: var(--accent);
   border-color: var(--accent);
@@ -4181,7 +4118,7 @@ html.modal-open {
 
 .main-small.ms-12 .card-copy,
 .main-small.ms-6 .card-copy {
-  padding: 16px 18px 18px;
+  padding: 16px 54px 18px 18px;
 }
 
 .tile .tile-sub {
@@ -4217,10 +4154,6 @@ html.modal-open {
 .tile.nc-1 {
   background: var(--yellow);
   color: var(--yellow-ink);
-  --go-bg0: rgba(33, 27, 50, .14);
-  --go-fg0: var(--yellow-ink);
-  --go-bg1: var(--yellow-ink);
-  --go-fg1: var(--yellow);
 }
 
 .tile.nc-2 {
@@ -4244,23 +4177,19 @@ html.modal-open {
   background: var(--yellow);
 }
 
+.tile.nc-1 .go {
+  background: rgba(33, 27, 50, .14);
+  color: var(--yellow-ink);
+}
+
 .tile.nc-1:hover .go {
   background: var(--yellow-ink);
   color: var(--yellow);
 }
 
-.main-lead .tile-sub {
-  -webkit-line-clamp: 3;
-  max-width: 56ch;
-}
-
+.main-lead .tile-sub,
 .main-small.ms-tall .tile-sub {
   -webkit-line-clamp: 3;
-}
-
-.main-small.ms-6 .tile-sub,
-.main-small.ms-12 .tile-sub {
-  max-width: 70ch;
 }
 
 @media (max-width: 900px) {
@@ -4288,18 +4217,6 @@ html.modal-open {
   }
 }
 
-/* ---------- «Підслухано»: мораль діалогу ---------- */
-.dlg-moral {
-  margin: 12px 0 0;
-  font-size: clamp(13px, 1vw, 14.5px);
-  line-height: 1.45;
-  color: var(--muted);
-  font-weight: 600;
-}
-
-.tile--dialog .tile-head+.dlg-moral {
-  margin-top: 10px;
-}
 
 /* ---------- «Ще за день»: одинокі плитки та стікери будь-якого типу ---------- */
 .widget-grid .widget-tile.is-solo {
@@ -5110,45 +5027,51 @@ v11: ПРОГРЕС ЧИТАННЯ, КНОПКА «ДАЛІ» І ПРОЧИТА�
   display: none;
 }
 
-/* плитки «Головне»: стан «прочитано» — це одна змінна --rd (0 або 1).
-Її ставить клас .is-read (скрипт) або ранній стиль із <head> (до відмальовки), а весь вигляд описано тут:
-обкладинка й текст залишаються повної яскравості, у кутку без сірого фону показується лише галочка. */
+/* плитки «Головне»: стан «прочитано» — позначка вгорі (.tile-read).
+Її ставить клас .is-read (скрипт) або ранній стиль із <head> (до відмальовки через --rd: 1).
+Іконка залишається зверху, має вигляд як при hover (жовте коло) і при наведенні не змінюється. */
 .tile.is-read {
   --rd: 1;
-}
-
-.tile {
-  --go-bg0: rgba(255, 255, 255, .22);
-  --go-fg0: #fff;
-  --go-bg1: var(--hi);
-  --go-fg1: #17142b;
 }
 
 .tile .cover {
   transition: transform .7s cubic-bezier(.2, .7, .2, 1);
 }
 
-.tile .go {
-  position: relative;
-  background: color-mix(in srgb, var(--go-bg1) calc(var(--rd, 0) * 100%), var(--go-bg0));
-  color: color-mix(in srgb, var(--go-fg1) calc(var(--rd, 0) * 100%), var(--go-fg0));
+.tile-read {
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--hi);
+  color: #17142b;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  margin-left: auto;
+  opacity: var(--rd, 0);
+  transform: scale(calc(0.5 + var(--rd, 0) * 0.5));
+  transition: opacity .2s, transform .2s;
+  pointer-events: none;
 }
 
-.tile .go::before {
-  opacity: calc(1 - var(--rd, 0));
+.tile.is-read .tile-read {
+  opacity: 1;
+  transform: scale(1);
 }
 
-.tile .go::after {
+.tile.nc-1 .tile-read {
+  background: var(--yellow-ink);
+  color: var(--yellow);
+}
+
+.tile-read::after {
   content: "";
-  position: absolute;
-  inset: 0;
-  margin: auto;
   width: 18px;
   height: 18px;
   background: currentColor;
   -webkit-mask: var(--i-check) center / contain no-repeat;
   mask: var(--i-check) center / contain no-repeat;
-  opacity: var(--rd, 0);
 }
 
 /* «Читайте також»: компактніший список */
@@ -5214,6 +5137,7 @@ v11: ПРОГРЕС ЧИТАННЯ, КНОПКА «ДАЛІ» І ПРОЧИТА�
     display: flex;
     flex-direction: column;
     max-height: calc(100vh - 48px);
+    max-height: calc(100dvh - 48px);
   }
 
   /* padding + від'ємний margin: обвід hover (2px) не обрізається краєм прокрутки, а вирівнювання лишається тим самим */
@@ -5466,6 +5390,314 @@ v11: ПРОГРЕС ЧИТАННЯ, КНОПКА «ДАЛІ» І ПРОЧИТА�
   outline-offset: 2px;
   border-radius: 999px;
 }
+
+
+/* Зменшений рух: гасимо всі переходи й анімації (ігри та контент працюють без них) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Друк: лише текст відкритої новини */
+@media print {
+  .top, .masthead, .chips, .article-nav-bar, .article-next, .article-side-nav, .theme, dialog, .footer, footer,
+  .article-media-grid video { display: none !important; }
+  html, body { background: #fff !important; color: #000 !important; }
+  .article-columns { display: block !important; }
+  .article-prose { font-size: 12pt; line-height: 1.5; }
+  a { color: inherit; text-decoration: none; }
+}
+
+/* ================= ТИЖДЕНЬ: «НОМІНАЦІЇ» =================
+   Плитки .widget-tile у палітрі «Ще за день» (жовта · синя · біла / фіолетова · біла · жовта). Світла й темна теми. */
+
+/* білі «пілюлі» на білих картках світлої теми не видно — беремо колір пілюлі */
+:root:not([data-theme="dark"]) .tile--award.aw-2 .tile-label,
+:root:not([data-theme="dark"]) .tile--award.aw-4 .tile-label {
+  background: var(--pill);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* ---------- Номінації тижня ---------- */
+.award-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--gap);
+}
+
+.widget-tile.tile--award {
+  grid-column: span 2;
+  height: auto;
+  min-height: 300px;
+  justify-content: flex-start;
+  gap: 18px;
+}
+
+.award-grid--1 .tile--award {
+  grid-column: 1 / -1;
+}
+
+.award-grid--2 .tile--award,
+.award-grid--4 .tile--award {
+  grid-column: span 3;
+}
+
+.award-grid--5 .tile--award:nth-child(n+4) {
+  grid-column: span 3;
+}
+
+/* палітра як у «Ще за день»: жовта · синя · біла / фіолетова · біла · жовта */
+.tile--award.aw-0,
+.tile--award.aw-5 {
+  background: var(--yellow);
+  color: var(--yellow-ink);
+  border-color: transparent;
+}
+
+.tile--award.aw-1 {
+  background: #4326d8;
+  color: #fff;
+  border-color: transparent;
+}
+
+:root[data-theme="dark"] .tile--award.aw-1 {
+  background: #231278;
+  border: 1px solid rgba(164, 147, 255, .22);
+}
+
+.tile--award.aw-2,
+.tile--award.aw-4 {
+  background: var(--paper);
+  color: var(--text);
+}
+
+.tile--award.aw-3 {
+  background: var(--purple);
+  color: #fff;
+  border-color: transparent;
+}
+
+:root[data-theme="dark"] .tile--award.aw-3 {
+  border: 1px solid #261a44;
+}
+
+.tile--award.aw-1 .eyemeta,
+.tile--award.aw-3 .eyemeta {
+  color: var(--yellow);
+  opacity: 1;
+}
+
+.aw-who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.aw-ava {
+  width: 44px;
+  height: 44px;
+  font-size: 14px;
+}
+
+.tile--award.aw-0 .aw-ava,
+.tile--award.aw-5 .aw-ava {
+  background: #17142b;
+  color: var(--yellow);
+  box-shadow: 0 0 0 1.5px var(--yellow);
+}
+
+.tile--award.aw-1 .aw-ava,
+.tile--award.aw-3 .aw-ava {
+  background: var(--yellow);
+  color: #17142b;
+}
+
+.tile--award.aw-2 .aw-ava,
+.tile--award.aw-4 .aw-ava {
+  background: #4b2ee0;
+  color: #fff;
+}
+
+.aw-name {
+  margin: 0;
+  font-size: clamp(20px, 2vw, 28px);
+  line-height: 1.05;
+  letter-spacing: -.06em;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.aw-val {
+  margin-top: auto;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.aw-num {
+  font: 800 clamp(34px, 3.6vw, 52px)/1 var(--display);
+  letter-spacing: -.065em;
+}
+
+.aw-unit {
+  font-size: 13px;
+  font-weight: 750;
+  opacity: .8;
+}
+
+.tile--award.aw-1 .aw-num,
+.tile--award.aw-3 .aw-num {
+  color: var(--yellow);
+}
+
+.tile--award.aw-2 .aw-num,
+.tile--award.aw-4 .aw-num {
+  color: var(--accent);
+}
+
+.aw-note {
+  position: relative;
+  margin: 0;
+  padding-top: 12px;
+  font-size: clamp(13px, 1vw, 14.5px);
+  line-height: 1.45;
+}
+
+.aw-note::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: currentColor;
+  opacity: .2;
+}
+
+/* без значення: нотатка притискається донизу сама */
+.aw-who + .aw-note {
+  margin-top: auto;
+}
+
+@media (max-width: 900px) {
+  .award-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .award-grid .tile--award,
+  .award-grid--4 .tile--award,
+  .award-grid--5 .tile--award:nth-child(n+4) {
+    grid-column: span 1;
+  }
+
+  .award-grid .tile--award:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  .widget-tile.tile--award {
+    min-height: 260px;
+  }
+}
+
+@media (max-width: 620px) {
+  .award-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .award-grid .tile--award,
+  .award-grid .tile--award:last-child:nth-child(odd) {
+    grid-column: 1;
+  }
+
+  .widget-tile.tile--award {
+    min-height: 0;
+  }
+}
+
+/* ================= ДЕНЬ ТИЖНЯ НАД ЗАГОЛОВКОМ («Обране за тиждень») =================
+   Контурна «пілюля» кольору тексту плитки: на обкладинках біла, на жовтій плитці без обкладинки — темна. */
+.day-chip {
+  display: flex;
+  width: fit-content;
+  margin: 0 0 9px;
+  padding: 4px 11px;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .14);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  line-height: 1.2;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.tile.nc-1 .day-chip {
+  background: rgba(33, 27, 50, .06);
+}
+
+.main-small .day-chip {
+  margin-bottom: 7px;
+  padding: 3px 9px;
+  font-size: 10.5px;
+}
+
+/* ================= КАРТКИ ІГОР: УВЕСЬ БЛОК КЛІКАБЕЛЬНИЙ =================
+   «Розтягнене посилання»: ::after кнопки «Грати» накриває всю картку, тож клік по будь-якому місцю веде в гру.
+   Це та сама одна <a>, а не друге посилання: клавіатура й скринрідер бачать єдину дію «Грати у …».
+   Hover — як у .an-card («Далі» під новиною): обводиться лише картка (бордер + кільце 1px акценту), у кнопки «Грати»
+   обводу немає, змінюється лише колір значка (жовтий — це дає .btn:hover .ico). */
+.game-card {
+  position: relative;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.game-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.game-card .btn-cta {
+  position: static;
+}
+
+.game-card .btn-cta::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+}
+
+.game-card .btn-cta:hover {
+  border-color: var(--_line);
+  box-shadow: 0 0 0 0 transparent;
+}
+
+/* кільце фокуса з клавіатури — навколо всієї картки, а не лише кнопки (так само a:focus-visible у плиток) */
+.game-card .btn-cta:focus-visible {
+  outline: none;
+}
+
+.game-card .btn-cta:focus-visible::after {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+}
+
+/* фокус із клавіатури підсвічує значок так само, як hover */
+.tile:focus-visible .go {
+  background: var(--hi);
+  color: #17142b;
+}
+
+.tile.nc-1:focus-visible .go {
+  background: var(--yellow-ink);
+  color: var(--yellow);
+}
 {% endraw %}
     </style>
   </head>
@@ -5476,7 +5708,7 @@ v11: ПРОГРЕС ЧИТАННЯ, КНОПКА «ДАЛІ» І ПРОЧИТА�
       <div class="top">
         <div class="chips">
           <span class="chip on">{{ date_short }}</span>
-          {% if wk %}<span class="chip sp">Спецвипуск</span>{% endif %}
+          {% if wk %}<span class="chip sp">Тижневий випуск</span>{% endif %}
           {% if issue %}<span class="chip">випуск № {{ issue }}</span>{% endif %}
           {% if stats %}<span class="chip">{{ stats.total_messages }} {{ plural(stats.total_messages, 'повідомлення',
             'повідомлення', 'повідомлень') }}</span>{% endif %}
@@ -5528,7 +5760,7 @@ v11: ПРОГРЕС ЧИТАННЯ, КНОПКА «ДАЛІ» І ПРОЧИТА�
             <h2 id="mainTitle" class="disp">Головне</h2>
             <span class="sub">Спершу — найважливіше <i class="arr arr-se" aria-hidden="true"></i></span>
           </div>
-          {{ news_grid(NI.items, true, EM) }}
+          {{ news_grid(NI.items) }}
         </section>
 
         {%- set has_dialog = daily_dialogue and daily_dialogue.messages -%}
@@ -5628,14 +5860,16 @@ v11: ПРОГРЕС ЧИТАННЯ, КНОПКА «ДАЛІ» І ПРОЧИТА�
                   <span class="st-unit">{{ plural(stats.total_messages, 'повідомлення', 'повідомлення', 'повідомлень')
                     }} за день</span>
                   <div class="st-submetrics">
+                    {% if hour_max %}
                     <div class="st-submetric">
-                      <span class="st-submetric__val">{{ stats.participants }}</span>
-                      <span class="st-submetric__lbl">{{ plural(stats.participants, 'учасник', 'учасники', 'учасників') }}</span>
+                      <span class="st-submetric__val">{{ hour_max }}</span>
+                      <span class="st-unit">пік за годину</span>
                     </div>
+                    {% endif %}
                     {% if stats.busiest_hour %}
                     <div class="st-submetric">
                       <span class="st-submetric__val">{{ stats.busiest_hour }}</span>
-                      <span class="st-submetric__lbl">година пік</span>
+                      <span class="st-unit">година пік</span>
                     </div>
                     {% endif %}
                   </div>
@@ -5671,11 +5905,13 @@ v11: ПРОГРЕС ЧИТАННЯ, КНОПКА «ДАЛІ» І ПРОЧИТА�
                   </ol>
                 </section>
               </div>
+              {%- if day_stats %}
               <div class="st-foot">
                 <span class="st-foot-note">Усі учасники та кожна година — у розгорнутій статистиці</span>
                 <button class="btn" type="button" id="statsDetail" aria-haspopup="dialog">Детально<span
                     class="ico ico-mo" aria-hidden="true"></span></button>
               </div>
+              {%- endif %}
             </article>
           </div>
         </section>
@@ -5723,14 +5959,29 @@ v11: ПРОГРЕС ЧИТАННЯ, КНОПКА «ДАЛІ» І ПРОЧИТА�
         {#- ================= ПІДСУМКИ ТИЖНЯ ================= -#}
         {%- if has_week %}
         <div class="week-sep" role="separator"></div>
-        {%- if wk %}
-        <section class="week-first" aria-labelledby="daysTitle">
+        {#- ================= ПІДСУМОК ТИЖНЯ ================= -#}
+        {%- if wk and WR.items %}
+        <section class="week-first" aria-labelledby="recapTitle">
           <div class="section-head">
-            <h2 id="daysTitle" class="disp">Головне за тиждень</h2>
+            <h2 id="recapTitle" class="disp">Підсумок тижня</h2>
             <span class="sub sub--wk">{{ period }}{{ ' ' if period }}<i class="arr arr-se"
                 aria-hidden="true"></i></span>
           </div>
-          {{ news_grid(WI.items, true, EM) }}
+          {{ news_grid(WR.items) }}
+        </section>
+        {%- endif %}
+
+        {#- ================= ОБРАНЕ ЗА ТИЖДЕНЬ =================
+        Смішні й цікаві новини з попередніх випусків тижня (обирає модель, weekly.build_picks); новин поточного випуску
+        тут немає — вони вже в «Головному». -#}
+        {%- if wk and WP.items %}
+        <section class="{{ 'sec-mt' if WR.items else 'week-first' }}" aria-labelledby="picksTitle">
+          <div class="section-head">
+            <h2 id="picksTitle" class="disp">Обране за тиждень</h2>
+            <span class="sub sub--wk">{{ WP.items | length }} {{ plural(WP.items | length, 'новина', 'новини', 'новин') }}<i
+                class="arr arr-se" aria-hidden="true"></i></span>
+          </div>
+          {{ news_grid(WP.items) }}
         </section>
         {%- endif %}
 
@@ -5771,6 +6022,37 @@ v11: ПРОГРЕС ЧИТАННЯ, КНОПКА «ДАЛІ» І ПРОЧИТА�
         </section>
         {%- endif %}
 
+
+        {#- ================= НОМІНАЦІЇ ТИЖНЯ =================
+        weekly_awards: до 6 об'єктів — {title, sender, value, unit, note, meta}; value/unit/meta необов'язкові -#}
+        {%- set AW = (weekly_awards or [])[:6] -%}
+        {%- if wk and AW %}
+        <section class="sec-mt" aria-labelledby="awardsTitle">
+          <div class="section-head">
+            <h2 id="awardsTitle" class="disp">Номінації тижня</h2>
+            <span class="sub sub--wk">{{ period }}{{ ' ' if period }}<i class="arr arr-se"
+                aria-hidden="true"></i></span>
+          </div>
+          <div class="award-grid award-grid--{{ AW | length }}">
+            {%- for a in AW %}
+            <article class="widget-tile tile--award aw-{{ loop.index0 % 6 }} t">
+              <div class="tile-head">
+                <span class="tile-label">{{ a.title }}</span>
+                {%- if a.meta %}<span class="eyemeta">{{ a.meta }}</span>{% endif %}
+              </div>
+              <div class="aw-who">
+                <span class="dlg-ava aw-ava" aria-hidden="true">{{ initials(a.sender) }}</span>
+                <h3 class="aw-name disp">{{ a.sender }}</h3>
+              </div>
+              {%- if a.value %}
+              <div class="aw-val"><span class="aw-num">{{ a.value }}</span>{% if a.unit %}<span class="aw-unit">{{ a.unit }}</span>{% endif %}</div>
+              {%- endif %}
+              {%- if a.note %}<p class="aw-note">{{ a.note }}</p>{% endif %}
+            </article>
+            {%- endfor %}
+          </div>
+        </section>
+        {%- endif %}
         {%- if wk %}
         {%- if wk.stats %}
         {%- set ws = wk.stats -%}
@@ -5794,17 +6076,17 @@ v11: ПРОГРЕС ЧИТАННЯ, КНОПКА «ДАЛІ» І ПРОЧИТА�
                   <div class="st-submetrics">
                     <div class="st-submetric">
                       <span class="st-submetric__val">~{{ ws.avg_per_day }}</span>
-                      <span class="st-submetric__lbl">на добу</span>
+                      <span class="st-unit">на добу</span>
                     </div>
                     {% if ws.busiest_day %}
                     <div class="st-submetric">
                       <span class="st-submetric__val">{{ ws.busiest_day.count }}</span>
-                      <span class="st-submetric__lbl">пік дня{% if ws.busiest_day_name %} ({{ ws.busiest_day_name[:2] }}){% endif %}</span>
+                      <span class="st-unit">пік дня</span>
                     </div>
                     {% elif ws.msgs_per_hour %}
                     <div class="st-submetric">
                       <span class="st-submetric__val">{{ ws.msgs_per_hour }}</span>
-                      <span class="st-submetric__lbl">щогодини</span>
+                      <span class="st-unit">щогодини</span>
                     </div>
                     {% endif %}
                   </div>
@@ -5834,7 +6116,7 @@ v11: ПРОГРЕС ЧИТАННЯ, КНОПКА «ДАЛІ» І ПРОЧИТА�
                   </ol>
                 </section>
               </div>
-              {%- if week_stats_people or ws.all_senders or ws.top_senders %}
+              {%- if week_stats %}
               <div class="st-foot">
                 <span class="st-foot-note">Усі учасники та кожен день тижня — у розгорнутій статистиці</span>
                 <button class="btn" type="button" id="weekStatsDetail" aria-haspopup="dialog">Детально<span
@@ -5925,9 +6207,9 @@ v11: ПРОГРЕС ЧИТАННЯ, КНОПКА «ДАЛІ» І ПРОЧИТА�
     {%- for it in NI.items %}
     {{ article_page(NI.items, loop.index0, CV.ids) }}
     {%- endfor %}
-    {%- for it in WI.items %}{%- if not it.alias %}
-    {{ article_page(WI.items, loop.index0, CV.ids) }}
-    {%- endif %}{%- endfor %}
+    {%- for it in WA.items %}
+    {{ article_page(WA.items, loop.index0, CV.ids) }}
+    {%- endfor %}
     {#- «Читайте також» для ігор: один екземпляр; скрипт клонує його в сторінку гри -#}
     <template id="also-card-tpl">{{ also_card(NI.items) }}</template>
 
@@ -6185,7 +6467,11 @@ v11: ПРОГРЕС ЧИТАННЯ, КНОПКА «ДАЛІ» І ПРОЧИТА�
     {%- if word_data %}
     <script type="text/plain" id="wordleData" data-id="{{ word_meta.id }}"
       data-len="{{ word_meta.len }}">{{ word_data }}</script>
-    {%- if word_dict %}
+    {#- словник: word_dict — слова через пробіл; word_dict_packed (необов'язково, WORDLE_PACKED=1 у render.py) — те саме,
+    але front-coding + deflate + base64 (≈10× менше); скрипт розпакує його сам -#}
+    {%- if word_dict_packed %}
+    <script id="wdict" type="text/plain" data-fmt="fc-deflate">{{ word_dict_packed }}</script>
+    {%- elif word_dict %}
     <script id="wdict" type="text/plain">{{ word_dict }}</script>{% endif %}{% endif %}
     {%- if quiz_data %}
     <script type="text/plain" id="quizData" data-day="{{ day }}" data-name="{{ name }}">{{ quiz_data }}</script>{% endif
@@ -6193,19 +6479,11 @@ v11: ПРОГРЕС ЧИТАННЯ, КНОПКА «ДАЛІ» І ПРОЧИТА�
     {%- if cw_data %}
     <script type="text/plain" id="cwData" data-day="{{ day }}">{{ cw_data }}</script>{% endif %}
     <script type="application/json" id="tplJokes">{{ (c.jokes or []) | tojson }}</script>
-    {%- set PS = namespace(l=[]) -%}
-    {%- for s in (stats.all_senders or stats.top_senders) -%}{%- set PS.l = PS.l + [[s.sender, s.count]] -%}{%- endfor
-    %}
-    {%- if wk and wk.stats and (week_stats_people or wk.stats.all_senders or wk.stats.top_senders) %}
-    {%- set WS = namespace(l=[], d=[]) -%}
-    {%- for s in (wk.stats.all_senders or wk.stats.top_senders) -%}{%- set WS.l = WS.l + [[s.sender, s.count]] -%}{%-
-    endfor %}
-    {%- for p in (wk.stats.per_day or []) -%}{%- set WS.d = WS.d + [[p.label, p.date, p.count]] -%}{%- endfor %}
-    <script type="application/json"
-      id="weekStatsData">{{ {"range": period, "total": wk.stats.total_messages, "days": WS.d, "people": (week_stats_people if week_stats_people is defined and week_stats_people else WS.l), "media": (week_stats_media if week_stats_media is defined else (wk.stats.media_counts if wk.stats.media_counts is defined else none)), "avg_day": wk.stats.avg_per_day, "msgs_per_hour": wk.stats.msgs_per_hour, "busiest_day_name": wk.stats.busiest_day_name} | tojson }}</script>
-    {%- endif %}
-    <script type="application/json"
-      id="statsData">{{ {"date": date_short, "total": stats.total_messages, "hours": stats.messages_by_hour, "people": (stats_people if stats_people is defined and stats_people else PS.l), "media": (stats_media if stats_media is defined else (stats.media_counts if stats.media_counts is defined else none)), "first_message": stats.first_message, "last_message": stats.last_message, "busiest_hour": stats.busiest_hour} | tojson }}</script>
+    {#- вміст вікон «Детально» (відкриваються кнопками #statsDetail / #weekStatsDetail; скрипт бере innerHTML) -#}
+    {%- if day_stats %}
+    <template id="tpl-stats-day" data-title="{{ day_stats.title }}">{{ stats_detail(day_stats, false) }}</template>{% endif %}
+    {%- if week_stats %}
+    <template id="tpl-stats-week" data-title="{{ week_stats.title }}">{{ stats_detail(week_stats, true) }}</template>{% endif %}
     {%- endif %}
 
     <!-- Єдине модальне вікно: деталі статистики та перегляд фото/відео на весь екран -->
@@ -6314,12 +6592,32 @@ function loadWordleCfg() {
   WORDLE_CFG.DATE = m ? m.slice(1).reverse().join('.') : id;
 }
 
-var wordleDictSet = null;
+var wordleDictSet = null, wordleDictPending = false;
+
+/* Пакований словник (data-fmt="fc-deflate"): слова відсортовано, кожне записане як «цифра = скільки літер
+   збігається з попереднім» + хвіст; усе стиснуто deflate-raw і закодовано base64. Розпаковка асинхронна
+   (DecompressionStream). Якщо браузер її не вміє, гра приймає будь-яке слово потрібної довжини. */
+function unpackWordleDict(el) {
+  if (typeof DecompressionStream === 'undefined') return;
+  wordleDictPending = true;
+  try {
+    var bin = atob(el.textContent.trim()), u = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text().then(function (t) {
+      var parts = t.split(/(\d)/), prev = '', set = wordleDictSet || new Set();
+      for (var j = 1; j + 1 < parts.length; j += 2) { prev = prev.slice(0, +parts[j]) + parts[j + 1]; set.add(prev.toUpperCase()); }
+      wordleDictSet = set;
+    }).catch(function () { }).then(function () { wordleDictPending = false; });
+  } catch (e) { wordleDictPending = false; }
+}
+
 function getWordleDict() {
+  if (wordleDictPending) return null;
   if (wordleDictSet) return wordleDictSet;
   var dictEl = document.getElementById('wdict');
   if (dictEl && dictEl.textContent.trim()) {
-    wordleDictSet = new Set(dictEl.textContent.trim().toUpperCase().split(/\s+/));
+    if (dictEl.getAttribute('data-fmt') === 'fc-deflate') { unpackWordleDict(dictEl); if (wordleDictPending) return null; }
+    else wordleDictSet = new Set(dictEl.textContent.trim().toUpperCase().split(/\s+/));
   }
   var extra = WORDLE_CFG.W && WORDLE_CFG.W.dictionary;
   if (extra && extra.length) {
@@ -6359,6 +6657,7 @@ function initWordle() {
   var boardWrap = document.getElementById('wBoardWrap');
   if (!boardWrap) return;
   loadWordleCfg();
+  getWordleDict();   // для пакованого словника — старт розпаковки одразу, до першого слова
 
   // Load state from localStorage
   var saved = null;
@@ -7587,12 +7886,32 @@ var readSet = {};
   });
 })();
 
+/* «Близнюки»: новина тижня, що збігається з новиною дня, має власну сторінку (data-twin на шаблоні) —
+   прочитаність спільна для обох сторінок і обох плиток */
+var TWINS = null;
+function twinsOf(slug) {
+  if (!TWINS) {
+    TWINS = {};
+    document.querySelectorAll('template[data-twin]').forEach(function (t) {
+      var x = t.id.slice(4), y = t.getAttribute('data-twin');
+      (TWINS[x] = TWINS[x] || []).push(y);
+      (TWINS[y] = TWINS[y] || []).push(x);
+    });
+    Object.keys(readSet).forEach(function (k) { (TWINS[k] || []).forEach(function (t) { readSet[t] = 1; }); });
+  }
+  return TWINS[slug] || [];
+}
 function markRead(slug) {
-  if (!slug || readSet[slug]) return;
-  readSet[slug] = 1;
-  var a = store(READ_KEY), rec = readPrefix + slug;
+  if (!slug) return;
+  var add = [slug].concat(twinsOf(slug)).filter(function (s) { return !readSet[s]; });
+  if (!add.length) return;
+  var a = store(READ_KEY);
   if (!Array.isArray(a)) a = [];          // читаємо заново: у іншій вкладці могли дописати свої записи
-  if (a.indexOf(rec) < 0) a.push(rec);
+  add.forEach(function (s) {
+    readSet[s] = 1;
+    var rec = readPrefix + s;
+    if (a.indexOf(rec) < 0) a.push(rec);
+  });
   if (a.length > READ_MAX) a = a.slice(a.length - READ_MAX);
   store(READ_KEY, a);
 }
@@ -7612,6 +7931,7 @@ function bindListFade(el) {
 
 function applyReadState(root) {
   if (!root) return;
+  twinsOf('');
 
   /* плитки «Головне» */
   root.querySelectorAll('a.tile').forEach(function (a) {
@@ -7925,6 +8245,15 @@ function initModal() {
     wrap.addEventListener('mouseenter', function () { v.play().catch(function () { }); });
     wrap.addEventListener('mouseleave', function () { v.pause(); v.currentTime = 0; });
   });
+
+  var coverVideos = document.querySelectorAll('.tile .cover video');
+  coverVideos.forEach(function (v) {
+    v.pause();
+    var tile = v.closest('.tile');
+    if (!tile) return;
+    tile.addEventListener('mouseenter', function () { v.play().catch(function () { }); });
+    tile.addEventListener('mouseleave', function () { v.pause(); v.currentTime = 0; });
+  });
 }
 
 // Єдина точка відкриття: блокує прокрутку сторінки, поки вікно відкрите.
@@ -8018,6 +8347,7 @@ function renderMediaItem(item, curr, total) {
   modalMediaContainer.appendChild(wrap);
   modalCaption.textContent = item.caption || '';
   modalCounter.textContent = total > 1 ? (curr + ' / ' + total) : '';
+  preloadNeighbours();
 }
 
 function prevMedia() {
@@ -8052,6 +8382,69 @@ window.addEventListener('keydown', function (e) {
   }
 });
 
+/* свайп у перегляді медіа: вліво — далі, вправо — назад; сусідні кадри готуються наперед */
+(function () {
+  var x0 = null, y0 = 0;
+  var box = document.getElementById('modalMediaView');
+  if (!box) return;
+  box.addEventListener('touchstart', function (e) {
+    if (e.touches.length !== 1 || e.target.closest('video[controls]')) { x0 = null; return; }
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+  }, { passive: true });
+  box.addEventListener('touchend', function (e) {
+    if (x0 === null) return;
+    var dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+    x0 = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) { if (dx < 0) nextMedia(); else prevMedia(); }
+  }, { passive: true });
+})();
+function preloadNeighbours() {
+  var l = activeMediaList;
+  if (!l || l.length < 2) return;
+  [1, -1].forEach(function (d) {
+    var it = l[(currentMediaIndex + d + l.length) % l.length];
+    if (it && it.type === 'image') (window.requestIdleCallback || setTimeout)(function () { toBlobUrl(it.src); });
+  });
+}
+
+
+/* Вибір стовпчика в «Детально» (години/дні): підпис і позначка беруться з data-атрибутів кнопок (data-rt, data-rs, data-pk).
+   Наведення лише змінює підпис; скринрідеру він озвучується (aria-live) тільки після кліку або стрілок. */
+function wireStatsBars() {
+  var bars = [].slice.call(modalBody.querySelectorAll('.sd-bar'));
+  var readout = modalBody.querySelector('.sd-readout');
+  if (!bars.length || !readout) return;
+  var peak = Math.max(0, bars.findIndex(function (b) { return b.classList.contains('is-peak'); }));
+  function select(i, announce, focus) {
+    bars.forEach(function (b, k) {
+      var on = k === i;
+      b.classList.toggle('is-sel', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.tabIndex = on ? 0 : -1;
+    });
+    readout.setAttribute('aria-live', announce ? 'polite' : 'off');
+    var b = bars[i], t = document.createElement('strong'), s = document.createElement('span');
+    t.className = 'disp'; t.textContent = b.getAttribute('data-rt');
+    s.textContent = b.getAttribute('data-rs');
+    if (b.getAttribute('data-pk')) { s.appendChild(document.createTextNode(' · ')); var pk = document.createElement('b'); pk.textContent = b.getAttribute('data-pk'); s.appendChild(pk); }
+    readout.textContent = '';
+    readout.appendChild(t); readout.appendChild(s);
+    if (focus) b.focus();
+  }
+  bars.forEach(function (b, i) {
+    b.addEventListener('click', function () { select(i, true); });
+    b.addEventListener('mouseenter', function () { select(i, false); });
+    b.addEventListener('keydown', function (e) {
+      var to = e.key === 'ArrowLeft' ? Math.max(0, i - 1) : e.key === 'ArrowRight' ? Math.min(bars.length - 1, i + 1)
+        : e.key === 'Home' ? 0 : e.key === 'End' ? bars.length - 1 : -1;
+      if (to < 0) return;
+      e.preventDefault();
+      select(to, true, true);
+    });
+  });
+  select(peak, false);
+}
+
 
 // ================= WIDGET LOGIC =================
 document.addEventListener('DOMContentLoaded', function () {
@@ -8068,16 +8461,6 @@ document.addEventListener('DOMContentLoaded', function () {
       var parsed = JSON.parse(tplJokes.textContent);
       if (Array.isArray(parsed)) jokes = parsed;
     } catch (e) { }
-    if (!jokes.length) {
-      if (tplJokes.content) {
-        tplJokes.content.querySelectorAll('p').forEach(function (el) { jokes.push(el.textContent.trim()); });
-      } else if (tplJokes.querySelectorAll) {
-        tplJokes.querySelectorAll('p').forEach(function (el) { jokes.push(el.textContent.trim()); });
-      }
-    }
-    if (!jokes.length && tplJokes.textContent) {
-      jokes = tplJokes.textContent.split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
-    }
   }
   var jokeStackEl = document.getElementById('jokeStack');
   var jokeNodes = [];
@@ -8117,280 +8500,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
   renderJokeView();
 
-  // 3: Цифри дня — кнопка «Детально» (розгорнута статистика)
-  (function () {
-    var btn = document.getElementById('statsDetail');
-    var dataEl = document.getElementById('statsData');
-    if (!btn || !dataEl) return;
-    var D;
-    try { D = JSON.parse(dataEl.textContent); } catch (err) { return; }
-
-    function plural(n, one, few, many) {
-      var m = n % 100, k = n % 10;
-      if (m > 10 && m < 20) return many;
-      if (k === 1) return one;
-      if (k >= 2 && k <= 4) return few;
-      return many;
-    }
-    function msgs(n) { return n + ' ' + plural(n, 'повідомлення', 'повідомлення', 'повідомлень'); }
-    function pct(v, total) { return (Math.round(v / total * 1000) / 10).toFixed(1).replace('.', ','); }
-    function pad(n) { return (n < 10 ? '0' : '') + n; }
-    function initials(name) {
-      return name.split(/\s+/).slice(0, 2).map(function (w) { return w.charAt(0); }).join('').toUpperCase();
-    }
-    function esc(s) {
-      return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
-    }
-
-    var H = D.hours, total = D.total;
-    if (!D.people || !D.people.length) { btn.hidden = true; return; }
-    var max = Math.max.apply(null, H);
-    var peak = H.indexOf(max);
-
-    function build() {
-      var zero = H.filter(function (v) { return v === 0; }).length;
-      var bestS = 0, bestV = -1;
-      for (var s = 0; s + 4 <= 24; s++) {
-        var v = H[s] + H[s + 1] + H[s + 2] + H[s + 3];
-        if (v > bestV) { bestV = v; bestS = s; }
-      }
-      var people = D.people, pmax = people[0][1];
-      var top3 = people.slice(0, 3).reduce(function (a, p) { return a + p[1]; }, 0);
-      var m = D.media || null, mt = m ? m.photo + m.sticker + m.gif : 0;
-
-      var h = '<div class="sd">';
-
-      h += '<div class="sd-kpis">' +
-        '<div class="sd-kpi"><strong class="disp">' + total + '</strong><span>повідомлень за день</span></div>' +
-        '<div class="sd-kpi"><strong class="disp">' + people.length + '</strong><span>' + plural(people.length, 'учасник', 'учасники', 'учасників') + '</span></div>' +
-        (m ? '<div class="sd-kpi"><strong class="disp">' + mt + '</strong><span>медіа: ' + m.photo + ' фото · ' + m.sticker + ' стікерів · ' + m.gif + ' GIF</span></div>' : '') +
-        '<div class="sd-kpi sd-kpi-hi"><strong class="disp">' + pad(peak) + ':00</strong><span>пік · ' + msgs(max) + ' (' + pct(max, total) + '%)</span></div>' +
-        '</div>';
-
-      h += '<section class="sd-sec"><div class="sd-sec-head"><h4 class="disp">Активність по годинах</h4><span>наведіть або оберіть годину</span></div>' +
-        '<div class="sd-readout" aria-live="polite"></div>' +
-        '<div class="sd-plot"><div class="sd-gl" style="--p:1"><span>' + max + '</span></div><div class="sd-gl" style="--p:.5"><span>' + Math.round(max / 2) + '</span></div>' +
-        '<div class="sd-bars" role="group" aria-label="Повідомлення по годинах">';
-      H.forEach(function (v, i) {
-        h += '<button type="button" class="sd-bar' + (i === peak ? ' is-peak' : '') + '" data-h="' + i + '" style="--h:' + (v / max * 100).toFixed(1) + '%" aria-label="' + pad(i) + ':00 — ' + msgs(v) + '"><i></i><b>' + pad(i) + '</b></button>';
-      });
-      var leader = people[0];
-      var leaderLine = leader ? '<li><b>' + esc(leader[0]) + '</b> — лідер дня: ' + msgs(leader[1]) + ', або ' + pct(leader[1], total) + '% від загальної кількості</li>' : '';
-      var activityLine = (D.first_message && D.last_message) ? '<li><b>Активність чату:</b> з ' + esc(D.first_message.time) + ' до ' + esc(D.last_message.time) + (D.busiest_hour ? ', пік о ' + esc(D.busiest_hour) : '') + '</li>' : '';
-
-      h += '</div></div></section>';
-
-      h += '<section class="sd-sec"><div class="sd-sec-head"><h4 class="disp">Головні спостереження</h4><span>аналітика доби</span></div>' +
-        '<ul class="sd-insights">' +
-        leaderLine +
-        activityLine +
-        '<li><b>' + pad(bestS) + ':00–' + pad(bestS + 3) + ':59</b> — найактивніший відрізок: ' + msgs(bestV) + ', або ' + pct(bestV, total) + '% доби</li>' +
-        '<li><b>' + zero + ' з 24</b> годин пройшли без жодного повідомлення</li>' +
-        '<li><b>Топ-3</b> учасники написали ' + pct(top3, total) + '% усіх повідомлень</li>' +
-        '</ul></section>';
-
-      h += '<section class="sd-sec"><div class="sd-sec-head"><h4 class="disp">Хто скільки написав</h4><span>' + people.length + ' ' + plural(people.length, 'учасник', 'учасники', 'учасників') + '</span></div><ol class="sd-people">';
-      people.forEach(function (p, i) {
-        h += '<li><span class="sd-rank">' + pad(i + 1) + '</span><span class="sd-pava" aria-hidden="true">' + esc(initials(p[0])) + '</span>' +
-          '<span class="sd-pname">' + esc(p[0]) + '</span>' +
-          '<span class="sd-pbar"><i style="--w:' + (p[1] / pmax * 100).toFixed(1) + '%"></i></span>' +
-          '<strong class="sd-pcount">' + p[1] + '</strong><span class="sd-pshare">' + pct(p[1], total) + '%</span></li>';
-      });
-      h += '</ol></section>';
-
-      if (m) {
-        h += '<section class="sd-sec"><div class="sd-sec-head"><h4 class="disp">Медіа за день</h4><span>' + mt + ' ' + plural(mt, 'файл', 'файли', 'файлів') + '</span></div>' +
-          '<div class="sd-media-bar" role="img" aria-label="Фото ' + m.photo + ', стікерів ' + m.sticker + ', GIF ' + m.gif + '">' +
-          '<i class="m-photo" style="flex:' + m.photo + '"></i><i class="m-sticker" style="flex:' + m.sticker + '"></i><i class="m-gif" style="flex:' + m.gif + '"></i></div>' +
-          '<ul class="sd-media-legend">' +
-          '<li><i class="m-photo"></i><strong>' + m.photo + '</strong> фото · ' + pct(m.photo, mt) + '%</li>' +
-          '<li><i class="m-sticker"></i><strong>' + m.sticker + '</strong> стікерів · ' + pct(m.sticker, mt) + '%</li>' +
-          '<li><i class="m-gif"></i><strong>' + m.gif + '</strong> GIF · ' + pct(m.gif, mt) + '%</li></ul></section>';
-      }
-
-      return h + '</div>';
-    }
-
-    function wire() {
-      var bars = [].slice.call(modalBody.querySelectorAll('.sd-bar'));
-      var readout = modalBody.querySelector('.sd-readout');
-      function select(i, focus) {
-        bars.forEach(function (b, k) {
-          var on = k === i;
-          b.classList.toggle('is-sel', on);
-          b.setAttribute('aria-pressed', on ? 'true' : 'false');
-          b.tabIndex = on ? 0 : -1;
-        });
-        var v = H[i];
-        readout.innerHTML = '<strong class="disp">' + pad(i) + ':00–' + pad(i) + ':59</strong><span>' + msgs(v) + ' · ' + pct(v, total) + '% доби' + (i === peak ? ' · <b>пік дня</b>' : '') + '</span>';
-        if (focus) bars[i].focus();
-      }
-      bars.forEach(function (b, i) {
-        b.addEventListener('click', function () { select(i); });
-        b.addEventListener('mouseenter', function () { select(i); });
-        b.addEventListener('keydown', function (e) {
-          if (e.key === 'ArrowLeft') { e.preventDefault(); select(Math.max(0, i - 1), true); }
-          else if (e.key === 'ArrowRight') { e.preventDefault(); select(Math.min(23, i + 1), true); }
-          else if (e.key === 'Home') { e.preventDefault(); select(0, true); }
-          else if (e.key === 'End') { e.preventDefault(); select(23, true); }
-        });
-      });
-      select(peak);
-    }
-
+  // 3: «Детально» у цифрах дня й тижня. Вміст вікна вже зверстано в <template id="tpl-stats-day|week"> (числа рахує
+  // бекенд, page_data.py); тут лише відкриття вікна та вибір стовпчика.
+  function bindStatsDetail(btnId, tplId) {
+    var btn = document.getElementById(btnId);
+    if (!btn) return;
+    var tpl = document.getElementById(tplId);
+    if (!tpl) { btn.hidden = true; return; }
     btn.addEventListener('click', function () {
-      openContentModal('Цифри дня · ' + D.date, 'Детально', build(), { wide: true });
-      wire();
+      openContentModal(tpl.getAttribute('data-title') || '', 'Детально', tpl.innerHTML, { wide: true });
+      wireStatsBars();
     });
-  })();
-
-
-  // Цифри тижня — кнопка «Детально» (розгорнута статистика за тиждень)
-  (function () {
-    var btn = document.getElementById('weekStatsDetail');
-    var dataEl = document.getElementById('weekStatsData');
-    if (!btn || !dataEl) return;
-    var D;
-    try { D = JSON.parse(dataEl.textContent); } catch (err) { btn.hidden = true; return; }
-    if (!D.people || !D.people.length) { btn.hidden = true; return; }
-
-    function plural(n, one, few, many) {
-      var m = n % 100, k = n % 10;
-      if (m > 10 && m < 20) return many;
-      if (k === 1) return one;
-      if (k >= 2 && k <= 4) return few;
-      return many;
-    }
-    function msgs(n) { return n + ' ' + plural(n, 'повідомлення', 'повідомлення', 'повідомлень'); }
-    function pct(v, total) { return total ? (Math.round(v / total * 1000) / 10).toFixed(1).replace('.', ',') : '0'; }
-    function pad(n) { return (n < 10 ? '0' : '') + n; }
-    function initials(name) { return name.split(/\s+/).slice(0, 2).map(function (w) { return w.charAt(0); }).join('').toUpperCase(); }
-    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-
-    var WEEKDAYS_FULL = ['понеділок', 'вівторок', 'середа', 'четвер', 'п’ятниця', 'субота', 'неділя'];
-    var MONTHS_GEN = ['січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня'];
-    function parseIso(s) {
-      var p = (s || '').split('-');
-      if (p.length !== 3) return null;
-      return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
-    }
-    function fullWeekday(s) {
-      var d = parseIso(s);
-      if (!d) return s || '';
-      return WEEKDAYS_FULL[(d.getDay() + 6) % 7];
-    }
-    function fullDateUa(s) {
-      var d = parseIso(s);
-      if (!d) return s || '';
-      var w = WEEKDAYS_FULL[(d.getDay() + 6) % 7];
-      return w + ', ' + d.getDate() + ' ' + MONTHS_GEN[d.getMonth()];
-    }
-
-    var days = D.days || [];
-    var total = D.total || days.reduce(function (a, d) { return a + d[2]; }, 0) || 1;
-    var vals = days.map(function (d) { return d[2]; });
-    var max = Math.max.apply(null, vals.concat([1]));
-    var peak = vals.indexOf(max);
-    var min = Math.min.apply(null, vals);
-    var low = vals.indexOf(min);
-
-    function build() {
-      var people = D.people, pmax = people[0][1] || 1;
-      var top3 = people.slice(0, 3).reduce(function (a, p) { return a + p[1]; }, 0);
-      var m = D.media || null, mt = m ? m.photo + m.sticker + m.gif : 0;
-      var avg = days.length ? Math.round(total / days.length) : 0;
-      var avgDay = D.avg_day || avg;
-      var leader = people[0];
-      var leaderLine = leader ? '<li><b>' + esc(leader[0]) + '</b> — лідер тижня: ' + msgs(leader[1]) + ', або ' + pct(leader[1], total) + '% від загальної кількості</li>' : '';
-      var paceLine = avgDay ? '<li><b>Темп спілкування:</b> у середньому ~' + avgDay + ' ' + plural(avgDay, 'повідомлення', 'повідомлення', 'повідомлень') + ' на добу, близько ' + (D.msgs_per_hour ? D.msgs_per_hour : (total / 168).toFixed(1).replace('.', ',')) + ' щогодини</li>' : '';
-      var peakDateStr = days[peak] ? fullDateUa(days[peak][1]) : '';
-      var peakDayLine = peakDateStr ? '<li><b>' + esc(peakDateStr) + '</b> — найактивніший день: ' + msgs(max) + ', або ' + pct(max, total) + '% тижня</li>' : '';
-      var lowDateStr = (low !== -1 && days[low]) ? fullDateUa(days[low][1]) : '';
-      var lowDayLine = (low !== peak && lowDateStr) ? '<li><b>' + esc(lowDateStr) + '</b> — найтихіший день: ' + msgs(min) + '</li>' : '';
-      var top3Line = '<li><b>Топ-3</b> учасники написали ' + pct(top3, total) + '% усіх повідомлень</li>';
-      var h = '<div class="sd sd--week">';
-
-      h += '<div class="sd-kpis">' +
-        '<div class="sd-kpi"><strong class="disp">' + total + '</strong><span>повідомлень за тиждень</span></div>' +
-        '<div class="sd-kpi"><strong class="disp">' + people.length + '</strong><span>' + plural(people.length, 'учасник', 'учасники', 'учасників') + '</span></div>' +
-        (m && mt ? '<div class="sd-kpi"><strong class="disp">' + mt + '</strong><span>медіа: ' + m.photo + ' фото · ' + m.sticker + ' стікерів · ' + m.gif + ' GIF</span></div>'
-          : '<div class="sd-kpi"><strong class="disp">~' + avgDay + '</strong><span>у середньому на добу</span></div>') +
-        (days.length && peakDateStr ? '<div class="sd-kpi sd-kpi-hi"><strong class="disp">' + max + '</strong><span>пік тижня: ' + esc(peakDateStr) + ' · ' + pct(max, total) + '%</span></div>' : '') +
-        '</div>';
-
-      if (days.length) {
-        h += '<section class="sd-sec"><div class="sd-sec-head"><h4 class="disp">Активність по днях</h4><span>наведіть або оберіть день</span></div>' +
-          '<div class="sd-readout" aria-live="polite"></div>' +
-          '<div class="sd-plot"><div class="sd-gl" style="--p:1"><span>' + max + '</span></div><div class="sd-gl" style="--p:.5"><span>' + Math.round(max / 2) + '</span></div>' +
-          '<div class="sd-bars" role="group" aria-label="Повідомлення по днях">';
-        days.forEach(function (d, i) {
-          h += '<button type="button" class="sd-bar' + (i === peak ? ' is-peak' : '') + '" data-h="' + i + '" style="--h:' + (d[2] / max * 100).toFixed(1) + '%" aria-label="' + esc(d[1]) + ' — ' + msgs(d[2]) + '"><i></i><b>' + esc(d[0]) + '</b></button>';
-        });
-        h += '</div></div></section>';
-      }
-
-      h += '<section class="sd-sec"><div class="sd-sec-head"><h4 class="disp">Головні спостереження</h4><span>аналітика за 7 днів</span></div>' +
-        '<ul class="sd-insights">' +
-        leaderLine +
-        paceLine +
-        peakDayLine +
-        lowDayLine +
-        top3Line +
-        '</ul></section>';
-
-      h += '<section class="sd-sec"><div class="sd-sec-head"><h4 class="disp">Хто скільки написав</h4><span>' + people.length + ' ' + plural(people.length, 'учасник', 'учасники', 'учасників') + '</span></div><ol class="sd-people">';
-      people.forEach(function (p, i) {
-        h += '<li><span class="sd-rank">' + pad(i + 1) + '</span><span class="sd-pava" aria-hidden="true">' + esc(initials(p[0])) + '</span>' +
-          '<span class="sd-pname">' + esc(p[0]) + '</span>' +
-          '<span class="sd-pbar"><i style="--w:' + (p[1] / pmax * 100).toFixed(1) + '%"></i></span>' +
-          '<strong class="sd-pcount">' + p[1] + '</strong><span class="sd-pshare">' + pct(p[1], total) + '%</span></li>';
-      });
-      h += '</ol></section>';
-
-      if (m && mt) {
-        h += '<section class="sd-sec"><div class="sd-sec-head"><h4 class="disp">Медіа за тиждень</h4><span>' + mt + ' ' + plural(mt, 'файл', 'файли', 'файлів') + '</span></div>' +
-          '<div class="sd-media-bar" role="img" aria-label="Фото ' + m.photo + ', стікерів ' + m.sticker + ', GIF ' + m.gif + '">' +
-          '<i class="m-photo" style="flex:' + m.photo + '"></i><i class="m-sticker" style="flex:' + m.sticker + '"></i><i class="m-gif" style="flex:' + m.gif + '"></i></div>' +
-          '<ul class="sd-media-legend">' +
-          '<li><i class="m-photo"></i><strong>' + m.photo + '</strong> фото · ' + pct(m.photo, mt) + '%</li>' +
-          '<li><i class="m-sticker"></i><strong>' + m.sticker + '</strong> стікерів · ' + pct(m.sticker, mt) + '%</li>' +
-          '<li><i class="m-gif"></i><strong>' + m.gif + '</strong> GIF · ' + pct(m.gif, mt) + '%</li></ul></section>';
-      }
-      return h + '</div>';
-    }
-
-    function wire() {
-      var bars = [].slice.call(modalBody.querySelectorAll('.sd-bar'));
-      var readout = modalBody.querySelector('.sd-readout');
-      if (!bars.length) return;
-      function select(i, focus) {
-        bars.forEach(function (b, k) {
-          var on = k === i;
-          b.classList.toggle('is-sel', on);
-          b.setAttribute('aria-pressed', on ? 'true' : 'false');
-          b.tabIndex = on ? 0 : -1;
-        });
-        readout.innerHTML = '<strong class="disp">' + esc(days[i][0]) + ', ' + esc(days[i][1]) + '</strong><span>' + msgs(days[i][2]) + ' · ' + pct(days[i][2], total) + '% тижня' + (i === peak ? ' · <b>пік тижня</b>' : '') + '</span>';
-        if (focus) bars[i].focus();
-      }
-      bars.forEach(function (b, i) {
-        b.addEventListener('click', function () { select(i); });
-        b.addEventListener('mouseenter', function () { select(i); });
-        b.addEventListener('keydown', function (e) {
-          if (e.key === 'ArrowLeft') { e.preventDefault(); select(Math.max(0, i - 1), true); }
-          else if (e.key === 'ArrowRight') { e.preventDefault(); select(Math.min(bars.length - 1, i + 1), true); }
-          else if (e.key === 'Home') { e.preventDefault(); select(0, true); }
-          else if (e.key === 'End') { e.preventDefault(); select(bars.length - 1, true); }
-        });
-      });
-      select(peak);
-    }
-
-    btn.addEventListener('click', function () {
-      openContentModal('Цифри тижня' + (D.range ? ' · ' + D.range : ''), 'Детально', build(), { wide: true });
-      wire();
-    });
-  })();
+  }
+  bindStatsDetail('statsDetail', 'tpl-stats-day');
+  bindStatsDetail('weekStatsDetail', 'tpl-stats-week');
 
 });
 
