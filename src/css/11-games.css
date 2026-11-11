@@ -1,0 +1,1236 @@
+/* ==========================================================================
+   11 · Ігри
+   Картки на головній, Wordle, Тетріс, Вікторина, Кросворд.
+   ========================================================================== */
+
+button,
+.btn,
+.news-tile,
+.gallery__item,
+.game-key,
+.game-key--control,
+.game-key--pause,
+.theme-toggle {
+  touch-action: manipulation;
+}
+
+.game-card {
+  display: flex;
+  position: relative;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 24px 28px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: inherit;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+
+.game-card__letters {
+  display: flex;
+  gap: 6px;
+}
+
+.game-letter {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  font: 800 20px/1 var(--display);
+  text-transform: uppercase;
+  border-radius: 10px;
+}
+
+.game-card__top {
+  flex: 0 0 100%;
+}
+
+.game-card__info {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.game-card__title {
+  margin: 0;
+  font-weight: 700;
+  font-size: clamp(22px, 2.4vw, 28px);
+  line-height: 1.15;
+}
+
+.game-card__desc {
+  margin: 0;
+  font-size: 15.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 56ch;
+}
+
+.game-letter.is-absent {
+  background: var(--absent);
+  color: var(--white);
+}
+
+.game-letter.is-present {
+  background: var(--hi);
+  color: var(--hi-text);
+}
+
+.game-letter.is-correct {
+  background: var(--good);
+  color: var(--white);
+}
+
+.game-head__title {
+  margin: 18px 0 14px;
+  font-weight: 600;
+  font-size: clamp(40px, 6.4vw, 72px);
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.game-head__subtitle {
+  margin: 0 0 36px;
+  font-size: clamp(17px, 2vw, 20px);
+  line-height: 1.5;
+  color: var(--text2);
+  max-width: 46ch;
+}
+
+.wordle__board {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+
+.game-page__layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  align-items: flex-start;
+}
+
+.game-board {
+  position: relative;
+  display: flex;
+  flex: 999 1 520px;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  padding: 36px 24px 32px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03);
+}
+
+.wordle__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wordle__row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.wordle__tile {
+  width: clamp(44px, 13.5vw, 60px);
+  aspect-ratio: 1;
+  border-radius: 12px;
+  border: 2px solid var(--tile-line);
+  background: var(--card);
+  color: var(--text);
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 24px;
+  text-transform: uppercase;
+  transition: background var(--dur), border-color var(--dur), transform 0.1s;
+}
+
+.wordle__tile.is-filled {
+  border-color: var(--muted);
+}
+
+.wordle__tile.is-correct {
+  background: var(--good);
+  border-color: var(--good);
+  color: var(--white);
+}
+
+.wordle__tile.is-present {
+  background: var(--hi);
+  border-color: var(--hi);
+  color: var(--hi-text);
+}
+
+.wordle__tile.is-absent {
+  background: var(--absent);
+  border-color: var(--absent);
+  color: var(--white);
+}
+
+.wordle__msg {
+  margin: 0;
+  min-height: 1.5em;
+  font-size: 15px;
+  color: var(--text2);
+  text-align: center;
+  font-weight: 600;
+}
+
+.wordle__kb {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-width: 520px;
+}
+
+.wordle__kb-row {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.game-key {
+  border: 0;
+  border-radius: 10px;
+  padding: 0;
+  background: var(--pill);
+  color: var(--text);
+  font-family: inherit;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  height: 48px;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 48px;
+  font-size: 16px;
+  transition: opacity 0.1s, transform 0.05s, box-shadow var(--dur-fast);
+}
+
+.game-key:active {
+  transform: scale(0.95);
+}
+
+.game-key.is-wide {
+  flex: 1.6 1 0;
+  max-width: 68px;
+  font-size: 18px;
+}
+
+.game-key.is-correct {
+  background: var(--good);
+  color: var(--white);
+}
+
+.game-key.is-present {
+  background: var(--hi);
+  color: var(--hi-text);
+}
+
+.game-key.is-absent {
+  background: var(--absent);
+  color: var(--white);
+  opacity: 0.6;
+}
+
+.wordle__answer {
+  display: flex;
+  gap: 6px;
+}
+
+.wordle__answer-tile {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 20px;
+  text-transform: uppercase;
+}
+
+.wordle__answer-tile.is-won {
+  background: var(--good);
+  color: var(--white);
+}
+
+.wordle__answer-tile.is-lost {
+  background: var(--hi);
+  color: var(--hi-text);
+}
+
+.wordle__pattern {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0;
+}
+
+.wordle__pattern-row {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.wordle__pattern-row span {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+}
+
+.game-start__note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* Стартовий екран Wordle: гра починається після натискання «Грати» */
+.game-start {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+  background: var(--card);
+  border-radius: inherit;
+  animation: wfade 0.25s ease;
+}
+
+.game-start[hidden] {
+  display: none;
+}
+
+.game-start__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  max-width: 400px;
+  text-align: center;
+}
+
+.game-start__title {
+  margin: 4px 0 0;
+  font-weight: 700;
+  font-size: clamp(22px, 3vw, 28px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.game-start__text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text2);
+}
+
+/* Right Column in Redesigned Wordle */
+.game-page__side {
+  display: flex;
+  flex: 1 1 320px;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+/* На білих картках світлої теми біла плашка не видна — беремо колір «пілюлі» */
+:root:not([data-theme="dark"]) .widget--short .widget__label,
+:root:not([data-theme="dark"]) .game-card .category-tag {
+  background: var(--pill);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.game-legend {
+  display: grid;
+  gap: 10px;
+  margin: 2px 0 4px;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+  font-size: 14.5px;
+  color: var(--text2);
+}
+
+.game-legend li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.game-legend__dot {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+}
+
+.game-legend__dot.is-correct {
+  background: var(--good);
+}
+
+.game-legend__dot.is-present {
+  background: var(--hi);
+}
+
+.game-legend__dot.is-absent {
+  background: var(--absent);
+}
+
+.game-start .btn {
+  margin-top: 6px;
+}
+
+/* Той самий каркас, що й у Wordle: картка гри + стартовий екран з правилами + панель результату. Додано лише те, чого в Wordle немає: поле (canvas), панель показників, кнопки керування. */
+.game-card + .game-card {
+  margin-top: var(--gap);
+}
+
+.tetro-logo__cell--t {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.tetro-logo__cell--l {
+  background: var(--pc-l);
+  color: var(--ink-fixed);
+}
+
+.tetro-logo__cell--s {
+  background: var(--pc-s);
+  color: var(--white);
+}
+
+.tetro-logo__cell--z {
+  background: var(--pc-z);
+  color: var(--white);
+}
+
+.tetro-logo__cell--i {
+  background: var(--pc-i);
+  color: var(--ink-fixed);
+}
+
+.tetro-logo__cell--o {
+  background: var(--hi);
+  color: var(--hi-text);
+}
+
+.tetro-logo__cell--j {
+  background: var(--pc-j);
+  color: var(--white);
+}
+
+.tetris {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+
+/* Ширина поля залежить від висоти екрана, щоб поле й кнопки вміщались разом */
+.tetris__col {
+  width: min(100%, max(220px, min(300px, calc((100vh - 300px) / 2))));
+  width: min(100%, max(220px, min(300px, calc((100svh - 300px) / 2))));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Показники: чотири числа ліворуч, праворуч — пауза й «Далі» */
+.tetris__hud {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 6px;
+}
+
+.tetris__side {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  width: 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.game-key--pause {
+  flex: none;
+  width: 100%;
+  max-width: none;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.game-key--pause svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.game-key--pause:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.tetris__next {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--pill);
+}
+
+.tetris__next canvas {
+  display: block;
+  width: 48px;
+  height: 48px;
+}
+
+.tetris__stat-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--muted);
+}
+
+.tetris__stat {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 9px;
+  border-radius: 14px;
+  background: var(--pill);
+}
+
+.tetris__stat-value {
+  font: 800 16px/1.1 var(--body);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tetris__stat-value.is-long {
+  font-size: 13px;
+}
+
+/* Поле */
+.tetris__board {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 2;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: 0 0 0 2px var(--tile-line);
+}
+
+.tetris__board canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.tetris__pause {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 16px;
+  text-align: center;
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  animation: wfade 0.25s ease;
+}
+
+.tetris__pause[hidden] {
+  display: none;
+}
+
+.tetris__pause-title {
+  margin: 0;
+  font-weight: 700;
+  font-size: clamp(22px, 3vw, 28px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+/* Підказка про очки з'являється поверх поля («+300», «Тетріс! +800») */
+.tetris__toast {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  z-index: 1;
+  margin: 0;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--hi);
+  color: var(--hi-text);
+  font: 800 14px/1.2 var(--body);
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+  box-shadow: 0 6px 20px rgba(14, 10, 38, 0.2);
+  animation: t-pop 0.25s ease;
+}
+
+.tetris__toast:empty {
+  display: none;
+}
+
+/* Кнопки керування (той самий вигляд, що в екранної клавіатури Wordle) */
+.tetris__controls {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.game-key--control {
+  max-width: none;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.game-key--control svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.game-key--control.game-key--drop {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* Результат: екран як стартовий (.game-start), тут лише ряд показників і кнопки */
+.tetris__result-stats {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  max-width: 340px;
+}
+
+.tetris__result-stats .tetris__stat {
+  flex: 1;
+  align-items: center;
+  text-align: center;
+}
+
+.tetris__result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* Правила на стартовому екрані: клавіші замість кольорових плиток */
+.game-legend.game-legend--keys li {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  align-items: center;
+  gap: 12px;
+}
+
+.keycaps {
+  display: flex;
+  gap: 4px;
+}
+
+.keycaps__cap {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  font: 800 12.5px/1 var(--body);
+  white-space: nowrap;
+  border-radius: 8px;
+  background: var(--pill);
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+
+.tetris__note {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* Стартовий і миттєвий екрани з'являються без проявлення — інакше спершу видно порожню картку */
+.game-start.is-instant {
+  animation: none;
+}
+
+/* Лого: усі сім фігур тетрісу в один ряд — «вітрина» (I O T S Z J L) у кольорах гри. Ширина = ряду «СЛОВО» у Wordle (244px), фігури стоять «на підлозі». */
+.tetro-logo {
+  --u: calc(244px / 17.8);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.8);
+  flex: none;
+  height: calc(var(--u) * 4);
+}
+
+.tetro-logo .tetro-logo__piece {
+  display: grid;
+  grid-template-columns: repeat(var(--w), var(--u));
+  grid-auto-rows: var(--u);
+}
+
+.tetro-logo .tetro-logo__cell {
+  margin: 0.5px;
+  border-radius: 4px;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.32), inset 0 -2px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* Ігри: картки «Хто це сказав?» і «Кросворд» */
+.game-card__bubble {
+  display: inline-block;
+  padding: 12px 20px;
+  background: var(--pill);
+  border: 1px solid var(--line);
+  border-radius: 18px 18px 18px 4px;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text);
+  max-width: 220px;
+}
+
+.game-card__grid {
+  display: grid;
+  grid-template-columns: repeat(5, 26px);
+  gap: 3px;
+}
+
+.game-card__grid span {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  font: 800 12px var(--display);
+  border-radius: 6px;
+  border: 2px solid var(--tile-line);
+  background: var(--card);
+  color: var(--text);
+}
+
+.game-card__grid span.game-card__cell--blank {
+  border-color: transparent;
+  background: transparent;
+}
+
+.game-card__grid span.game-card__cell--letter {
+  background: var(--hi);
+  border-color: var(--hi);
+  color: var(--hi-text);
+}
+
+/* Ігрові сторінки: «Хто це сказав?» */
+.quiz__board {
+  width: 100%;
+  max-width: 560px;
+  min-height: 440px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+}
+
+.quiz__board[inert] {
+  pointer-events: none;
+}
+
+.quiz__dots {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.quiz__dot {
+  width: 26px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  transition: background var(--dur);
+}
+
+.quiz__dot.is-active {
+  background: var(--accent);
+}
+
+.quiz__dot.is-correct {
+  background: var(--good);
+}
+
+.quiz__dot.is-wrong {
+  background: var(--danger);
+}
+
+.quiz__bubble {
+  margin: 0;
+  padding: 18px 22px;
+  background: var(--pill);
+  border: 1px solid var(--line);
+  border-radius: 22px 22px 22px 6px;
+  font-size: clamp(16px, 2vw, 19px);
+  line-height: 1.45;
+  font-weight: 600;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.quiz__time {
+  margin: 8px 0 0 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.quiz__options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.quiz__option {
+  border: 1.5px solid var(--line);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 13px 14px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--dur-fast), background var(--dur-fast), color var(--dur-fast);
+}
+
+.quiz__option:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.quiz__option:disabled {
+  cursor: default;
+}
+
+.quiz__option.is-right {
+  background: var(--good);
+  border-color: var(--good);
+  color: var(--white);
+}
+
+.quiz__option.is-wrong {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--white);
+}
+
+.quiz__actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 46px;
+}
+
+.quiz__score {
+  margin: 0;
+  font: 800 clamp(48px, 7vw, 68px)/1 var(--display);
+  letter-spacing: -0.05em;
+  color: var(--accent);
+}
+
+.quiz__pattern {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.quiz__pattern span {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--good);
+}
+
+.quiz__pattern span.is-wrong {
+  background: var(--danger);
+}
+
+.game-start .tetris__result-actions .btn {
+  margin-top: 0;
+}
+
+/* Ігрові сторінки: Кросворд */
+.game-page--crossword .game-board {
+  align-items: stretch;
+  padding: clamp(18px, 3vw, 32px);
+}
+
+.crossword__layout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+  width: 100%;
+}
+
+.crossword__grid-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+  padding-bottom: 4px;
+}
+
+.crossword__grid {
+  --cs: 36px;
+  display: grid;
+  gap: 2px;
+  width: max-content;
+}
+
+.crossword__grid > div {
+  width: var(--cs);
+  height: var(--cs);
+}
+
+.crossword__cell {
+  position: relative;
+  background: var(--card);
+  border: 1.5px solid var(--text2);
+  border-radius: 5px;
+}
+
+.crossword__cell input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  text-align: center;
+  font: 800 calc(var(--cs) * 0.5) var(--body);
+  text-transform: uppercase;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  caret-color: transparent;
+  border-radius: 4px;
+}
+
+.crossword__cell input:focus {
+  outline: none;
+}
+
+.crossword__cell .crossword__cell-num {
+  position: absolute;
+  top: 1px;
+  left: 3px;
+  font-size: calc(var(--cs) * 0.27);
+  line-height: 1;
+  color: var(--muted);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.crossword__cell.is-highlight {
+  background: var(--pill);
+  border-color: var(--accent);
+}
+
+.crossword__cell.is-cursor {
+  background: var(--hi);
+  border-color: var(--hi-text);
+}
+
+.crossword__cell.is-cursor input {
+  color: var(--hi-text);
+}
+
+.crossword__cell.is-bad input {
+  color: var(--danger);
+}
+
+.crossword__cell.is-ok {
+  border-color: var(--good);
+}
+
+.crossword__cell.is-revealed input {
+  color: var(--accent);
+}
+
+.crossword__clues .crossword__clues-title {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.crossword__clues ol {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.crossword__clues li {
+  padding: 6px 10px;
+  font-size: 15px;
+  border-radius: 10px;
+  color: var(--text2);
+  cursor: pointer;
+}
+
+.crossword__clues li b {
+  margin-right: 6px;
+  color: var(--accent);
+}
+
+.crossword__clues li:hover {
+  background: var(--pill);
+}
+
+.crossword__clues li.is-active {
+  background: var(--hi);
+  color: var(--hi-text);
+}
+
+.crossword__clues li.is-active b {
+  color: var(--hi-text);
+}
+
+.crossword__clues li.is-done {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.crossword__current {
+  display: none;
+}
+
+.crossword__tools {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 18px;
+}
+
+.crossword__msg {
+  margin: 12px 0 0;
+  min-height: 1.4em;
+  font-size: 15px;
+  color: var(--text2);
+}
+
+.crossword__progress {
+  margin: 0 0 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+/* Уточнення після перевірки */
+#qBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+#qBody .quiz__time {
+  margin: -6px 0 0 4px;
+}
+
+.game-card__grid,
+.game-card__bubble {
+  flex: none;
+}
+
+.keycaps__cap .arrow {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  vertical-align: 0;
+}
+
+.game-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.game-card .btn--primary {
+  position: static;
+}
+
+.game-card .btn--primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+}
+
+.game-card .btn--primary:hover {
+  border-color: var(--_line);
+  box-shadow: 0 0 0 0 transparent;
+}
+
+/* Кільце фокуса з клавіатури — навколо всієї картки, а не лише кнопки (так само a:focus-visible у плиток) */
+.game-card .btn--primary:focus-visible {
+  outline: none;
+}
+
+.game-card .btn--primary:focus-visible::after {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+}
+
+/* Адаптив */
+
+@media (hover: hover) {
+  .game-key:hover {
+    box-shadow: var(--ring);
+  }
+
+  .game-key--control.game-key--drop:hover {
+    box-shadow: 0 0 0 2px var(--hi);
+  }
+}
+
+@media (max-width: 760px) {
+  .crossword__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .crossword__current {
+    display: block;
+    position: sticky;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: var(--hi);
+    color: var(--hi-text);
+    font-size: 14.5px;
+    font-weight: 600;
+    z-index: 5;
+  }
+
+  .crossword__current:empty {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .tetris__side {
+    width: 56px;
+  }
+
+  .tetris__next canvas {
+    width: 42px;
+    height: 42px;
+  }
+
+  .tetris__stat {
+    padding: 6px 8px;
+  }
+
+  .tetris__stat-value {
+    font-size: 15px;
+  }
+
+  .tetris__stat-value.is-long {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 460px) {
+  .quiz__options {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-start {
+    animation: none;
+  }
+
+  .tetris__pause,
+  .tetris__toast {
+    animation: none;
+  }
+}
+
+/* Анімації */
+
+@keyframes wfade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes t-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}

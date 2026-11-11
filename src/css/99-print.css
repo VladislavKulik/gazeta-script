@@ -1,0 +1,41 @@
+/* ==========================================================================
+   99 · Друк і рух
+   Спільні медіа-запити, що зачіпають увесь сайт.
+   ========================================================================== */
+
+/* Спільні медіа-запити */
+
+@media print {
+  .masthead__bar,
+  .masthead,
+  .masthead__chips,
+  .article-nav,
+  .article-next,
+  .article-side,
+  .theme-toggle,
+  dialog,
+  footer,
+  .article__media-grid video {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: var(--white) !important;
+    color: #000 !important;
+  }
+
+  .article__columns {
+    display: block !important;
+  }
+
+  .article__prose {
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+
+  a {
+    text-decoration: none;
+    color: inherit;
+  }
+}

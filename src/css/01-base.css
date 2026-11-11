@@ -1,0 +1,77 @@
+/* ==========================================================================
+   01 · База
+   Скидання, типографіка, фокус, утиліти.
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  -webkit-font-smoothing: antialiased;
+  font-synthesis: none;
+  line-height: 1.5;
+  transition: background var(--dur), color var(--dur);
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+}
+
+#articleHost:focus {
+  outline: none;
+}
+
+.u-display,
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+.u-display {
+  font-family: var(--display);
+  letter-spacing: -0.055em;
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+html.is-modal-open {
+  overflow: hidden;
+}
+
+/* Адаптив */
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

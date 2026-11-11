@@ -13,6 +13,8 @@
     python render.py 2026-10-03   -> конкретна дата
     --no-min       не мінімізувати CSS/JS (для налагодження в DevTools)
     --build-only   лише зібрати шаблон -> template.html (без рендеру газети)
+    --no-pdf       не рендерити PDF-версію випуску
+    --pdf-dark     рендерити PDF у темній темі (за замовчуванням — світла)
 """
 
 import base64
@@ -823,6 +825,16 @@ def main():
         print(f"  Відео перекодовано: {opt_report['video_reencoded']}")
         print(f"  Відео пропущено (більші): {opt_report['skipped_larger']}")
         print(f"  Дедуплікація зекономила: {opt_report['dedup_saved'] // 1024} КБ")
+
+    if "--no-pdf" not in sys.argv:
+        try:
+            from make_pdf import make_pdf
+
+            print("Рендер PDF-версії…")
+            pdf_theme = "dark" if "--pdf-dark" in sys.argv else "light"
+            make_pdf(out, theme=pdf_theme)
+        except Exception as e:
+            print(f"  Помилка PDF-рендеру: {e}", file=sys.stderr)
 
     if sys.platform == "win32" and "--no-open" not in sys.argv:
         os.startfile(out)
