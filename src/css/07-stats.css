@@ -1,0 +1,317 @@
+/* ==========================================================================
+   07 · Цифри дня/тижня
+   Віджет статистики: графік по годинах, топ учасників.
+   ========================================================================== */
+
+.stats__grid {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.8fr) minmax(0, 1.75fr) minmax(230px, 0.95fr);
+  gap: 40px;
+  align-items: stretch;
+}
+
+.stats__total {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.stats__number {
+  font: 800 clamp(44px, 5.2vw, 68px)/0.95 var(--display);
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+  color: var(--hi);
+}
+
+.stats__unit {
+  font-size: 14.5px;
+  font-weight: 650;
+  color: #e1dcf3;
+  font-size: clamp(14px, 1.15vw, 17px);
+}
+
+.stats__subs {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  margin-top: 14px;
+}
+
+.stats__sub {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.stats__sub-value {
+  font-family: var(--display);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--white);
+  line-height: 1.1;
+}
+
+.stats__sub .stats__unit {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #c8c0e2;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.stats__chart {
+  min-width: 0;
+}
+
+.stats__chart-head,
+.stats__top-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #d3cde8;
+}
+
+.stats__bars {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 200px;
+  padding-top: 26px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.stats__bars span {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: var(--h);
+  min-height: 4px;
+  border-radius: 6px 6px 0 0;
+  background: rgba(205, 196, 255, 0.32);
+  transition: background var(--dur-fast);
+}
+
+.stats__bars span.has-value {
+  background: rgba(205, 196, 255, 0.72);
+}
+
+.stats__bars span.is-peak {
+  background: var(--hi);
+}
+
+.stats__bars span.is-peak::before {
+  content: attr(data-v);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  font: 800 13px/1 var(--body);
+  white-space: nowrap;
+  color: var(--hi);
+}
+
+.stats__bars span:hover {
+  background: var(--white);
+}
+
+.stats__bars span.is-peak:hover {
+  background: #fff3a6;
+}
+
+.stats__bars span::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  padding: 5px 10px;
+  border-radius: 9px;
+  background: var(--white);
+  color: var(--ink-fixed);
+  font: 700 12px/1.2 var(--body);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+}
+
+.stats__bars span:hover::after {
+  opacity: 1;
+}
+
+.stats__bars span:nth-child(-n+3)::after {
+  left: 0;
+  transform: none;
+}
+
+.stats__bars span:nth-last-child(-n+3)::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+.stats__bars span.is-peak:hover::before {
+  opacity: 0;
+}
+
+.stats__axis {
+  display: flex;
+  gap: 5px;
+  margin-top: 9px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #c9c2e0;
+  font-variant-numeric: tabular-nums;
+}
+
+.stats__axis span {
+  flex: 1;
+  min-width: 0;
+  overflow: visible;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.stats__leaders {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stats__leaders li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 7px;
+  padding: 11px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.stats__leaders .stats__rank {
+  font: 800 11px/1 var(--display);
+  color: #c9c2e0;
+}
+
+.stats__leaders .stats__name {
+  font-size: 14.5px;
+  font-weight: 650;
+  color: var(--white);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(14px, 1.15vw, 16.5px);
+}
+
+.stats__leaders .stats__count {
+  font-size: 15px;
+  font-weight: 850;
+  color: var(--hi);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(14.5px, 1.2vw, 17px);
+}
+
+.stats__leaders .stats__bar {
+  grid-column: 2 / -1;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.stats__leaders .stats__bar i {
+  display: block;
+  height: 100%;
+  width: var(--w);
+  border-radius: 4px;
+  background: var(--hi);
+}
+
+.stats__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 4px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.stats__foot-note {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #cfc8e6;
+  font-size: clamp(13px, 1vw, 15px);
+}
+
+/* Мобільна розкладка кнопок */
+.stats__foot .btn {
+  flex: none;
+}
+
+.stats__axis.stats__axis--week {
+  display: flex;
+}
+
+.stats__axis--week span {
+  flex: 1;
+  text-align: center;
+}
+
+/* Адаптив */
+
+@media (max-width: 1000px) {
+  .stats__grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 28px;
+  }
+
+  .stats__chart {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+}
+
+@media (max-width: 620px) {
+  .stats__grid {
+    grid-template-columns: 1fr;
+    gap: 26px;
+  }
+
+  .stats__bars {
+    gap: 3px;
+    height: 170px;
+  }
+
+  .stats__axis {
+    gap: 3px;
+  }
+
+  .stats__axis span:not(.stats__tick) {
+    visibility: hidden;
+  }
+
+  .stats__foot {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .stats__foot-note {
+    display: none;
+  }
+
+  .stats__foot .btn {
+    width: 100%;
+  }
+}

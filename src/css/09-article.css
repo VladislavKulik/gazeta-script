@@ -1,0 +1,596 @@
+/* ==========================================================================
+   09 · Сторінка новини
+   Колонки статті, «Читайте також», прогрес прочитаного.
+   ========================================================================== */
+
+.article-view {
+  padding: 0 0 40px;
+}
+
+.article-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.article__title {
+  margin: 16px 0 14px;
+  font-weight: 700;
+  font-size: clamp(28px, 4vw, 48px);
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.article__media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.article__media {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--ink);
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.article__media:hover .article__media-fit {
+  transform: scale(1.02);
+}
+
+.article__media-fit {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.25s ease;
+  pointer-events: none;
+}
+
+.article__prose {
+  margin-top: 28px;
+  width: 100%;
+  max-width: none;
+}
+
+.article__prose p {
+  margin: 0 0 1.2em;
+  font-size: clamp(16px, 1.3vw, 18px);
+  line-height: 1.75;
+  color: var(--text2);
+  text-wrap: pretty;
+}
+
+.article__prose p:last-child {
+  margin-bottom: 0;
+}
+
+.article-side h2,
+.also-card h2 {
+  margin: 0 0 14px 12px;
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.also-link__thumb {
+  flex: none;
+  width: 72px;
+  height: 72px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--pill);
+}
+
+.also-link__thumb img,
+.also-link__thumb video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.also-link__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.also-link__cat {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.also-link__title {
+  font-size: 16px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.article__columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.article__body {
+  flex: 999 1 600px;
+  min-width: 0;
+  padding: clamp(22px, 3.5vw, 36px);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03);
+}
+
+.article__body .kicker {
+  background: var(--pill);
+  color: var(--text2);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.article-side {
+  position: sticky;
+  top: 80px;
+  flex: 1 1 320px;
+  min-width: 0;
+  padding: 22px 16px 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 28px;
+}
+
+.article-side .also-link {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+  text-decoration: none;
+  border-radius: 16px;
+  color: inherit;
+  transition: background var(--dur-fast);
+}
+
+.article-side .also-link:hover {
+  background: var(--pill);
+}
+
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  background: var(--pill);
+  color: var(--text2);
+  padding: 5px 12px 5px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.kicker::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.also-card {
+  padding: 22px 16px 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 28px;
+}
+
+.also-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.also-list .also-link {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 20px;
+  transition: background var(--dur-fast);
+}
+
+.also-list .also-link:hover {
+  background: var(--pill);
+}
+
+.also-list .also-link:hover .also-link__title {
+  text-underline-offset: 4px;
+  text-decoration: none;
+}
+
+/* Усі мітки — як у блоці «Головне»: світла плашка з крапкою. Використовуються класи: .category-tag, .widget__label, .label, .kicker */
+.category-tag,
+.widget__label,
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink-fixed);
+  padding: 5px 12px 5px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-transform: none;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.category-tag::before,
+.widget__label::before,
+.kicker::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* Hover значка — зміна кольору (жовтий) */
+.btn:hover .icon,
+.btn:focus-visible .icon,
+.also-link:hover .also-link__go {
+  background: var(--ico-bg-h, var(--hi));
+  color: var(--ico-fg-h, var(--ink-fixed));
+}
+
+/* Той самий hover для рядків, плиток і фото */
+/* «Читайте також» — рядок веде на сторінку: стрілка ↗ в кінці */
+.article-side .also-link,
+.also-list .also-link {
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 16px;
+  transition: box-shadow var(--dur-fast);
+}
+
+.also-link__go {
+  margin-left: auto;
+}
+
+.article-side .also-link:hover,
+.also-list .also-link:hover {
+  background: transparent;
+  box-shadow: var(--ring);
+}
+
+/* Сторінки «Читайте також» без обкладинки */
+.also-link__thumb.is-placeholder {
+  background: linear-gradient(135deg, var(--brand) 0%, var(--tile-dark) 88%);
+}
+
+.article__stickers {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+
+.article__stickers .sticker-img {
+  width: 150px;
+  height: auto;
+  margin: 0;
+}
+
+.article__stickers .sticker-img--emoji {
+  display: grid;
+  place-items: center;
+  height: 150px;
+  font-size: 84px;
+  line-height: 1;
+}
+
+/* Усе зі змінних дизайну; стан «прочитано» ставить скрипт (клас .is-read). */
+/* Позиція новини у верхній панелі сторінки */
+.article-nav__pos {
+  margin-left: auto;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--pill);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Прогрес читання у блоці «Читайте також» */
+.read-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: -4px 12px 12px;
+}
+
+.read-progress__text {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.read-progress__bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--pill);
+}
+
+.read-progress__bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 6px;
+  background: var(--accent);
+  transition: width 0.3s;
+}
+
+.news-tile__go::before,
+.icon--go::before,
+.also-link__go::before,
+.icon--more::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  -webkit-mask: var(--g, var(--i-r)) center / contain no-repeat;
+  mask: var(--g, var(--i-r)) center / contain no-repeat;
+}
+
+.news-tile__go,
+.also-link__go,
+.icon--ne {
+  --g: var(--i-ne);
+}
+
+/* Прочитані — як відвідані посилання: приглушений заголовок, мініатюра, галочка замість стрілки */
+.also-link.is-read .also-link__title {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.also-link.is-read .also-link__thumb {
+  opacity: 0.55;
+}
+
+.also-link.is-read .also-link__go {
+  --g: var(--i-check);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.also-link.is-read:hover .also-link__go {
+  background: var(--hi);
+  color: var(--ink-fixed);
+}
+
+/* Відкрита зараз новина */
+.also-link.is-current {
+  background: var(--pill);
+}
+
+.also-link.is-current .also-link__title {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.also-link.is-current .also-link__thumb {
+  opacity: 1;
+}
+
+.also-link.is-current .also-link__go,
+.also-link.is-current:hover .also-link__go {
+  width: auto;
+  height: 26px;
+  padding: 0 11px;
+  font: 700 11.5px/1 var(--body);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.also-link.is-current .also-link__go::before {
+  display: none;
+}
+
+.also-list .also-link__thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+}
+
+.also-list .also-link__title {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 15px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.also-list::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* «Далі»: окрема картка під текстом новини, не всередині неї */
+.article__col {
+  display: flex;
+  flex: 999 1 600px;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.article__col > .article__body {
+  flex: 0 0 auto;
+}
+
+.article-next__card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 18px 18px 22px;
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  background: var(--card);
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+
+.article-next__card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.article-next__meta {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.article-next__kicker {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.article-next__title {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: clamp(16px, 1.6vw, 20px);
+  line-height: 1.25;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.article-next__btn {
+  --ico-bg: color-mix(in srgb, var(--on-accent) 22%, transparent);
+  --ico-fg: var(--on-accent);
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 7px 0 20px;
+  font: 700 14px/1 var(--body);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.article-next__card:hover .article-next__btn .icon {
+  background: var(--hi);
+  color: var(--ink-fixed);
+}
+
+/* «Читати далі» у блоці на сторінках ігор */
+.also-card__continue {
+  width: 100%;
+  margin-top: 14px;
+}
+
+.also-card__continue[hidden] {
+  display: none;
+}
+
+/* «До випуску» на сторінках новин не зникає при прокрутці довгого тексту (на іграх не липне: там важливе місце під поле) */
+.article-view:not(.game-page) .article-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  margin-bottom: 12px;
+  padding: 8px 0;
+  background: var(--bg);
+}
+
+/* Адаптив */
+
+@media (min-width: 960px) {
+  .article-side {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 48px);
+    max-height: calc(100dvh - 48px);
+  }
+
+  /* Padding + від'ємний margin: обвід hover (2px) не обрізається краєм прокрутки, а вирівнювання лишається тим самим */
+  .article-side .also-list {
+    min-height: 0;
+    overflow-y: auto;
+    margin: -3px;
+    padding: 3px;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--fade-t, 0px), #000 calc(100% - var(--fade-b, 0px)), transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 var(--fade-t, 0px), #000 calc(100% - var(--fade-b, 0px)), transparent 100%);
+  }
+}
+
+@media (max-width: 560px) {
+  .article-next__card {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 18px;
+  }
+
+  .article-next__btn {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 380px) {
+  .article-side .also-link,
+  .also-list .also-link {
+    gap: 10px !important;
+    padding: 10px !important;
+  }
+
+  .also-link .also-link__title {
+    font-size: 15px !important;
+  }
+
+  .also-link__go {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .read-progress__bar i {
+    transition: none;
+  }
+}

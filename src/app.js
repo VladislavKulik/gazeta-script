@@ -50,6 +50,7 @@ function setMainVideos(play) {
 
 
 // ================= WORDLE GAME LOGIC (FOR REDESIGNED 2-COLUMN VIEW) =================
+var STATUS_CLASS = { a: 'is-absent', c: 'is-correct', p: 'is-present' };   // коди scoreWordle → класи
 var WORDLE_CFG = { ANS: '', L: 5, TRIES: 6, KEY: '', DATE: '', W: {}, UA: UA_LETTERS };
 
 function loadWordleCfg() {
@@ -192,7 +193,7 @@ function setWordleEnd(show, instant) {
   var end = document.getElementById('wEnd');
   var wrap = document.getElementById('wBoardWrap');
   if (!show && (!end || end.hidden)) return;
-  if (end) { end.classList.toggle('no-anim', !!instant); end.hidden = !show; }
+  if (end) { end.classList.toggle('is-instant', !!instant); end.hidden = !show; }
   if (wrap) {
     wrap.style.visibility = show ? 'hidden' : '';
     if (show) wrap.setAttribute('inert', ''); else wrap.removeAttribute('inert');
@@ -260,15 +261,15 @@ function renderWordleDOM() {
   grid.innerHTML = '';
   for (var r = 0; r < TRIES; r++) {
     var rowEl = document.createElement('div');
-    rowEl.className = 'w-row';
+    rowEl.className = 'wordle__row';
     var g = wordleState.guesses[r];
     var sc = g ? scoreWordle(g) : null;
 
     for (var c = 0; c < L; c++) {
       var tileEl = document.createElement('div');
       var ch = g ? g[c] : ((r === wordleState.guesses.length && !wordleState.over) ? (wordleState.curr[c] || '') : '');
-      var statusClass = sc ? (' ' + sc[c]) : (ch ? ' fill' : '');
-      tileEl.className = 'w-tile' + statusClass;
+      var statusClass = sc ? (' ' + STATUS_CLASS[sc[c]]) : (ch ? ' is-filled' : '');
+      tileEl.className = 'wordle__tile' + statusClass;
       tileEl.textContent = ch;
       rowEl.appendChild(tileEl);
 
@@ -296,13 +297,13 @@ function renderWordleDOM() {
     kb.innerHTML = '';
     KB_ROWS.forEach(function (row) {
       var rDiv = document.createElement('div');
-      rDiv.className = 'w-kr';
+      rDiv.className = 'wordle__kb-row';
       row.forEach(function (k) {
         var btn = document.createElement('button');
         var wide = (k === 'ENTER' || k === 'BACK');
         var st = bestKeyScores[k] || '';
         btn.type = 'button';
-        btn.className = 'w-key' + (wide ? ' wide' : '') + (st ? (' ' + st) : '');
+        btn.className = 'game-key' + (wide ? ' is-wide' : '') + (st ? (' ' + STATUS_CLASS[st]) : '');
         btn.textContent = k === 'ENTER' ? '⏎' : (k === 'BACK' ? '⌫' : k);
         btn.setAttribute('aria-label', k === 'ENTER' ? 'Ввести' : (k === 'BACK' ? 'Стерти' : k));
         btn.onclick = function () { pressWordleKey(k); };
@@ -328,7 +329,7 @@ function renderWordleDOM() {
     ansTilesEl.innerHTML = '';
     WORDLE_CFG.ANS.split('').forEach(function (ch) {
       var t = document.createElement('div');
-      t.className = 'w-ans-tile ' + (wordleState.won ? 'won' : 'lost');
+      t.className = 'wordle__answer-tile ' + (wordleState.won ? 'is-won' : 'is-lost');
       t.textContent = ch;
       ansTilesEl.appendChild(t);
     });
@@ -348,7 +349,7 @@ function renderWordleDOM() {
     patEl.innerHTML = '';
     wordleState.guesses.forEach(function (g) {
       var pRow = document.createElement('div');
-      pRow.className = 'w-pattern-row';
+      pRow.className = 'wordle__pattern-row';
       scoreWordle(g).forEach(function (x) {
         var sp = document.createElement('span');
         sp.style.background = x === 'c' ? 'var(--good)' : (x === 'p' ? 'var(--hi)' : 'var(--absent)');
@@ -756,7 +757,7 @@ function tetrisSync() {
     if (!el) return;
     var v = fmt ? tFmt(raw) : String(raw);
     el.textContent = v;
-    el.classList.toggle('long', v.length >= 6);   // довгі числа трохи менші, щоб не обрізались
+    el.classList.toggle('is-long', v.length >= 6);   // довгі числа трохи менші, щоб не обрізались
   }
   set('tScore', S.score, true);
   set('tBest', Math.max(S.best, S.score), true);
@@ -1074,7 +1075,7 @@ function initQuiz() {
   function show(which, instant) {
     startEl.hidden = which !== 'start';
     endEl.hidden = which !== 'end';
-    endEl.classList.toggle('no-anim', !!instant);
+    endEl.classList.toggle('is-instant', !!instant);
     board.style.visibility = which ? 'hidden' : '';
     if (which) board.setAttribute('inert', ''); else board.removeAttribute('inert');
   }
@@ -1082,9 +1083,9 @@ function initQuiz() {
   function dots() {
     dotsEl.innerHTML = '';
     Q.forEach(function (q, k) {
-      var cls = 'q-dot';
-      if (st.answers[k]) cls += st.answers[k].correct ? ' correct' : ' wrong';
-      else if (k === i && !st.over) cls += ' active';
+      var cls = 'quiz__dot';
+      if (st.answers[k]) cls += st.answers[k].correct ? ' is-correct' : ' is-wrong';
+      else if (k === i && !st.over) cls += ' is-active';
       dotsEl.appendChild(el('span', cls));
     });
   }
@@ -1094,13 +1095,13 @@ function initQuiz() {
     bodyEl.innerHTML = '';
     var q = Q[Math.min(i, Q.length - 1)];
     var done = st.answers[i];
-    bodyEl.appendChild(el('p', 'q-bubble', q.text));
-    bodyEl.appendChild(el('p', 'q-time', (q.date ? q.date + ' · ' : '') + (q.time ? 'написано о ' + q.time : 'з переписки тижня')));
+    bodyEl.appendChild(el('p', 'quiz__bubble', q.text));
+    bodyEl.appendChild(el('p', 'quiz__time', (q.date ? q.date + ' · ' : '') + (q.time ? 'написано о ' + q.time : 'з переписки тижня')));
 
-    var opts = el('div', 'q-opts'), btns = [];
-    var bar = el('div', 'q-bar');
-    var nx = el('button', 'btn btn-cta', i + 1 < Q.length ? 'Наступне питання' : 'Завершити');
-    if (i + 1 < Q.length) { var ar = document.createElement('i'); ar.className = 'arr arr-r'; ar.setAttribute('aria-hidden', 'true'); nx.appendChild(ar); }
+    var opts = el('div', 'quiz__options'), btns = [];
+    var bar = el('div', 'quiz__actions');
+    var nx = el('button', 'btn btn--primary', i + 1 < Q.length ? 'Наступне питання' : 'Завершити');
+    if (i + 1 < Q.length) { var ar = document.createElement('i'); ar.className = 'arrow arrow--right'; ar.setAttribute('aria-hidden', 'true'); nx.appendChild(ar); }
     nx.type = 'button'; nx.disabled = !done;
     nx.onclick = function () {
       if (nx.disabled) return;
@@ -1110,17 +1111,17 @@ function initQuiz() {
       buildResult(); show('end');
     };
     q.options.forEach(function (o, k) {
-      var b = el('button', 'q-opt', o); b.type = 'button';
+      var b = el('button', 'quiz__option', o); b.type = 'button';
       if (done) {
         b.disabled = true;
-        if (k === q.answer) b.classList.add('right');
-        if (k === done.picked && !done.correct) b.classList.add('wrong');
+        if (k === q.answer) b.classList.add('is-right');
+        if (k === done.picked && !done.correct) b.classList.add('is-wrong');
       } else {
         b.onclick = function () {
           btns.forEach(function (x) { x.disabled = true; });
-          btns[q.answer].classList.add('right');
+          btns[q.answer].classList.add('is-right');
           var ok = k === q.answer;
-          if (ok) score++; else b.classList.add('wrong');
+          if (ok) score++; else b.classList.add('is-wrong');
           st.answers[i] = { picked: k, correct: ok }; st.score = score; store(KEY, st);
           dots();
           nx.disabled = false; nx.focus({ preventScroll: true });
@@ -1136,15 +1137,15 @@ function initQuiz() {
   function buildResult() {
     resEl.textContent = '';
     var r = score / Q.length;
-    resEl.appendChild(el('div', 'q-score', score + ' / ' + Q.length));
-    resEl.appendChild(el('h2', 'disp w-start-title', r === 1 ? '🎉 Бездоганно!' : r >= .6 ? 'Непогано!' : r >= .3 ? 'Щось знайоме є' : 'Тільки заради мемів 🙂'));
-    resEl.appendChild(el('p', 'w-start-text', r === 1 ? 'Ти знаєш цей чат краще за його учасників.' :
+    resEl.appendChild(el('div', 'quiz__score', score + ' / ' + Q.length));
+    resEl.appendChild(el('h2', 'u-display game-start__title', r === 1 ? '🎉 Бездоганно!' : r >= .6 ? 'Непогано!' : r >= .3 ? 'Щось знайоме є' : 'Тільки заради мемів 🙂'));
+    resEl.appendChild(el('p', 'game-start__text', r === 1 ? 'Ти знаєш цей чат краще за його учасників.' :
       r >= .6 ? 'Видно, що читаєш чат, а не тільки стікери.' :
         r >= .3 ? 'Щось знайоме є, але варто гортати уважніше.' : 'Схоже, ти в чаті тільки заради мемів і картинок.'));
-    var pat = el('div', 'q-pattern'); pat.setAttribute('aria-hidden', 'true');
-    st.answers.forEach(function (a) { pat.appendChild(el('span', a && a.correct ? '' : 'w')); });
+    var pat = el('div', 'quiz__pattern'); pat.setAttribute('aria-hidden', 'true');
+    st.answers.forEach(function (a) { pat.appendChild(el('span', a && a.correct ? '' : 'is-wrong')); });
     resEl.appendChild(pat);
-    var copy = el('button', 'btn btn-cta', 'Скопіювати результат'); copy.type = 'button';
+    var copy = el('button', 'btn btn--primary', 'Скопіювати результат'); copy.type = 'button';
     copy.onclick = function () {
       var emojis = st.answers.map(function (a) { return a && a.correct ? '🟩' : '🟥'; }).join('');
       copyText(gname + ' · Вікторина цитат (' + day + ')\nРахунок: ' + score + '/' + Q.length + ' 💬\n' + emojis, copy);
@@ -1183,7 +1184,7 @@ function initCrossword() {
   var E = D.entries;
   var $ = function (id) { return document.getElementById(id); };
 
-  var card = grid.closest('.wordle-game-card');
+  var card = grid.closest('.game-board');
   var avail = (card ? card.clientWidth : window.innerWidth) - 2 * 30;
   if (window.innerWidth > 760) avail -= 28 + 260;
   var size = Math.max(24, Math.min(38, Math.floor(avail / D.w) - 2));
@@ -1205,8 +1206,8 @@ function initCrossword() {
   for (var r = 0; r < D.h; r++) for (var c = 0; c < D.w; c++) {
     var id = r + '_' + c, div = document.createElement('div'), cell = cells[id];
     if (cell) {
-      div.className = 'cell';
-      if (starts[id]) { var n = document.createElement('span'); n.className = 'n'; n.textContent = starts[id]; div.appendChild(n); }
+      div.className = 'crossword__cell';
+      if (starts[id]) { var n = document.createElement('span'); n.className = 'crossword__cell-num'; n.textContent = starts[id]; div.appendChild(n); }
       var inp = document.createElement('input');
       inp.maxLength = 2; inp.autocomplete = 'off'; inp.spellcheck = false;
       inp.setAttribute('autocapitalize', 'characters');
@@ -1223,7 +1224,7 @@ function initCrossword() {
         cell.inp.addEventListener('input', function () {
           var v = cell.inp.value.toUpperCase().replace(/[^А-ЯҐЄІЇ]/g, '');
           cell.inp.value = v.slice(-1);
-          cell.el.classList.remove('bad', 'ok');
+          cell.el.classList.remove('is-bad', 'is-ok');
           save();
           if (cell.inp.value) move(cell, 1);
         });
@@ -1251,13 +1252,13 @@ function initCrossword() {
     var want = dir || (E[cur] && cell.e[E[cur].d] !== undefined ? E[cur].d : (cell.e.a !== undefined ? 'a' : 'd'));
     if (cell.e[want] === undefined) want = want === 'a' ? 'd' : 'a';
     cur = cell.e[want];
-    Object.keys(cells).forEach(function (k) { cells[k].el.classList.remove('hl', 'cur'); });
-    E[cur].cells.forEach(function (x) { x.el.classList.add('hl'); });
-    cell.el.classList.add('cur');
-    list.forEach(function (li, i) { if (li) li.classList.toggle('act', i === cur); });
+    Object.keys(cells).forEach(function (k) { cells[k].el.classList.remove('is-highlight', 'is-cursor'); });
+    E[cur].cells.forEach(function (x) { x.el.classList.add('is-highlight'); });
+    cell.el.classList.add('is-cursor');
+    list.forEach(function (li, i) { if (li) li.classList.toggle('is-active', i === cur); });
     var cwc = $('cwcur'), cwa = document.createElement('i');
     cwc.textContent = E[cur].n;
-    cwa.className = 'arr ' + (E[cur].d === 'a' ? 'arr-r' : 'arr-d');
+    cwa.className = 'arrow ' + (E[cur].d === 'a' ? 'arrow--right' : 'arrow--down');
     cwa.setAttribute('aria-hidden', 'true');
     cwc.appendChild(cwa);
     cwc.appendChild(document.createTextNode(' ' + E[cur].clue));
@@ -1270,7 +1271,7 @@ function initCrossword() {
     var l = letterOf(ev);
     if (l && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {  /* працює з будь-якою розкладкою клавіатури */
       ev.preventDefault();
-      cell.inp.value = l; cell.el.classList.remove('bad', 'ok', 'rev');
+      cell.inp.value = l; cell.el.classList.remove('is-bad', 'is-ok', 'is-revealed');
       save(); move(cell, 1);
       return;
     }
@@ -1278,7 +1279,7 @@ function initCrossword() {
     if (ev.key === 'Backspace' && !cell.inp.value) {
       ev.preventDefault();
       var e = E[cur], i = e.cells.indexOf(cell);
-      if (i > 0) { var p = e.cells[i - 1]; p.inp.value = ''; p.el.classList.remove('bad', 'ok'); p.inp.focus(); save(); }
+      if (i > 0) { var p = e.cells[i - 1]; p.inp.value = ''; p.el.classList.remove('is-bad', 'is-ok'); p.inp.focus(); save(); }
     } else if (map[ev.key]) {
       ev.preventDefault();
       var m = map[ev.key], nx = cells[(cell.r + m[0]) + '_' + (cell.c + m[1])];
@@ -1295,26 +1296,26 @@ function initCrossword() {
     cs.forEach(function (x) { if (x.inp.value) { s[x.id] = x.inp.value; filled++; } });
     store(KEY, s);
     $('cwp').textContent = filled + ' / ' + cs.length + ' клітинок';
-    E.forEach(function (e, i) { list[i].classList.toggle('done', e.cells.every(function (x) { return x.inp.value === x.ch; })); });
-    if (cs.every(function (x) { return x.inp.value === x.ch; }) && !cs.some(function (x) { return x.el.classList.contains('rev'); }))
+    E.forEach(function (e, i) { list[i].classList.toggle('is-done', e.cells.every(function (x) { return x.inp.value === x.ch; })); });
+    if (cs.every(function (x) { return x.inp.value === x.ch; }) && !cs.some(function (x) { return x.el.classList.contains('is-revealed'); }))
       $('cwm').textContent = '🎉 Кросворд розгадано! Редакція аплодує стоячи.';
   }
   $('cwc').onclick = function () {
     var bad = 0, empty = 0;
     all().forEach(function (x) {
-      x.el.classList.remove('bad', 'ok');
+      x.el.classList.remove('is-bad', 'is-ok');
       if (!x.inp.value) empty++;
-      else if (x.inp.value !== x.ch) { x.el.classList.add('bad'); bad++; }
-      else x.el.classList.add('ok');
+      else if (x.inp.value !== x.ch) { x.el.classList.add('is-bad'); bad++; }
+      else x.el.classList.add('is-ok');
     });
     $('cwm').textContent = bad ? 'Помилок: ' + bad + (empty ? ', порожніх клітинок: ' + empty : '')
       : (empty ? 'Поки без помилок, залишилось ' + empty + ' клітинок' : '🎉 Усе правильно!');
   };
-  function reveal(cs) { cs.forEach(function (x) { if (x.inp.value !== x.ch) { x.inp.value = x.ch; x.el.classList.add('rev'); } x.el.classList.remove('bad'); }); save(); }
+  function reveal(cs) { cs.forEach(function (x) { if (x.inp.value !== x.ch) { x.inp.value = x.ch; x.el.classList.add('is-revealed'); } x.el.classList.remove('is-bad'); }); save(); }
   $('cww').onclick = function () { reveal(E[cur].cells); };
   $('cwr').onclick = function () { if (confirm('Показати всі відповіді?')) { reveal(all()); $('cwm').textContent = 'Відповіді показано — наступного разу без підглядань 🙂'; } };
   $('cwx').onclick = function () {
-    all().forEach(function (x) { x.inp.value = ''; x.el.classList.remove('bad', 'ok', 'rev'); });
+    all().forEach(function (x) { x.inp.value = ''; x.el.classList.remove('is-bad', 'is-ok', 'is-revealed'); });
     $('cwm').textContent = ''; save();
   };
   save();
@@ -1407,7 +1408,7 @@ function applyReadState(root) {
   twinsOf('');
 
   /* плитки «Головне» */
-  root.querySelectorAll('a.tile').forEach(function (a) {
+  root.querySelectorAll('a.news-tile').forEach(function (a) {
     var on = !!readSet[slugOf(a)];
     if (!a.dataset.t) a.dataset.t = a.getAttribute('aria-label') || '';
     a.classList.toggle('is-read', on);
@@ -1418,7 +1419,7 @@ function applyReadState(root) {
   var navs = Array.prototype.slice.call(root.querySelectorAll('[data-news-nav]'));
   if (root.matches && root.matches('[data-news-nav]')) navs.unshift(root);
   navs.forEach(function (nav) {
-    var items = nav.querySelectorAll('.ai'), total = items.length, done = 0, firstUnread = null;
+    var items = nav.querySelectorAll('.also-link'), total = items.length, done = 0, firstUnread = null;
     items.forEach(function (a) {
       var r = !!readSet[slugOf(a)];
       a.classList.toggle('is-read', r);
@@ -1427,7 +1428,7 @@ function applyReadState(root) {
     var txt = nav.querySelector('[data-np-text]'), bar = nav.querySelector('[data-np-bar]');
     if (txt) {
       txt.textContent = done >= total ? 'Усе прочитано' : 'Прочитано ' + done + ' з ' + total;
-      if (done >= total) { var ck = document.createElement('i'); ck.className = 'arr arr-ok'; ck.setAttribute('aria-hidden', 'true'); txt.appendChild(ck); }
+      if (done >= total) { var ck = document.createElement('i'); ck.className = 'arrow arrow--check'; ck.setAttribute('aria-hidden', 'true'); txt.appendChild(ck); }
     }
     if (bar) bar.style.width = (total ? Math.round(done / total * 100) : 0) + '%';
     var cont = nav.querySelector('[data-continue]');
@@ -1445,12 +1446,12 @@ function applyReadState(root) {
   root.querySelectorAll('.article-next[data-last]').forEach(function (b) {
     var view = b.closest('.article-view');
     var un = view && view.querySelectorAll('[data-news-nav] .ai:not(.is-read)');
-    var a = b.querySelector('.an-card');
+    var a = b.querySelector('.article-next__card');
     var k = b.querySelector('[data-an-kicker]'), t = b.querySelector('[data-an-title]'), l = b.querySelector('[data-an-label]');
     if (un && un.length) {
       a.setAttribute('href', '#' + slugOf(un[0]));
       k.textContent = 'Це остання новина · лишилось непрочитаних: ' + un.length;
-      var tt = un[0].querySelector('.ait');
+      var tt = un[0].querySelector('.also-link__title');
       t.textContent = tt ? tt.textContent : '';
       l.textContent = 'До непрочитаної';
     } else {
@@ -1464,7 +1465,7 @@ function applyReadState(root) {
 
 /* «Читайте також» на сторінках ігор додається після запуску гри, щоб мініатюри не гальмували старт */
 function deferGameSide(frag) {
-  var aside = frag.querySelector('.wordle-side-col');
+  var aside = frag.querySelector('.game-page__side');
   var tpl = document.getElementById('also-card-tpl');
   if (!aside || !tpl || !tpl.content.firstElementChild) return null;
   return function () {
@@ -1481,7 +1482,7 @@ function deferGameSide(frag) {
 /* Позначка виду на <html>: CSS стискає шапку на внутрішніх сторінках; логотип лишається h1 тільки на головній
    (на сторінці новини/гри свій h1 — другого заголовка верхнього рівня бути не повинно) */
 function chipsFocus() {
-  var c = document.querySelector('.chips');
+  var c = document.querySelector('.masthead__chips');
   if (!c || !c.offsetParent) return;
   var scrolls = c.scrollWidth > c.clientWidth + 1;
   if (scrolls) { c.tabIndex = 0; c.setAttribute('role', 'group'); c.setAttribute('aria-label', 'Про випуск'); }
@@ -1492,7 +1493,7 @@ window.addEventListener('resize', function () { requestAnimationFrame(chipsFocus
 function markView(id) {
   document.documentElement.setAttribute('data-view', id === 'main' ? 'main' : 'inner');
   if (id === 'main') requestAnimationFrame(chipsFocus);
-  var lg = document.querySelector('.htext h1');
+  var lg = document.querySelector('.masthead__text h1');
   if (lg) { if (id === 'main') lg.removeAttribute('role'); else lg.setAttribute('role', 'presentation'); }
 }
 
@@ -1534,7 +1535,7 @@ function showView(id) {
   host.style.display = 'block';
   applyReadState(host);
   /* у довгому списку бічна колонка прокручується до відкритої новини */
-  var side = host.querySelector('.article-side-nav .also-read-nav'), curEl = side && side.querySelector('.is-current');
+  var side = host.querySelector('.article-side .also-list'), curEl = side && side.querySelector('.is-current');
   if (side && curEl && side.scrollHeight > side.clientHeight) {
     side.scrollTop = Math.max(0, curEl.offsetTop - side.offsetTop - (side.clientHeight - curEl.offsetHeight) / 2);
   }
@@ -1634,25 +1635,25 @@ function initModal() {
     // Клік по затемненому фону закриває вікно
     if (tg === appModal) { closeAppModal(); return; }
     // Перегляд медіа: клік у порожнє місце (поза файлом, підписом і кнопками) теж закриває
-    if (appModal.classList.contains('media-mode') &&
+    if (appModal.classList.contains('is-media') &&
       (tg === modalMediaView || tg === modalMediaContainer ||
-        (tg.classList && (tg.classList.contains('modal-media-stage') || tg.classList.contains('modal-media-wrap'))))) {
+        (tg.classList && (tg.classList.contains('modal__stage') || tg.classList.contains('modal__wrap'))))) {
       closeAppModal();
     }
   });
   appModal.addEventListener('close', function () {
-    document.documentElement.classList.remove('modal-open');
+    document.documentElement.classList.remove('is-modal-open');
     dropModalEntry();
   });
 
   // кожна галерея (день / тиждень) гортається окремо
   mediaList = [];
-  document.querySelectorAll('.gal').forEach(function (gal) {
+  document.querySelectorAll('.gallery__grid').forEach(function (gal) {
     var list = [];
-    gal.querySelectorAll('.g').forEach(function (btn, idx) {
+    gal.querySelectorAll('.gallery__item').forEach(function (btn, idx) {
       var img = btn.querySelector('img');
       var vid = btn.querySelector('video');
-      var caption = btn.getAttribute('data-caption') || (btn.querySelector('.gt') ? btn.querySelector('.gt').textContent.trim() : '');
+      var caption = btn.getAttribute('data-caption') || (btn.querySelector('.gallery__caption') ? btn.querySelector('.gallery__caption').textContent.trim() : '');
       btn.setAttribute('data-gal-index', idx);
       if (vid) list.push({ type: 'video', src: vid.getAttribute('src'), caption: caption });
       else if (img) list.push({ type: 'image', src: img.getAttribute('src'), caption: caption });
@@ -1663,24 +1664,24 @@ function initModal() {
   });
 
   document.addEventListener('click', function (e) {
-    var box = e.target.closest('.article-media-box');
+    var box = e.target.closest('.article__media');
     var target = box || e.target.closest('[data-lightbox]');
     if (target) {
-      if (target.closest('.main-lead') || target.closest('.gal')) return;
+      if (target.closest('.news-tile--lead') || target.closest('.gallery__grid')) return;
 
       e.preventDefault();
       e.stopPropagation();
 
-      var container = target.closest('.article-media-grid') || target.closest('.article-main-body') || target.closest('.article-view');
-      var boxes = container ? Array.prototype.slice.call(container.querySelectorAll('.article-media-box')) : [];
+      var container = target.closest('.article__media-grid') || target.closest('.article__body') || target.closest('.article-view');
+      var boxes = container ? Array.prototype.slice.call(container.querySelectorAll('.article__media')) : [];
 
       if (boxes.length > 0) {
         var articleItems = [];
         var clickedIdx = 0;
-        var defaultCaption = (container && container.querySelector('.article-title')) ? container.querySelector('.article-title').textContent.trim() : '';
+        var defaultCaption = (container && container.querySelector('.article__title')) ? container.querySelector('.article__title').textContent.trim() : '';
 
         boxes.forEach(function (b) {
-          var fit = b.querySelector('.article-media-fit') || b.querySelector('video, img');
+          var fit = b.querySelector('.article__media-fit') || b.querySelector('video, img');
           if (!fit) return;
           var isVid = fit.tagName.toLowerCase() === 'video';
           var src = fit.getAttribute('src');
@@ -1703,26 +1704,26 @@ function initModal() {
     }
   });
 
-  document.querySelectorAll('.gal .g').forEach(function (btn) {
+  document.querySelectorAll('.gallery__grid .gallery__item').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      var gal = btn.closest('.gal');
+      var gal = btn.closest('.gallery__grid');
       openMediaModal(parseInt(btn.getAttribute('data-gal-index'), 10) || 0, (gal && gal._list) || mediaList);
     });
   });
 
-  var galleryVideos = document.querySelectorAll('.gal video');
+  var galleryVideos = document.querySelectorAll('.gallery__grid video');
   galleryVideos.forEach(function (v) {
     v.pause();
-    var wrap = v.closest('.g') || v.parentElement;
+    var wrap = v.closest('.gallery__item') || v.parentElement;
     if (!wrap) return;
     wrap.addEventListener('mouseenter', function () { v.play().catch(function () { }); });
     wrap.addEventListener('mouseleave', function () { v.pause(); v.currentTime = 0; });
   });
 
-  var coverVideos = document.querySelectorAll('.tile .cover video');
+  var coverVideos = document.querySelectorAll('.news-tile .news-tile__cover video');
   coverVideos.forEach(function (v) {
     v.pause();
-    var tile = v.closest('.tile');
+    var tile = v.closest('.news-tile');
     if (!tile) return;
     tile.addEventListener('mouseenter', function () { v.play().catch(function () { }); });
     tile.addEventListener('mouseleave', function () { v.pause(); v.currentTime = 0; });
@@ -1733,15 +1734,15 @@ function initModal() {
 // Знімається в обробнику події "close" (Esc, кнопка, клік по фону).
 function showAppModal() {
   if (!appModal || appModal.open) return;
-  document.documentElement.classList.add('modal-open');
+  document.documentElement.classList.add('is-modal-open');
   appModal.showModal();
   try { history.pushState({ view: currentView, modal: true }, ''); modalHist = true; } catch (e) { }
 }
 
 function openContentModal(kicker, title, contentHtml, opts) {
   if (!appModal) return;
-  appModal.classList.remove('media-mode');
-  appModal.classList.toggle('wide', !!(opts && opts.wide));
+  appModal.classList.remove('is-media');
+  appModal.classList.toggle('is-wide', !!(opts && opts.wide));
   modalBody.scrollTop = 0;
   modalContentView.style.display = 'flex';
   modalMediaView.style.display = 'none';
@@ -1758,7 +1759,7 @@ function openMediaModal(index, list) {
   if (!activeMediaList || !activeMediaList.length) activeMediaList = mediaList;
   if (!appModal || !activeMediaList || !activeMediaList.length) return;
 
-  appModal.classList.add('media-mode');
+  appModal.classList.add('is-media');
   modalContentView.style.display = 'none';
   modalMediaView.style.display = 'flex';
 
@@ -1798,7 +1799,7 @@ function toBlobUrl(dataUri) {
 function renderMediaItem(item, curr, total) {
   modalMediaContainer.innerHTML = '';
   var wrap = document.createElement('div');
-  wrap.className = 'modal-media-wrap';
+  wrap.className = 'modal__wrap';
 
   var resolvedSrc = toBlobUrl(item.src);
 
@@ -1884,20 +1885,20 @@ function preloadNeighbours() {
 /* Вибір стовпчика в «Детально» (години/дні): підпис і позначка беруться з data-атрибутів кнопок (data-rt, data-rs, data-pk).
    Наведення лише змінює підпис; скринрідеру він озвучується (aria-live) тільки після кліку або стрілок. */
 function wireStatsBars() {
-  var bars = [].slice.call(modalBody.querySelectorAll('.sd-bar'));
-  var readout = modalBody.querySelector('.sd-readout');
+  var bars = [].slice.call(modalBody.querySelectorAll('.stats-detail__bar'));
+  var readout = modalBody.querySelector('.stats-detail__readout');
   if (!bars.length || !readout) return;
   var peak = Math.max(0, bars.findIndex(function (b) { return b.classList.contains('is-peak'); }));
   function select(i, announce, focus) {
     bars.forEach(function (b, k) {
       var on = k === i;
-      b.classList.toggle('is-sel', on);
+      b.classList.toggle('is-selected', on);
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
       b.tabIndex = on ? 0 : -1;
     });
     readout.setAttribute('aria-live', announce ? 'polite' : 'off');
     var b = bars[i], t = document.createElement('strong'), s = document.createElement('span');
-    t.className = 'disp'; t.textContent = b.getAttribute('data-rt');
+    t.className = 'u-display'; t.textContent = b.getAttribute('data-rt');
     s.textContent = b.getAttribute('data-rs');
     if (b.getAttribute('data-pk')) { s.appendChild(document.createTextNode(' · ')); var pk = document.createElement('b'); pk.textContent = b.getAttribute('data-pk'); s.appendChild(pk); }
     readout.textContent = '';
@@ -1944,7 +1945,7 @@ document.addEventListener('DOMContentLoaded', function () {
     jokeStackEl.innerHTML = '';
     jokes.forEach(function (text) {
       var p = document.createElement('p');
-      p.className = 'joke-text';
+      p.className = 'joke__text';
       p.textContent = text;
       jokeStackEl.appendChild(p);
       jokeNodes.push(p);

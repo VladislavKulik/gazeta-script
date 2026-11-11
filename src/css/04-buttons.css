@@ -1,0 +1,129 @@
+/* ==========================================================================
+   04 · Кнопки, значки, стрілки
+   Єдина система кнопок: .btn, .icon, .arrow.
+   ========================================================================== */
+
+.btn {
+  --_bg: var(--btn-bg, var(--card));
+  --_fg: var(--btn-fg, var(--text));
+  --_line: var(--btn-line, var(--line));
+  --_hov: var(--hov, var(--accent));
+  --px: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-sizing: border-box;
+  min-height: 42px;
+  padding: 0 var(--px);
+  font: 700 13.5px/1 var(--body);
+  letter-spacing: 0;
+  text-decoration: none;
+  white-space: nowrap;
+  border: 1px solid var(--_line);
+  border-radius: var(--radius-pill);
+  background: var(--_bg);
+  color: var(--_fg);
+  box-shadow: 0 0 0 0 transparent;
+  filter: none;
+  opacity: 1;
+  cursor: pointer;
+  transform: none;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast), background var(--dur-fast), color var(--dur-fast);
+}
+
+.btn:hover {
+  border-color: var(--_hov);
+  box-shadow: 0 0 0 1px var(--_hov);
+  background: var(--_bg);
+  color: var(--_fg);
+  filter: none;
+  opacity: 1;
+  transform: none;
+}
+
+/* Акцентна кнопка (одна головна дія на екрані): hover — жовтий обвід, як жовтіє коло в плитках */
+.btn--primary {
+  --btn-bg: var(--accent);
+  --btn-fg: var(--on-accent);
+  --btn-line: var(--accent);
+  --hov: var(--hi);
+  --ico-bg: color-mix(in srgb, var(--on-accent) 22%, transparent);
+  --ico-fg: var(--on-accent);
+}
+
+.btn--primary#wCopyBtn {
+  min-height: 46px;
+}
+
+/* Значок у колі (такий самий, як .news-tile__go у плитках «Головне») */
+.icon {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--ico, 28px);
+  height: var(--ico, 28px);
+  font: 800 15px/1 var(--body);
+  border-radius: 50%;
+  background: var(--ico-bg, var(--pill));
+  color: var(--ico-fg, var(--accent));
+  transition: background var(--dur), color var(--dur);
+}
+
+.btn:not(.btn--back):has(> .icon) {
+  padding-right: 7px;
+}
+
+.btn--back {
+  padding-left: 7px;
+}
+
+.icon--right {
+  --g: var(--i-r);
+}
+
+.icon--left {
+  --g: var(--i-l);
+}
+
+.icon--more {
+  --g: var(--i-plus);
+}
+
+/* Стрілка всередині тексту (підписи розділів, клавіші, кнопки з текстом) */
+.arrow {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.14em;
+  margin-left: 0.25em;
+  background: currentColor;
+  -webkit-mask: var(--g, var(--i-r)) center / contain no-repeat;
+  mask: var(--g, var(--i-r)) center / contain no-repeat;
+}
+
+.arrow--check {
+  --g: var(--i-check);
+  margin-left: 0.35em;
+}
+
+.arrow--right {
+  --g: var(--i-r);
+}
+
+.arrow--left {
+  --g: var(--i-l);
+}
+
+.arrow--up {
+  --g: var(--i-u);
+}
+
+.arrow--down {
+  --g: var(--i-d);
+}
+
+.arrow--se {
+  --g: var(--i-se);
+}

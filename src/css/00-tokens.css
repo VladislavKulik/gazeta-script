@@ -1,0 +1,107 @@
+/* ==========================================================================
+   00 · Токени
+   Кольори, радіуси, відступи, шрифти, іконки. Темна тема перевизначає лише значення.
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* Поверхні й лінії */
+  --bg: #e6e4f1;
+  --card: #fff;
+  --paper: #fff;
+  --pill: #efecfa;
+  --line: #d3cfe6;
+  --tile-line: #c4bfdc;
+
+  /* Текст */
+  --text: #0b0919;
+  --text2: #26223d;
+  --muted: #625e7a;
+
+  /* Акценти й «чорнило» */
+  --accent: #4b2ee0;
+  --on-accent: #fff;
+  --brand: #4b2ee0;
+  --hi: #f5da4b;
+  --hi-text: #0b0919;
+  --yellow-ink: #211b32;
+  --purple: #26164e;
+  --ink: #120f2a;
+  --ink-text: #fff;
+  --ink-soft: #ddd9f2;
+  --ink-fixed: #17142b;
+  --tile-dark: #17132d;
+  --white: #fff;
+
+  /* Стани */
+  --good: #1c7f53;
+  --absent: #4f4b6b;
+  --danger: #e0324b;
+
+  /* Форма, відступи, рух */
+  --radius: 24px;
+  --radius-inner: 23px;
+  --radius-pill: 999px;
+  --gap: 14px;
+  --tile-h: 400px;
+  --ring: 0 0 0 2px var(--accent);
+  --dur-fast: 0.15s;
+  --dur: 0.2s;
+
+  /* Шрифти */
+  --display: "Unbounded", "Onest", system-ui, sans-serif;
+  --body: "Onest", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Кольори фігур Тетріса */
+  --pc-i: #22b8c4;
+  --pc-l: #f08a24;
+  --pc-z: #e5484d;
+  --pc-j: #d946a8;
+  --pc-s: var(--good);
+
+  /* Іконки (маски) */
+  --i-r: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 12h15M13 5.5l6.5 6.5-6.5 6.5'/%3E%3C/svg%3E");
+  --i-l: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19.5 12h-15M11 5.5L4.5 12 11 18.5'/%3E%3C/svg%3E");
+  --i-u: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 19.5v-15M5.5 11 12 4.5l6.5 6.5'/%3E%3C/svg%3E");
+  --i-d: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4.5v15M5.5 13 12 19.5 18.5 13'/%3E%3C/svg%3E");
+  --i-ne: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6.5 17.5l11-11M8.5 6.5h9v9'/%3E%3C/svg%3E");
+  --i-se: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6.5 6.5l11 11M17.5 8.5v9h-9'/%3E%3C/svg%3E");
+  --i-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.6 4.6L19 7.4'/%3E%3C/svg%3E");
+  --i-plus: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E");
+  --i-close: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E");
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Поверхні й лінії */
+  --bg: #000;
+  --card: #111;
+  --paper: #161616;
+  --pill: #222;
+  --line: #262626;
+  --tile-line: #383838;
+
+  /* Текст */
+  --text: #fff;
+  --text2: #e8e8e8;
+  --muted: #a9a9a9;
+
+  /* Акценти й «чорнило» */
+  --accent: #a493ff;
+  --on-accent: #0b0919;
+  --hi: #f5da4b;
+  --hi-text: #17142b;
+  --yellow-ink: #211b32;
+  --purple: #140d28;
+  --ink: #171340;
+  --ink-text: #fff;
+  --ink-soft: #d9d5f0;
+
+  /* Стани */
+  --absent: #3a3a3a;
+
+  /* Кольори фігур Тетріса */
+  --pc-s: #2ba46c;
+}

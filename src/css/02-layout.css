@@ -1,0 +1,141 @@
+/* ==========================================================================
+   02 · Каркас і секції
+   Контейнер, заголовки секцій, підвал, порожній стан.
+   ========================================================================== */
+
+.shell {
+  width: min(1240px, calc(100% - 44px));
+  margin: 0 auto;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  margin: 34px 0 16px;
+}
+
+.section-head h2 {
+  font-size: clamp(24px, 3vw, 32px);
+  line-height: 1.1;
+  margin: 0;
+  font-weight: 700;
+}
+
+.section-head .section-head__sub {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.section--spaced {
+  margin-top: 44px;
+}
+
+.site-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 56px;
+  padding: 32px 0;
+  border-top: 2px solid var(--line);
+}
+
+.site-footer__brand {
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--text);
+}
+
+.site-footer__note {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+/* Підсумки тижня: без окремої панелі, лише тонкий розділювач */
+.week-divider {
+  height: 1px;
+  margin: 56px 0 0;
+  background: var(--line);
+}
+
+.section--week-first > .section-head {
+  margin-top: 34px;
+}
+
+.section-head .section-head__sub.section-head__sub--week {
+  color: var(--accent);
+}
+
+/* Порожній випуск */
+.empty-card {
+  padding: 60px 20px;
+  margin-top: 30px;
+  text-align: center;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.empty-card h2 {
+  margin: 0 0 10px;
+  font-weight: 700;
+  font-size: clamp(24px, 3vw, 32px);
+}
+
+.empty-card p {
+  margin: 0;
+  font-size: 16px;
+  color: var(--muted);
+}
+
+.site-footer .site-footer__legal {
+  margin: 10px 0 0;
+  max-width: 70ch;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* Адаптив */
+
+@media (max-width: 900px) {
+  .shell {
+    width: min(100% - 32px, 780px);
+  }
+}
+
+@media (max-width: 720px) {
+  .section-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .section-head .section-head__sub {
+    white-space: normal;
+  }
+}
+
+@media (max-width: 650px) {
+  .shell {
+    width: calc(100% - 24px);
+  }
+
+  .week-divider {
+    margin-top: 40px;
+  }
+}
+
+@media (max-width: 640px) {
+  .section-head {
+    flex-wrap: wrap;
+  }
+}
