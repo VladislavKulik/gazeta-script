@@ -1,14 +1,17 @@
 {#- Шаблон газети. Це ДЖЕРЕЛО: CSS і JS лежать окремо (src/style.css, src/app.js), в один файл їх збирає render.py (build_template)
 (CSS/JS потрапляють у блоки raw, тому Jinja їх не чіпає). Збірку template.html руками редагувати не треба.
 Один автономний файл без звернень до інтернету: головна, сторінки новин і ігор перемикаються в пам'яті (адреса не
-змінюється). Медіа вставляються в файл один раз: на сторінках новин і в «Читайте також» вони підтягуються з обкладинок
-на головній (data-ref). -#}
+змінюється). Режим без JS (iPhone Quick Look, перегляд у месенджерах): сторінки новин і «Детально» лежать у розмітці готовими
+блоками <section class="page" id="…">, а показує їх :target (html:not(.js) у CSS); скрипт забирає ці блоки з документа сам. Медіа вставляються в файл один раз: на сторінках новин і в «Читайте також» вони підтягуються з обкладинок
+на головній (data-ref). Змінна inline_covers (за замовчуванням true) додає обкладинкам на сторінках новин власну копію даних,
+щоб вони були видимі без JS; false — файл менший, але без скрипта обкладинки на сторінках новин не показуються. -#}
 {#- ================= МАКРОСИ ================= -#}
 {#- Класи, які бекенд віддає в tile_cls і в легенді «Детально» (page_data.py): перекладаємо на сучасні імена тут,
 щоб Python не чіпати. Нове ім'я на бекенді — достатньо додати рядок у словник. -#}
 {%- set TILE_CLASS = {'main-lead': 'news-tile--lead', 'main-small': 'news-tile--small', 'ms-12': 'news-tile--w12', 'ms-6': 'news-tile--w6',
   'ms-4': 'news-tile--w4', 'ms-tall': 'news-tile--tall', 'ms-solo': 'news-tile--solo'} -%}
 {%- set MEDIA_KIND = {'m-photo': 'media-photo', 'm-sticker': 'media-sticker', 'm-gif': 'media-gif'} -%}
+{%- set INLINE = inline_covers is not defined or inline_covers -%}
 {%- macro sticker(m) -%}
 {%- if m.kind == "sticker" -%}<img class="sticker-img" src="{{ m.data }}" alt="{{ m.emoji or 'стікер' }}" loading="lazy" {% if
   m.w %} width="{{ m.w }}" height="{{ m.h }}" {% endif %}>
@@ -38,12 +41,22 @@ page_data.build_day_stats / build_week_stats; тут лише розмітка. 
 {%- endmacro -%}
 
 {#- смужка «До випуску» (+ необов'язковий лічильник «2 / 5» на сторінках новин) -#}
-{%- macro back_bar(pos, pos_label) -%}
+{%- macro back_bar(pos, pos_label, back) -%}
 <div class="article-nav">
-  <a href="#main" class="btn btn--back" aria-label="До випуску"><span class="icon icon--go icon--left"
+  <a href="#{{ back or 'main' }}" class="btn btn--back" aria-label="До випуску"{{ ' data-back' if back else '' }}><span class="icon icon--go icon--left"
       aria-hidden="true"></span><span>До випуску</span></a>
   {%- if pos %}<span class="article-nav__pos" aria-label="{{ pos_label }}">{{ pos }}</span>{% endif %}
 </div>
+{%- endmacro -%}
+{#- «Детально» як сторінка: у режимі без JS її показує :target, зі скриптом вміст (.page__body) іде у модальне вікно -#}
+{%- macro detail_page(id, back, title, S, week) -%}
+<section class="page page--detail" id="{{ id }}" data-title="{{ title }}">
+  <div class="page__chrome u-nojs-only">
+    {{ back_bar(none, none, back) }}
+    <h2 class="u-display page__title">{{ title }}</h2>
+  </div>
+  <div class="page__body">{{ stats_detail(S, week) }}</div>
+</section>
 {%- endmacro -%}
 {#- логотип «Тетріс» (фігурки): один раз у макросі, використовується на картці гри й на стартовому екрані -#}
 {%- macro tetro_logo() -%}
@@ -103,13 +116,13 @@ page_data.build_day_stats / build_week_stats; тут лише розмітка. 
 <div class="news-grid">
   {%- for it in items -%}
   {#- без обкладинки: один із трьох кольорових варіантів (по колу) + початок тексту новини -#}
-  <a href="#{{ it.slug }}" class="news-tile{% for c in (it.tile_cls or '').split() %} {{ TILE_CLASS.get(c, c) }}{% endfor %}{{ '' if it.cover else (' news-tile--plain news-tile--tone-' ~ (loop.index0 % 3)) }}"
+  <a href="#{{ it.slug }}" id="tile-{{ it.slug }}" class="news-tile{% for c in (it.tile_cls or '').split() %} {{ TILE_CLASS.get(c, c) }}{% endfor %}{{ '' if it.cover else (' news-tile--plain news-tile--tone-' ~ (loop.index0 % 3)) }}"
     aria-label="{{ it.title }}">
     {%- if it.cover %}
     <div class="news-tile__cover">
       {%- set seen = it.cover_seen -%}
-      {%- if is_video(it.cover) -%}<video {{ 'data-ref' if seen else 'data-mid' }}="{{ it.cover_id }}" {% if it.cover.poster %}{% if not seen %}poster="{{ it.cover.poster }}" {% endif %}preload="none" {% else %}preload="metadata" {% endif %}{% if not seen %}src="{{ it.cover.data }}{{ '' if it.cover.poster else '#t=0.001' }}" {% endif %}muted loop playsinline></video>
-      {%- else -%}<img {{ 'data-ref' if seen else 'data-mid' }}="{{ it.cover_id }}" {% if not seen %}src="{{ it.cover.data }}" {% endif %}alt="{{ it.title }}" loading="lazy" decoding="async">{%- endif -%}
+      {%- if is_video(it.cover) -%}<video {{ 'data-ref' if seen else 'data-mid' }}="{{ it.cover_id }}" {% if it.cover.poster %}{% if not seen or INLINE %}poster="{{ it.cover.poster }}" {% endif %}preload="none" {% else %}preload="metadata" {% endif %}{% if not seen %}src="{{ it.cover.data }}{{ '' if it.cover.poster else '#t=0.001' }}" {% endif %}muted loop playsinline></video>
+      {%- else -%}<img {{ 'data-ref' if seen else 'data-mid' }}="{{ it.cover_id }}" {% if not seen or INLINE %}src="{{ it.cover.data }}" {% endif %}alt="{{ it.title }}" loading="lazy" decoding="async">{%- endif -%}
     </div>
     {%- endif %}
     <div class="news-tile__top">
@@ -171,10 +184,10 @@ page_data.build_day_stats / build_week_stats; тут лише розмітка. 
 {%- if loop.first %}<div class="article__media-grid">{% endif %}
   <figure class="article__media" data-caption="{{ it.title }}">
     {%- if is_video(e.m) -%}
-    <video {% if e.id in cover_ids %}data-ref="{{ e.id }}" {% else %}src="{{ e.m.data }}" {% endif %}
+    <video {% if e.id in cover_ids %}data-ref="{{ e.id }}" {% if INLINE and e.m.poster %}poster="{{ e.m.poster }}" {% endif %}{% else %}src="{{ e.m.data }}" {% endif %}
       class="article__media-fit" autoplay muted loop playsinline data-lightbox></video>
     {%- else -%}
-    <img {% if e.id in cover_ids %}data-ref="{{ e.id }}" {% else %}src="{{ e.m.data }}" {% endif %} alt="{{ it.title }}"
+    <img {% if e.id in cover_ids and not INLINE %}data-ref="{{ e.id }}" {% else %}src="{{ e.m.data }}" {% endif %} alt="{{ it.title }}"
       {% if e.m.w %}width="{{ e.m.w }}" height="{{ e.m.h }}" {% endif %} class="article__media-fit" data-lightbox>
     {%- endif -%}
   </figure>
@@ -190,9 +203,9 @@ page_data.build_day_stats / build_week_stats; тут лише розмітка. 
 {%- macro article_page(items, idx, cover_ids, label_extra) -%}
 {%- set it = items[idx] -%}
 {%- set total = items | length -%}
-{%- set nx = items[idx + 1] if (idx + 1) < total else none -%} <template id="tpl-{{ it.slug }}" data-news{% if it.twin %} data-twin="{{ it.twin }}"{% endif %}>
+{%- set nx = items[idx + 1] if (idx + 1) < total else none -%} <section class="page" id="{{ it.slug }}" data-news{% if it.twin %} data-twin="{{ it.twin }}"{% endif %}>
   <div class="article-view">
-    {{ back_bar((idx + 1) ~ ' / ' ~ total, 'Новина ' ~ (idx + 1) ~ ' з ' ~ total) }}
+    {{ back_bar((idx + 1) ~ ' / ' ~ total, 'Новина ' ~ (idx + 1) ~ ' з ' ~ total, 'tile-' ~ it.slug) }}
     <div class="article__columns">
       <div class="article__col">
         <article class="article__body">
@@ -204,7 +217,7 @@ page_data.build_day_stats / build_week_stats; тут лише розмітка. 
         {#- «Далі»: окрема картка під текстом новини; на останній — підсумок (скрипт підставляє першу непрочитану, якщо
         така є) -#}
         <nav class="article-next" aria-label="Наступна новина" {% if not nx %} data-last{% endif %}>
-          <a href="#{{ nx.slug if nx else 'main' }}" class="article-next__card">
+          <a href="#{{ nx.slug if nx else 'view-main' }}" class="article-next__card">
             <span class="article-next__meta">
               <span class="article-next__kicker" data-an-kicker>{% if nx %}Наступна новина · {{ idx + 2 }} з {{ total }}{% else
                 %}Це остання новина{% endif %}</span>
@@ -222,7 +235,7 @@ page_data.build_day_stats / build_week_stats; тут лише розмітка. 
       </aside>
     </div>
   </div>
-  </template>
+  </section>
   {%- endmacro -%}
 
   {%- macro dialog_tile(d, label, meta, cls) -%}
@@ -308,11 +321,11 @@ page_data.build_day_stats / build_week_stats; тут лише розмітка. 
         <figure class="gallery__item" data-gal-index="{{ loop.index0 }}"
           data-caption="{{ g.sender }}, {{ gd }}{% if g.caption %} — {{ g.caption }}{% endif %}">
           {%- if is_video(m) -%}<video{% if mark and not ref %} data-mid="{{ g.media_id }}" {% endif %}{% if m.poster
-            and not ref %} poster="{{ m.poster }}" preload="none" {% else %} preload="metadata" {% endif %} {% if ref
+            and (not ref or INLINE) %} poster="{{ m.poster }}" preload="none" {% else %} preload="metadata" {% endif %} {% if ref
             %}data-ref="{{ g.media_id }}" {% else %}src="{{ m.data }}{{ '' if m.poster else '#t=0.001' }}" {% endif %}
             muted loop playsinline></video><span class="gallery__badge" aria-hidden="true">{{ 'GIF' if m.kind == 'gif' else 'ВІДЕО'
               }}</span>
-            {%- else -%}<img{% if mark and not ref %} data-mid="{{ g.media_id }}" {% endif %} {% if ref
+            {%- else -%}<img{% if mark and not ref %} data-mid="{{ g.media_id }}" {% endif %} {% if ref and not INLINE
               %}data-ref="{{ g.media_id }}" {% else %}src="{{ m.data }}" {% endif %} alt="" loading="lazy"
               decoding="async" {% if m.w %} width="{{ m.w }}" height="{{ m.h }}" {% endif %}>{%- endif -%}
           <figcaption class="gallery__caption"><b>{{ gd }}</b>{{ g.sender }}</figcaption></figure>
@@ -402,7 +415,7 @@ page_data.build_day_stats / build_week_stats; тут лише розмітка. 
           {% if stats %}<span class="chip">{{ stats.total_messages }} {{ plural(stats.total_messages, 'повідомлення',
             'повідомлення', 'повідомлень') }}</span>{% endif %}
         </div>
-        <button class="theme-toggle" id="tb" type="button" onclick="toggleTheme()"><span class="theme-toggle__icon" aria-hidden="true">☾</span><span class="theme-toggle__label">Темна тема</span></button>
+        <button class="theme-toggle u-js-only" id="tb" type="button" onclick="toggleTheme()"><span class="theme-toggle__icon" aria-hidden="true">☾</span><span class="theme-toggle__label">Темна тема</span></button>
         <script>
           function updateTheme() {
             var b = document.getElementById("tb");
@@ -440,6 +453,21 @@ page_data.build_day_stats / build_week_stats; тут лише розмітка. 
 
       <!-- Єдиний <main> на сторінці: усередині — або головна, або змонтована сторінка новини/гри -->
       <main id="content">
+      <!-- ================= СТОРІНКИ НОВИН І «ДЕТАЛЬНО» ================= -->
+      {#- Без JS їх показує :target, зі скриптом — прибирає з документа й клонує в #articleHost. Стоять ПЕРЕД головною:
+      правило «.page:target ~ #view-main» ховає головну лише для наступних сусідів. -#}
+      {%- if c %}
+      {%- for it in NI.items %}
+      {{ article_page(NI.items, loop.index0, CV.ids) }}
+      {%- endfor %}
+      {%- for it in WA.items %}
+      {{ article_page(WA.items, loop.index0, CV.ids) }}
+      {%- endfor %}
+      {%- if day_stats %}
+      {{ detail_page('stats-day', 'statsDetail-link', day_stats.title, day_stats, false) }}{% endif %}
+      {%- if week_stats %}
+      {{ detail_page('stats-week', 'weekStatsDetail-link', week_stats.title, week_stats, true) }}{% endif %}
+      {%- endif %}
       <!-- ================= ГОЛОВНА ================= -->
       <div id="view-main">
         {%- if c %}
@@ -516,13 +544,14 @@ page_data.build_day_stats / build_week_stats; тут лише розмітка. 
             <article class="widget widget--joke{{ '' if has_short else ' widget--solo' }}">
               <div class="widget__head">
                 <span class="widget__label">Анекдоти</span>
-                <span class="widget__meta" id="jokeCounter"></span>
+                <span class="widget__meta u-js-only" id="jokeCounter"></span>
               </div>
               <div class="joke__main">
                 <div class="joke__mark" aria-hidden="true">“</div>
-                <div class="joke__stack" id="jokeStack"></div>
+                <div class="joke__stack u-js-only" id="jokeStack"></div>
+                <ol class="joke__static u-nojs-only">{% for j in (c.jokes or []) %}<li class="joke__text">{{ j }}</li>{% endfor %}</ol>
               </div>
-              <div class="joke__actions"><button class="btn" type="button" id="nextJoke">Хочу ще</button></div>
+              <div class="joke__actions u-js-only"><button class="btn" type="button" id="nextJoke">Хочу ще</button></div>
             </article>
             {%- endif %}
           </div>
@@ -597,8 +626,10 @@ page_data.build_day_stats / build_week_stats; тут лише розмітка. 
               {%- if day_stats %}
               <div class="stats__foot">
                 <span class="stats__foot-note">Усі учасники та кожна година — у розгорнутій статистиці</span>
-                <button class="btn" type="button" id="statsDetail" aria-haspopup="dialog">Детально<span
+                <button class="btn u-js-only" type="button" id="statsDetail" aria-haspopup="dialog">Детально<span
                     class="icon icon--more" aria-hidden="true"></span></button>
+                <a class="btn u-nojs-only" id="statsDetail-link" href="#stats-day">Детально<span class="icon icon--more"
+                    aria-hidden="true"></span></a>
               </div>
               {%- endif %}
             </article>
@@ -617,6 +648,7 @@ page_data.build_day_stats / build_week_stats; тут лише розмітка. 
             <h2 id="gameTitle" class="u-display">Ігри</h2>
             <span class="section-head__sub">Щоденна розминка <i class="arrow arrow--se" aria-hidden="true"></i></span>
           </div>
+          <p class="game-note u-nojs-only">Ігри працюють лише в браузері: відкрийте цей файл у Safari чи Chrome (перегляд у месенджері скрипти не виконує).</p>
           {%- if word_data %}
           <article class="game-card" aria-labelledby="wordleCardTitle">
             <div class="game-card__top"><span class="category-tag">Гра дня</span></div>
@@ -808,8 +840,10 @@ page_data.build_day_stats / build_week_stats; тут лише розмітка. 
               {%- if week_stats %}
               <div class="stats__foot">
                 <span class="stats__foot-note">Усі учасники та кожен день тижня — у розгорнутій статистиці</span>
-                <button class="btn" type="button" id="weekStatsDetail" aria-haspopup="dialog">Детально<span
+                <button class="btn u-js-only" type="button" id="weekStatsDetail" aria-haspopup="dialog">Детально<span
                     class="icon icon--more" aria-hidden="true"></span></button>
+                <a class="btn u-nojs-only" id="weekStatsDetail-link" href="#stats-week">Детально<span class="icon icon--more"
+                    aria-hidden="true"></span></a>
               </div>
               {%- endif %}
             </article>
@@ -832,6 +866,7 @@ page_data.build_day_stats / build_week_stats; тут лише розмітка. 
             <span class="section-head__sub section-head__sub--week">{{ period }}{{ ' ' if period }}<i class="arrow arrow--se"
                 aria-hidden="true"></i></span>
           </div>
+          <p class="game-note u-nojs-only">Ігри працюють лише в браузері: відкрийте цей файл у Safari чи Chrome (перегляд у месенджері скрипти не виконує).</p>
           {%- if quiz_data %}
           <article class="game-card" aria-labelledby="quizCardTitle">
             <div class="game-card__top"><span class="category-tag">Гра тижня</span></div>
@@ -893,12 +928,6 @@ page_data.build_day_stats / build_week_stats; тут лише розмітка. 
 
     {#- ================= ШАБЛОНИ СТОРІНОК ================= -#}
     {%- if c %}
-    {%- for it in NI.items %}
-    {{ article_page(NI.items, loop.index0, CV.ids) }}
-    {%- endfor %}
-    {%- for it in WA.items %}
-    {{ article_page(WA.items, loop.index0, CV.ids) }}
-    {%- endfor %}
     {#- «Читайте також» для ігор: один екземпляр; скрипт клонує його в сторінку гри -#}
     <template id="also-card-tpl">{{ also_card(NI.items) }}</template>
 
@@ -1168,11 +1197,6 @@ page_data.build_day_stats / build_week_stats; тут лише розмітка. 
     {%- if cw_data %}
     <script type="text/plain" id="cwData" data-day="{{ day }}">{{ cw_data }}</script>{% endif %}
     <script type="application/json" id="tplJokes">{{ (c.jokes or []) | tojson }}</script>
-    {#- вміст вікон «Детально» (відкриваються кнопками #statsDetail / #weekStatsDetail; скрипт бере innerHTML) -#}
-    {%- if day_stats %}
-    <template id="tpl-stats-day" data-title="{{ day_stats.title }}">{{ stats_detail(day_stats, false) }}</template>{% endif %}
-    {%- if week_stats %}
-    <template id="tpl-stats-week" data-title="{{ week_stats.title }}">{{ stats_detail(week_stats, true) }}</template>{% endif %}
     {%- endif %}
 
     <!-- Єдине модальне вікно: деталі статистики та перегляд фото/відео на весь екран -->

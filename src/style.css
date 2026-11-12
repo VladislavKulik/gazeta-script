@@ -5055,6 +5055,94 @@ button,
 }
 
 /* ==========================================================================
+   12 · Режим без JS
+   Сторінки новин і «Детально» — готові блоки .page; без скрипта їх показує :target.
+   Зі скриптом .page забираються з документа до першої відмальовки, а .u-nojs-only ховається.
+   ========================================================================== */
+
+/* Без скрипта перехід між сторінками робить сам браузер по якорю: плавна прокрутка (01-base) тут тільки заважає —
+   з плитки на новину «їде» довго. Зі скриптом сторінки перемикаються миттєво (scrollNow), тож там нічого не змінюється. */
+html:not(.js) {
+  scroll-behavior: auto;
+}
+
+/* Блоки-сторінки схованi завжди; відкриває їх лише якір (і лише без JS). */
+.page {
+  display: none;
+}
+
+html:not(.js) .page:target {
+  display: block;
+}
+
+/* Головну ховаємо сусідським селектором (працює в усіх iOS, на відміну від :has): сторінки стоять у розмітці ПЕРЕД #view-main. */
+html:not(.js) .page:target ~ #view-main {
+  display: none;
+}
+
+/* Утиліти: що показувати лише зі скриптом / лише без нього */
+html.js .u-nojs-only {
+  display: none !important;
+}
+
+html:not(.js) .u-js-only {
+  display: none !important;
+}
+
+/* Без скрипта не працюють ігри, прогрес прочитаного, «Читайте також» (мініатюри підтягує скрипт) */
+html:not(.js) .article-side,
+html:not(.js) .read-progress,
+html:not(.js) .also-card {
+  display: none;
+}
+
+/* Картинка без даних (їх без скрипта нема звідки взяти) — ховаємо; відео без src, але з постером, показує постер. */
+html:not(.js) img[data-ref]:not([src]),
+html:not(.js) video[data-ref]:not([src]):not([poster]) {
+  display: none;
+}
+
+html:not(.js) .game-card {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.game-note {
+  margin: 0 0 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-inner);
+  background: var(--pill);
+  color: var(--text2);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* Анекдоти: без скрипта всі тексти списком замість стеку з «Хочу ще» */
+.joke__static {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.joke__static .joke__text + .joke__text {
+  padding-top: 14px;
+  border-top: 1px solid rgba(33, 27, 50, 0.2);
+}
+
+/* «Детально» як сторінка */
+.page__title {
+  margin: 4px 0 16px;
+  font-size: clamp(22px, 4vw, 30px);
+}
+
+.page--detail {
+  padding-bottom: 24px;
+}
+
+/* ==========================================================================
    99 · Друк і рух
    Спільні медіа-запити, що зачіпають увесь сайт.
    ========================================================================== */
