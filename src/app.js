@@ -22,6 +22,19 @@ function copyText(txt, btn, doneLabel, label) {
 }
 
 
+/* ================= СТОРІНКИ-БЛОКИ =================
+   Новини та «Детально» лежать у розмітці готовими <section class="page" id="…"> (без JS їх показує :target).
+   Скрипт одразу забирає їх з документа й віддає сторінку клонуванням — рівно так, як раніше з <template>. */
+var PAGES = {};
+document.querySelectorAll('section.page[id]').forEach(function (s) { PAGES[s.id] = s; s.parentNode.removeChild(s); });
+function hasPage(id) { return !!PAGES[id] || !!document.getElementById('tpl-' + id); }
+function pageFrag(id) {
+  var p = PAGES[id];
+  if (p) { var c = p.cloneNode(true), f = document.createDocumentFragment(); while (c.firstChild) f.appendChild(c.firstChild); return f; }
+  var t = document.getElementById('tpl-' + id);
+  return t ? t.content.cloneNode(true) : null;
+}
+
 /* ================= МЕДІА: підтягування обкладинок, пауза відео =================
    Анімовані (TGS) стікери бібліотеку Lottie не підвантажують — файл автономний; шаблон показує їх як емодзі. */
 var REDUCE_MOTION = false;
@@ -1326,7 +1339,7 @@ function initCrossword() {
    Один автономний HTML-файл: «сторінки» (головна / новина / гра) перемикаються в пам'яті.
    Адреса в браузері НЕ змінюється, але історія працює: кнопка «Назад» і свайп повертають
    на попередній вигляд (через history.state), а положення прокрутки головної запам'ятовується.
-   Розмітка: <a href="#slug">…</a>  +  <template id="tpl-slug">…</template>. */
+   Розмітка: <a href="#slug">…</a>  +  <section class="page" id="slug">…</section> (ігри — <template id="tpl-…">). */
 var currentView = 'main';
 var mainScrollY = 0;
 var NAV_KEY = 'gazeta-nav'; /* sessionStorage: позиція головної, щоб після перезавантаження «До випуску» вертало туди, де читали */
@@ -1366,8 +1379,9 @@ var TWINS = null;
 function twinsOf(slug) {
   if (!TWINS) {
     TWINS = {};
-    document.querySelectorAll('template[data-twin]').forEach(function (t) {
-      var x = t.id.slice(4), y = t.getAttribute('data-twin');
+    Object.keys(PAGES).forEach(function (k) {
+      var x = k, y = PAGES[k].getAttribute('data-twin');
+      if (!y) return;
       (TWINS[x] = TWINS[x] || []).push(y);
       (TWINS[y] = TWINS[y] || []).push(x);
     });
@@ -1445,7 +1459,7 @@ function applyReadState(root) {
   /* остання новина: якщо лишились непрочитані — «Далі» веде до першої з них, інакше — до випуску */
   root.querySelectorAll('.article-next[data-last]').forEach(function (b) {
     var view = b.closest('.article-view');
-    var un = view && view.querySelectorAll('[data-news-nav] .ai:not(.is-read)');
+    var un = view && view.querySelectorAll('[data-news-nav] .also-link:not(.is-read)');
     var a = b.querySelector('.article-next__card');
     var k = b.querySelector('[data-an-kicker]'), t = b.querySelector('[data-an-title]'), l = b.querySelector('[data-an-label]');
     if (un && un.length) {
@@ -1516,18 +1530,17 @@ function showView(id) {
     return true;
   }
 
-  var tpl = document.getElementById('tpl-' + id);
-  if (!tpl) return false;
+  if (!hasPage(id)) return false;
 
   if (currentView === 'main') {
     mainScrollY = window.scrollY;
     try { sessionStorage.setItem(NAV_KEY, JSON.stringify({ i: readPrefix, y: Math.round(mainScrollY) })); } catch (e) { }
   }
-  if (tpl.hasAttribute('data-news')) markRead(id);
+  if (PAGES[id] && PAGES[id].hasAttribute('data-news')) markRead(id);
   mainView.style.display = 'none';
   setMainVideos(false);
   host.innerHTML = '';
-  var frag = tpl.content.cloneNode(true);
+  var frag = pageFrag(id);
   var isGame = !!GAME_INIT[id];
   var lateSide = isGame ? deferGameSide(frag) : null;
   hydrate(frag);
@@ -1571,8 +1584,8 @@ document.addEventListener('click', function (e) {
   if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
   var a = e.target.closest('a[href^="#"]');
   if (!a) return;
-  var id = a.getAttribute('href').slice(1);
-  if (id !== 'main' && !document.getElementById('tpl-' + id)) return;
+  var id = a.hasAttribute('data-back') ? 'main' : a.getAttribute('href').slice(1);   /* data-back: у режимі без JS це якір на плитку, зі скриптом — просто «До випуску» */
+  if (id !== 'main' && !hasPage(id)) return;
   e.preventDefault();
   openView(id, a);
 });
@@ -1974,20 +1987,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
   renderJokeView();
 
-  // 3: «Детально» у цифрах дня й тижня. Вміст вікна вже зверстано в <template id="tpl-stats-day|week"> (числа рахує
+  // 3: «Детально» у цифрах дня й тижня. Вміст вікна вже зверстано в <section class="page" id="stats-day|week"> (числа рахує
   // бекенд, page_data.py); тут лише відкриття вікна та вибір стовпчика.
-  function bindStatsDetail(btnId, tplId) {
+  function bindStatsDetail(btnId, pageId) {
     var btn = document.getElementById(btnId);
     if (!btn) return;
-    var tpl = document.getElementById(tplId);
-    if (!tpl) { btn.hidden = true; return; }
+    var pg = PAGES[pageId], body = pg && pg.querySelector('.page__body');
+    if (!body) { btn.hidden = true; return; }
     btn.addEventListener('click', function () {
-      openContentModal(tpl.getAttribute('data-title') || '', 'Детально', tpl.innerHTML, { wide: true });
+      openContentModal(pg.getAttribute('data-title') || '', 'Детально', body.innerHTML, { wide: true });
       wireStatsBars();
     });
   }
-  bindStatsDetail('statsDetail', 'tpl-stats-day');
-  bindStatsDetail('weekStatsDetail', 'tpl-stats-week');
+  bindStatsDetail('statsDetail', 'stats-day');
+  bindStatsDetail('weekStatsDetail', 'stats-week');
 
 });
 
@@ -2005,7 +2018,7 @@ document.addEventListener('DOMContentLoaded', function () {
     try { history.replaceState({ view: v }, '', clean); } catch (err) { try { history.replaceState({ view: v }, ''); } catch (err2) { } }
   }
   if (id && id !== 'main') { setState('main'); openView(id); return; }
-  if (saved && document.getElementById('tpl-' + saved)) {
+  if (saved && hasPage(saved)) {
     var y = null;
     try {
       var n = JSON.parse(sessionStorage.getItem(NAV_KEY));
